@@ -1,0 +1,51 @@
+<Window x:Class="EasyRest.WorkspaceWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Workspace y Git" Width="560" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
+        Background="#1E1E2E" Foreground="#CDD6F4">
+    <StackPanel Margin="18">
+        <!-- Workspace -->
+        <TextBlock Text="WORKSPACE" FontSize="11" FontWeight="Bold" Foreground="{StaticResource OverlayBrush}"/>
+        <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource OverlayBrush}" Margin="0,4,0,8"
+                   Text="Las colecciones se guardan como JSON legibles en esta carpeta (ideal para un repo git). Los ambientes y settings quedan siempre en AppData: tus tokens no van al repo."/>
+        <DockPanel>
+            <Button DockPanel.Dock="Right" Content="Elegir carpeta…" Click="ChooseFolder_Click" Margin="6,0,0,0"/>
+            <TextBox x:Name="PathBox" IsReadOnly="True" FontFamily="Consolas" FontSize="12"/>
+        </DockPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+            <Button Content="Volver a la carpeta por defecto" FontSize="11" Click="UseDefault_Click"
+                    Style="{StaticResource GhostButton}"/>
+        </StackPanel>
+
+        <!-- Clonar -->
+        <TextBlock Text="CLONAR REPO EXISTENTE" FontSize="11" FontWeight="Bold"
+                   Foreground="{StaticResource OverlayBrush}" Margin="0,16,0,6"/>
+        <DockPanel>
+            <Button DockPanel.Dock="Right" Content="Clonar en carpeta…" Click="Clone_Click" Margin="6,0,0,0"/>
+            <TextBox x:Name="CloneUrlBox" FontFamily="Consolas" FontSize="12"
+                     ToolTip="URL del repo (GitHub, Azure DevOps, etc.)"/>
+        </DockPanel>
+
+        <!-- Git -->
+        <TextBlock Text="GIT" FontSize="11" FontWeight="Bold" Foreground="{StaticResource OverlayBrush}"
+                   Margin="0,16,0,6"/>
+        <TextBlock x:Name="GitStatusText" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"/>
+        <DockPanel Margin="0,8,0,0">
+            <Button DockPanel.Dock="Right" Content="Conectar remote" Click="SetRemote_Click" Margin="6,0,0,0"/>
+            <TextBox x:Name="RemoteUrlBox" FontFamily="Consolas" FontSize="12"
+                     ToolTip="URL del remote origin"/>
+        </DockPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+            <Button x:Name="InitBtn" Content="Inicializar repo git" Click="Init_Click" Margin="0,0,6,0"/>
+            <Button x:Name="SyncBtn" Content="⇅ Sincronizar ahora" Style="{StaticResource AccentButton}"
+                    Click="Sync_Click"/>
+        </StackPanel>
+
+        <TextBlock x:Name="ResultText" TextWrapping="Wrap" Margin="0,12,0,0" FontSize="12"
+                   Visibility="Collapsed"/>
+
+        <Button Content="Cerrar" Width="100" HorizontalAlignment="Right" Margin="0,14,0,0"
+                IsCancel="True"/>
+    </StackPanel>
+</Window>

@@ -1,0 +1,86 @@
+<UserControl x:Class="EasyRest.CollectionEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:EasyRest"
+             Foreground="{StaticResource TextBrush}">
+    <UserControl.Resources>
+        <local:AuthTypeToLabelConverter x:Key="AuthLabel"/>
+        <DataTemplate x:Key="AuthTypeItem">
+            <TextBlock Text="{Binding Converter={StaticResource AuthLabel}}"/>
+        </DataTemplate>
+    </UserControl.Resources>
+    <Grid Margin="0,8,0,0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Nombre + guardar -->
+        <DockPanel Grid.Row="0">
+            <Button DockPanel.Dock="Right" Content="💾 Guardar" Click="Save_Click"/>
+            <TextBox Text="{Binding Collection.Name, UpdateSourceTrigger=PropertyChanged}"
+                     FontSize="14" FontWeight="SemiBold" Margin="0,0,10,0"/>
+        </DockPanel>
+
+        <TextBlock Grid.Row="1" Margin="2,8,0,0" FontSize="11" Foreground="{StaticResource OverlayBrush}"
+                   Text="Configuración de la colección: los headers y la autenticación definidos acá se heredan en todas sus requests."/>
+
+        <TabControl Grid.Row="2" Margin="0,10,0,0" Background="{StaticResource PanelBrush}" Padding="4">
+            <TabItem Header="Headers heredados">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Se agregan a todas las requests de la colección. Si una request define el mismo header, gana el de la request."
+                               Foreground="{StaticResource OverlayBrush}" FontSize="11" Margin="8,6,8,4"/>
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding Collection.Headers}" AutoGenerateColumns="False"
+                              CanUserAddRows="True" FontFamily="Consolas">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="" Width="36"
+                                Binding="{Binding Enabled, UpdateSourceTrigger=PropertyChanged}"/>
+                            <DataGridTextColumn Header="HEADER" Width="2*"
+                                Binding="{Binding Key, UpdateSourceTrigger=PropertyChanged}"/>
+                            <DataGridTextColumn Header="VALOR" Width="3*"
+                                Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Auth">
+                <StackPanel Margin="10">
+                    <TextBlock Text="Las requests con auth «Heredar de la colección» usan esta."
+                               Foreground="{StaticResource OverlayBrush}" FontSize="11" Margin="0,0,0,8"/>
+                    <ComboBox x:Name="AuthTypeCombo" Width="240" HorizontalAlignment="Left"
+                              ItemTemplate="{StaticResource AuthTypeItem}"
+                              SelectedItem="{Binding Collection.Auth.Type}" SelectionChanged="AuthType_Changed"/>
+                    <StackPanel x:Name="BearerPanel" Margin="0,12,0,0" Visibility="Collapsed">
+                        <TextBlock Text="Token" Foreground="{StaticResource SubtextBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding Collection.Auth.BearerToken, UpdateSourceTrigger=PropertyChanged}"
+                                 FontFamily="Consolas"/>
+                    </StackPanel>
+                    <StackPanel x:Name="BasicPanel" Margin="0,12,0,0" Visibility="Collapsed">
+                        <TextBlock Text="Usuario" Foreground="{StaticResource SubtextBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding Collection.Auth.Username, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="Contraseña" Foreground="{StaticResource SubtextBrush}" Margin="0,8,0,4"/>
+                        <TextBox Text="{Binding Collection.Auth.Password, UpdateSourceTrigger=PropertyChanged}"
+                                 FontFamily="Consolas"/>
+                    </StackPanel>
+                    <StackPanel x:Name="ApiKeyPanel" Margin="0,12,0,0" Visibility="Collapsed">
+                        <TextBlock Text="Nombre de la key" Foreground="{StaticResource SubtextBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding Collection.Auth.ApiKeyName, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="Valor" Foreground="{StaticResource SubtextBrush}" Margin="0,8,0,4"/>
+                        <TextBox Text="{Binding Collection.Auth.ApiKeyValue, UpdateSourceTrigger=PropertyChanged}"
+                                 FontFamily="Consolas"/>
+                        <TextBlock Text="Enviar en" Foreground="{StaticResource SubtextBrush}" Margin="0,8,0,4"/>
+                        <ComboBox x:Name="ApiKeyInCombo" Width="160" HorizontalAlignment="Left"
+                                  SelectedItem="{Binding Collection.Auth.ApiKeyIn}"/>
+                    </StackPanel>
+                    <TextBlock Text="Podés usar variables {{nombre}} en cualquiera de estos campos."
+                               Foreground="{StaticResource OverlayBrush}" Margin="0,14,0,0" FontSize="11"/>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

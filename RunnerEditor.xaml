@@ -1,0 +1,136 @@
+<UserControl x:Class="EasyRest.RunnerEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Foreground="{StaticResource TextBrush}">
+    <DockPanel Margin="0,8,0,0">
+
+        <!-- Configuración -->
+        <WrapPanel DockPanel.Dock="Top">
+            <WrapPanel IsEnabled="{Binding IsNotRunning}">
+                <TextBlock Text="Colección" Foreground="{StaticResource SubtextBrush}"
+                           VerticalAlignment="Center" Margin="0,0,6,6"/>
+                <ComboBox Width="190" DisplayMemberPath="Name" Margin="0,0,14,6"
+                          ItemsSource="{Binding Collections}" SelectedItem="{Binding SelectedCollection}"/>
+                <TextBlock Text="Request" Foreground="{StaticResource SubtextBrush}"
+                           VerticalAlignment="Center" Margin="0,0,6,6"/>
+                <ComboBox Width="210" Margin="0,0,14,6"
+                          ItemsSource="{Binding RequestOptions}" SelectedItem="{Binding SelectedRequestOption}"/>
+                <TextBlock Text="Ambiente" Foreground="{StaticResource SubtextBrush}"
+                           VerticalAlignment="Center" Margin="0,0,6,6"/>
+                <ComboBox Width="150" Margin="0,0,14,6"
+                          ItemsSource="{Binding EnvOptions}" SelectedItem="{Binding SelectedEnvOption}"/>
+                <TextBlock Text="Iteraciones" Foreground="{StaticResource SubtextBrush}"
+                           VerticalAlignment="Center" Margin="0,0,6,6"/>
+                <TextBox Width="55" Text="{Binding IterationsText, UpdateSourceTrigger=PropertyChanged}"
+                         VerticalContentAlignment="Center" Margin="0,0,14,6"/>
+                <TextBlock Text="Delay (ms)" Foreground="{StaticResource SubtextBrush}"
+                           VerticalAlignment="Center" Margin="0,0,6,6"/>
+                <TextBox Width="55" Text="{Binding DelayText, UpdateSourceTrigger=PropertyChanged}"
+                         VerticalContentAlignment="Center" Margin="0,0,14,6"/>
+                <CheckBox Content="Frenar en error" IsChecked="{Binding StopOnError}"
+                          VerticalAlignment="Center" Margin="0,0,14,6"/>
+            </WrapPanel>
+            <Button Content="▶ Ejecutar" Style="{StaticResource AccentButton}" Margin="0,0,6,6"
+                    IsEnabled="{Binding IsNotRunning}" Click="Run_Click"/>
+            <Button Content="■ Detener" Margin="0,0,0,6"
+                    IsEnabled="{Binding IsRunning}" Click="Stop_Click"/>
+        </WrapPanel>
+
+        <ProgressBar DockPanel.Dock="Top" Margin="0,2,0,10"
+                     Maximum="{Binding ProgressMax}" Value="{Binding ProgressValue}"/>
+
+        <!-- Estadísticas -->
+        <UniformGrid DockPanel.Dock="Top" Rows="1" Margin="0,0,0,10">
+            <Border Background="{StaticResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
+                <StackPanel>
+                    <TextBlock Text="AVG" FontSize="10" FontWeight="Bold" Foreground="{StaticResource OverlayBrush}"/>
+                    <TextBlock Text="{Binding AvgText}" FontSize="17" FontWeight="Bold"
+                               Foreground="{StaticResource AccentBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Background="{StaticResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
+                <StackPanel>
+                    <TextBlock Text="P50" FontSize="10" FontWeight="Bold" Foreground="{StaticResource OverlayBrush}"/>
+                    <TextBlock Text="{Binding P50Text}" FontSize="17" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Background="{StaticResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
+                <StackPanel>
+                    <TextBlock Text="P95" FontSize="10" FontWeight="Bold" Foreground="{StaticResource OverlayBrush}"/>
+                    <TextBlock Text="{Binding P95Text}" FontSize="17" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Background="{StaticResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
+                <StackPanel>
+                    <TextBlock Text="P99" FontSize="10" FontWeight="Bold" Foreground="{StaticResource OverlayBrush}"/>
+                    <TextBlock Text="{Binding P99Text}" FontSize="17" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Background="{StaticResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
+                <StackPanel>
+                    <TextBlock Text="MIN" FontSize="10" FontWeight="Bold" Foreground="{StaticResource OverlayBrush}"/>
+                    <TextBlock Text="{Binding MinText}" FontSize="17" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Background="{StaticResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
+                <StackPanel>
+                    <TextBlock Text="MAX" FontSize="10" FontWeight="Bold" Foreground="{StaticResource OverlayBrush}"/>
+                    <TextBlock Text="{Binding MaxText}" FontSize="17" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Background="{StaticResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
+                <StackPanel>
+                    <TextBlock Text="EXITOSAS" FontSize="10" FontWeight="Bold" Foreground="{StaticResource OverlayBrush}"/>
+                    <TextBlock Text="{Binding OkText}" FontSize="17" FontWeight="Bold"
+                               Foreground="{StaticResource GreenBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Background="{StaticResource PanelBrush}" CornerRadius="8" Padding="10,7">
+                <StackPanel>
+                    <TextBlock Text="FALLIDAS" FontSize="10" FontWeight="Bold" Foreground="{StaticResource OverlayBrush}"/>
+                    <TextBlock Text="{Binding FailText}" FontSize="17" FontWeight="Bold"
+                               Foreground="{StaticResource RedBrush}"/>
+                </StackPanel>
+            </Border>
+        </UniformGrid>
+
+        <!-- Gráfico temporal -->
+        <Border DockPanel.Dock="Top" Background="{StaticResource PanelBrush}" CornerRadius="8"
+                Height="170" Margin="0,0,0,10" Padding="8">
+            <Grid>
+                <Canvas x:Name="ChartCanvas" ClipToBounds="True" SizeChanged="ChartCanvas_SizeChanged"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                    <Rectangle Width="14" Height="3" Fill="{StaticResource AccentBrush}"
+                               VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="requests" FontSize="10" Foreground="{StaticResource SubtextBrush}"
+                               Margin="0,0,12,0"/>
+                    <Rectangle Width="14" Height="3" Fill="{StaticResource PeachBrush}"
+                               VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="avg ms" FontSize="10" Foreground="{StaticResource SubtextBrush}"/>
+                </StackPanel>
+                <TextBlock x:Name="ChartHint" Text="Ejecutá el runner para ver el gráfico"
+                           Foreground="{StaticResource OverlayBrush}" FontSize="11"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <TextBlock DockPanel.Dock="Bottom" Text="{Binding Summary}" FontWeight="SemiBold" Margin="2,8,0,0"
+                   Foreground="{StaticResource TextBrush}"/>
+
+        <!-- Resultados -->
+        <Border Background="{StaticResource PanelBrush}" CornerRadius="8" Padding="6">
+            <DataGrid x:Name="ResultsGrid" ItemsSource="{Binding Results}" AutoGenerateColumns="False"
+                      IsReadOnly="True" FontFamily="Consolas">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="#" Binding="{Binding Iteration}" Width="46"/>
+                    <DataGridTextColumn Header="REQUEST" Binding="{Binding Name}" Width="2*"/>
+                    <DataGridTextColumn Header="MÉTODO" Binding="{Binding Method}" Width="80"/>
+                    <DataGridTextColumn Header="STATUS" Binding="{Binding Status}" Width="150"/>
+                    <DataGridTextColumn Header="TIEMPO (MS)" Binding="{Binding TimeMs}" Width="100"/>
+                    <DataGridTextColumn Header="DETALLE" Binding="{Binding Detail}" Width="2*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+    </DockPanel>
+</UserControl>
+
