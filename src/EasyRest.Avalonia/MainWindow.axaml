@@ -1,0 +1,61 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="EasyRest.Avalonia.MainWindow"
+        Title="EasyRest (Avalonia preview)" Width="1200" Height="760"
+        Background="#1E1E2E">
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Background="#181825" Padding="12,10">
+            <StackPanel Orientation="Horizontal" Spacing="14">
+                <TextBlock Text="⚡ EasyRest" Foreground="#89B4FA" FontSize="17" FontWeight="Bold"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="preview multiplataforma — mismo core, misma data del workspace"
+                           Foreground="#6C7086" FontSize="12" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <Grid ColumnDefinitions="340,4,*">
+            <!-- Requests del workspace (aplanadas) -->
+            <DockPanel Background="#181825">
+                <TextBlock DockPanel.Dock="Top" Text="REQUESTS" Foreground="#6C7086" FontSize="11"
+                           FontWeight="Bold" Margin="14,12,0,8"/>
+                <ListBox x:Name="RequestsList" Background="Transparent"
+                         SelectionChanged="RequestsList_SelectionChanged">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{Binding Method}" FontWeight="Bold" FontSize="11"
+                                           Foreground="#A6E3A1" Width="52" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Display}" Foreground="#CDD6F4"
+                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+
+            <GridSplitter Grid.Column="1" Background="#313244"/>
+
+            <!-- Editor mínimo -->
+            <Grid Grid.Column="2" Margin="12" RowDefinitions="Auto,Auto,*">
+                <TextBlock x:Name="BreadcrumbText" Foreground="#CDD6F4" FontSize="14" FontWeight="SemiBold"
+                           Margin="0,0,0,8" Text="Seleccioná una request de la izquierda"/>
+                <DockPanel Grid.Row="1">
+                    <Button x:Name="SendBtn" DockPanel.Dock="Right" Content="Enviar" FontWeight="Bold"
+                            Background="#89B4FA" Foreground="#11111B" Click="Send_Click" Margin="6,0,0,0"/>
+                    <TextBox x:Name="MethodBox" Width="90" IsReadOnly="True" Margin="0,0,6,0"
+                             FontWeight="Bold"/>
+                    <TextBox x:Name="UrlBox" FontFamily="Consolas,Menlo,monospace"/>
+                </DockPanel>
+                <Border Grid.Row="2" Background="#181825" CornerRadius="8" Margin="0,10,0,0" Padding="8">
+                    <DockPanel>
+                        <TextBlock x:Name="StatusText" DockPanel.Dock="Top" Foreground="#6C7086"
+                                   FontWeight="Bold" Margin="4,2,0,6"/>
+                        <TextBox x:Name="ResponseBox" IsReadOnly="True" AcceptsReturn="True"
+                                 FontFamily="Consolas,Menlo,monospace" FontSize="12"
+                                 Background="Transparent" BorderThickness="0" TextWrapping="NoWrap"/>
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </DockPanel>
+</Window>

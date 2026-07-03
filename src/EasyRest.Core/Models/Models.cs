@@ -128,13 +128,6 @@ public class Folder : TreeDisplayable
     public ObservableCollection<RequestItem> Requests { get; set; } = new();
 
     [JsonIgnore]
-    public System.Windows.Data.CompositeCollection Children => new()
-    {
-        new System.Windows.Data.CollectionContainer { Collection = Folders },
-        new System.Windows.Data.CollectionContainer { Collection = Requests }
-    };
-
-    [JsonIgnore]
     public IEnumerable<RequestItem> AllRequests =>
         Folders.SelectMany(f => f.AllRequests).Concat(Requests);
 
@@ -160,15 +153,6 @@ public class RequestCollection : TreeDisplayable
 
     /// <summary>Autenticación que heredan las requests con Type = Inherit.</summary>
     public AuthConfig Auth { get; set; } = new();
-
-    /// <summary>Hijos para el árbol: primero carpetas, después requests sueltas. Los containers
-    /// envuelven las ObservableCollection reales, así el árbol se actualiza en vivo.</summary>
-    [JsonIgnore]
-    public System.Windows.Data.CompositeCollection Children => new()
-    {
-        new System.Windows.Data.CollectionContainer { Collection = Folders },
-        new System.Windows.Data.CollectionContainer { Collection = Requests }
-    };
 
     [JsonIgnore]
     public IEnumerable<RequestItem> AllRequests =>

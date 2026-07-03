@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/EasyRest.Avalonia/EasyRest.Avalonia.csproj" />
+    <Project Path="src/EasyRest.Core/EasyRest.Core.csproj" />
+    <Project Path="src/EasyRest.Wpf/EasyRest.Wpf.csproj" />
+  </Folder>
+</Solution>

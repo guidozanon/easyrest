@@ -1,18 +1,35 @@
 # EasyRest
 
-Cliente HTTP de escritorio para Windows, estilo Postman/Bruno. WPF + .NET 8.
+Cliente HTTP de escritorio estilo Postman/Bruno. .NET 8.
+
+## Estructura (migración multiplataforma en curso)
+
+- `src/EasyRest.Core` — modelos y servicios (storage/workspace, HTTP, OpenAPI, cURL, scripts con Jint,
+  git, logs). **Sin dependencias de UI**: es la base compartida entre plataformas.
+- `src/EasyRest.Wpf` — la app completa para Windows (WPF).
+- `src/EasyRest.Avalonia` — head multiplataforma (Windows/macOS/Linux) sobre el mismo Core.
+  Hoy es una preview (listar y enviar requests); la UI completa se va portando acá.
 
 ## Ejecutar
 
 ```powershell
-dotnet run --project D:\EasyRest\EasyRest.csproj
+# App Windows (completa)
+dotnet run --project src/EasyRest.Wpf
+
+# Preview multiplataforma (también corre en macOS/Linux)
+dotnet run --project src/EasyRest.Avalonia
 ```
 
-O compilar un ejecutable autocontenido:
+Ejecutable autocontenido para Windows:
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
-# queda en bin\Release\net8.0-windows\win-x64\publish\EasyRest.exe
+dotnet publish src/EasyRest.Wpf -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
+```
+
+Para macOS (desde cualquier plataforma):
+
+```bash
+dotnet publish src/EasyRest.Avalonia -c Release -r osx-arm64 --self-contained
 ```
 
 ## Funcionalidades

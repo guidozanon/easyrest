@@ -1,13 +1,14 @@
 using System.Text.Json;
-using System.Windows.Media;
 
 namespace EasyRest;
+
+public enum JsonNodeKind { Container, String, Number, Bool, Null }
 
 public class JsonTreeNode
 {
     public string Key { get; set; } = "";
     public string Value { get; set; } = "";
-    public Brush ValueBrush { get; set; } = JsonTree.ContainerBrush;
+    public JsonNodeKind Kind { get; set; } = JsonNodeKind.Container;
     public bool IsExpanded { get; set; }
     public List<JsonTreeNode> Children { get; } = new();
 }
@@ -17,18 +18,6 @@ public static class JsonTree
 {
     const int MaxNodes = 4000;
     const int MaxValueLength = 300;
-
-    public static readonly Brush StringBrush = Frozen(0xA6, 0xE3, 0xA1);
-    public static readonly Brush NumberBrush = Frozen(0xFA, 0xB3, 0x87);
-    public static readonly Brush BoolBrush = Frozen(0xCB, 0xA6, 0xF7);
-    public static readonly Brush ContainerBrush = Frozen(0x6C, 0x70, 0x86);
-
-    static Brush Frozen(byte r, byte g, byte b)
-    {
-        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
-        brush.Freeze();
-        return brush;
-    }
 
     /// <summary>Devuelve el árbol del JSON, o null si el texto no es JSON válido.</summary>
     public static List<JsonTreeNode>? TryBuild(string body)
@@ -83,22 +72,23 @@ public static class JsonTree
                 var s = element.GetString() ?? "";
                 if (s.Length > MaxValueLength) s = s[..MaxValueLength] + "…";
                 node.Value = $"\"{s}\"";
-                node.ValueBrush = StringBrush;
+                node.Kind = JsonNodeKind.String;
                 break;
 
             case JsonValueKind.Number:
                 node.Value = element.GetRawText();
-                node.ValueBrush = NumberBrush;
+                node.Kind = JsonNodeKind.Number;
                 break;
 
             case JsonValueKind.True:
             case JsonValueKind.False:
                 node.Value = element.GetRawText();
-                node.ValueBrush = BoolBrush;
+                node.Kind = JsonNodeKind.Bool;
                 break;
 
             default:
                 node.Value = "null";
+                node.Kind = JsonNodeKind.Null;
                 break;
         }
         return node;

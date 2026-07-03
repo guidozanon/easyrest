@@ -1,5 +1,4 @@
 using System.Text;
-using System.Windows.Media;
 using EasyRest.Models;
 using Jint;
 
@@ -10,19 +9,6 @@ public class ScriptTestResult
     public string Name { get; init; } = "";
     public bool Passed { get; init; }
     public string? Error { get; init; }
-
-    // presentación (para la lista de tests de la UI)
-    public string Icon => Passed ? "✔" : "✖";
-    public Brush IconBrush => Passed ? PassBrush : FailBrush;
-    static readonly Brush PassBrush = Frozen(0xA6, 0xE3, 0xA1);
-    static readonly Brush FailBrush = Frozen(0xF3, 0x8B, 0xA8);
-
-    static Brush Frozen(byte r, byte g, byte b)
-    {
-        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
-        brush.Freeze();
-        return brush;
-    }
 }
 
 public class ScriptResult

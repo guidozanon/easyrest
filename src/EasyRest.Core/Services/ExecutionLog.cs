@@ -1,8 +1,8 @@
 using System.Collections.ObjectModel;
-using System.Windows;
-using System.Windows.Media;
 
 namespace EasyRest.Services;
+
+public enum LogKind { Neutral, Success, Failure }
 
 public class LogEntry
 {
@@ -10,7 +10,7 @@ public class LogEntry
     public string Method { get; init; } = "";
     public string Url { get; init; } = "";
     public string Status { get; init; } = "";
-    public Brush StatusBrush { get; init; } = Brushes.Gray;
+    public LogKind Kind { get; init; } = LogKind.Neutral;
     public string Meta { get; init; } = "";
     public string RequestHeaders { get; init; } = "";
     public string RequestBody { get; init; } = "";
@@ -24,16 +24,9 @@ public static class ExecutionLog
     const int MaxEntries = 300;
     const int MaxBodyChars = 200_000;
 
-    static readonly Brush GreenBrush = Frozen(0xA6, 0xE3, 0xA1);
-    static readonly Brush RedBrush = Frozen(0xF3, 0x8B, 0xA8);
-    static readonly Brush GrayBrush = Frozen(0x6C, 0x70, 0x86);
-
-    static Brush Frozen(byte r, byte g, byte b)
-    {
-        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
-        brush.Freeze(); // usable desde cualquier thread
-        return brush;
-    }
+    /// <summary>Marshaler al thread de UI. Lo setea cada head (WPF/Avalonia) al arrancar;
+    /// sin setear, las entradas se agregan en el thread que llama.</summary>
+    public static Action<Action>? Marshal { get; set; }
 
     public static ObservableCollection<LogEntry> Entries { get; } = new();
 
@@ -41,13 +34,13 @@ public static class ExecutionLog
         string requestHeaders, string requestBody)
     {
         string status;
-        Brush brush;
-        if (result.Error != null) { status = "ERROR"; brush = RedBrush; }
-        else if (result.StatusCode == 0) { status = "—"; brush = GrayBrush; }
+        LogKind kind;
+        if (result.Error != null) { status = "ERROR"; kind = LogKind.Failure; }
+        else if (result.StatusCode == 0) { status = "—"; kind = LogKind.Neutral; }
         else
         {
             status = $"{result.StatusCode} {result.StatusText}";
-            brush = result.StatusCode < 400 ? GreenBrush : RedBrush;
+            kind = result.StatusCode < 400 ? LogKind.Success : LogKind.Failure;
         }
 
         var meta = $"{result.ElapsedMs} ms";
@@ -59,7 +52,7 @@ public static class ExecutionLog
             Method = method,
             Url = url,
             Status = status,
-            StatusBrush = brush,
+            Kind = kind,
             Meta = meta,
             RequestHeaders = requestHeaders,
             RequestBody = Truncate(requestBody),
@@ -67,10 +60,8 @@ public static class ExecutionLog
             ResponseBody = Truncate(result.Error ?? result.Body)
         };
 
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher == null) { Add(entry); return; }
-        if (dispatcher.CheckAccess()) Add(entry);
-        else dispatcher.Invoke(() => Add(entry));
+        if (Marshal != null) Marshal(() => Add(entry));
+        else Add(entry);
     }
 
     static void Add(LogEntry entry)

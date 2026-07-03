@@ -11,6 +11,14 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // El Core no conoce WPF: le damos el marshaler al thread de UI para el log de ejecución
+        EasyRest.Services.ExecutionLog.Marshal = action =>
+        {
+            if (Dispatcher.CheckAccess()) action();
+            else Dispatcher.Invoke(action);
+        };
+
         // La fila de tabs no muestra scrollbar: la rueda del mouse sobre ella scrollea horizontal
         EventManager.RegisterClassHandler(typeof(TabControl), UIElement.PreviewMouseWheelEvent,
             new MouseWheelEventHandler(TabStripMouseWheel));

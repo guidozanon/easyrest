@@ -2,20 +2,24 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:EasyRest"
+             xmlns:core="clr-namespace:EasyRest;assembly=EasyRest.Core"
              Foreground="{StaticResource TextBrush}">
     <UserControl.Resources>
         <local:TextToVisibilityConverter x:Key="TextToVis"/>
         <local:AuthTypeToLabelConverter x:Key="AuthLabel"/>
+        <local:PassedToIconConverter x:Key="PassIcon"/>
+        <local:PassedToBrushConverter x:Key="PassBrush"/>
+        <local:JsonKindToBrushConverter x:Key="JsonKindBrush"/>
         <DataTemplate x:Key="AuthTypeItem">
             <TextBlock Text="{Binding Converter={StaticResource AuthLabel}}"/>
         </DataTemplate>
-        <HierarchicalDataTemplate DataType="{x:Type local:JsonTreeNode}" ItemsSource="{Binding Children}">
+        <HierarchicalDataTemplate DataType="{x:Type core:JsonTreeNode}" ItemsSource="{Binding Children}">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="{Binding Key}" Foreground="{StaticResource AccentBrush}"
                            FontFamily="Consolas" FontSize="12"/>
                 <TextBlock Text=":" Foreground="{StaticResource OverlayBrush}"
                            FontFamily="Consolas" FontSize="12" Margin="0,0,6,0"/>
-                <TextBlock Text="{Binding Value}" Foreground="{Binding ValueBrush}"
+                <TextBlock Text="{Binding Value}" Foreground="{Binding Kind, Converter={StaticResource JsonKindBrush}}"
                            FontFamily="Consolas" FontSize="12" MaxWidth="700"
                            TextTrimming="CharacterEllipsis"/>
             </StackPanel>
@@ -283,8 +287,8 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <DockPanel Margin="0,2">
-                                            <TextBlock DockPanel.Dock="Left" Text="{Binding Icon}" FontWeight="Bold"
-                                                       Foreground="{Binding IconBrush}" Width="22"/>
+                                            <TextBlock DockPanel.Dock="Left" Text="{Binding Passed, Converter={StaticResource PassIcon}}" FontWeight="Bold"
+                                                       Foreground="{Binding Passed, Converter={StaticResource PassBrush}}" Width="22"/>
                                             <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
                                         </DockPanel>
                                     </DataTemplate>
@@ -327,3 +331,6 @@
         </Grid>
     </Grid>
 </UserControl>
+
+
+
