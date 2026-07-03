@@ -94,15 +94,30 @@
         <Setter Property="CornerRadius" Value="6"/>
     </Style>
 
-    <!-- TabControl / TabItem -->
+    <!-- TabControl / TabItem: pastilla rellena con bordes redondeados (sin subrayado azul) -->
     <Style Selector="TabItem">
         <Setter Property="Foreground" Value="{StaticResource SubtextBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
         <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="Padding" Value="0"/>
         <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Margin" Value="0,0,4,0"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Bd" Background="{TemplateBinding Background}" CornerRadius="6" Padding="12,6">
+                    <ContentPresenter Content="{TemplateBinding Header}"
+                                      ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                      VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="TabItem:pointerover:not(:selected)">
+        <Setter Property="Background" Value="{StaticResource HoverBrush}"/>
     </Style>
     <Style Selector="TabItem:selected">
         <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="Background" Value="{StaticResource Surface0}"/>
     </Style>
 
     <!-- TreeView / ListBox items -->
