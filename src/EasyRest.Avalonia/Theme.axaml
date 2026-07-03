@@ -1,0 +1,150 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Styles.Resources>
+        <!-- Paleta Catppuccin Mocha (compartida con el head WPF) -->
+        <Color x:Key="BgColor">#1E1E2E</Color>
+        <Color x:Key="PanelColor">#181825</Color>
+        <Color x:Key="CrustColor">#11111B</Color>
+        <Color x:Key="Surface0Color">#313244</Color>
+        <Color x:Key="Surface1Color">#45475A</Color>
+        <Color x:Key="Surface2Color">#585B70</Color>
+        <Color x:Key="HoverColor">#2A2A3E</Color>
+        <Color x:Key="TextColor">#CDD6F4</Color>
+        <Color x:Key="SubtextColor">#A6ADC8</Color>
+        <Color x:Key="OverlayColor">#6C7086</Color>
+        <Color x:Key="AccentColor">#89B4FA</Color>
+        <Color x:Key="GreenColor">#A6E3A1</Color>
+        <Color x:Key="RedColor">#F38BA8</Color>
+        <Color x:Key="PeachColor">#FAB387</Color>
+        <Color x:Key="MauveColor">#CBA6F7</Color>
+        <Color x:Key="YellowColor">#F9E2AF</Color>
+
+        <SolidColorBrush x:Key="BgBrush" Color="{StaticResource BgColor}"/>
+        <SolidColorBrush x:Key="PanelBrush" Color="{StaticResource PanelColor}"/>
+        <SolidColorBrush x:Key="CrustBrush" Color="{StaticResource CrustColor}"/>
+        <SolidColorBrush x:Key="Surface0" Color="{StaticResource Surface0Color}"/>
+        <SolidColorBrush x:Key="Surface1" Color="{StaticResource Surface1Color}"/>
+        <SolidColorBrush x:Key="Surface2" Color="{StaticResource Surface2Color}"/>
+        <SolidColorBrush x:Key="HoverBrush" Color="{StaticResource HoverColor}"/>
+        <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}"/>
+        <SolidColorBrush x:Key="SubtextBrush" Color="{StaticResource SubtextColor}"/>
+        <SolidColorBrush x:Key="OverlayBrush" Color="{StaticResource OverlayColor}"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+        <SolidColorBrush x:Key="GreenBrush" Color="{StaticResource GreenColor}"/>
+        <SolidColorBrush x:Key="RedBrush" Color="{StaticResource RedColor}"/>
+        <SolidColorBrush x:Key="PeachBrush" Color="{StaticResource PeachColor}"/>
+        <SolidColorBrush x:Key="MauveBrush" Color="{StaticResource MauveColor}"/>
+        <SolidColorBrush x:Key="YellowBrush" Color="{StaticResource YellowColor}"/>
+    </Styles.Resources>
+
+    <!-- Ventana -->
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{StaticResource BgBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="FontFamily" Value="Segoe UI, Inter, sans-serif"/>
+        <Setter Property="FontSize" Value="13"/>
+    </Style>
+
+    <!-- Botón chato -->
+    <Style Selector="Button">
+        <Setter Property="Background" Value="{StaticResource Surface0}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Surface1}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource Surface1}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Surface2}"/>
+    </Style>
+    <Style Selector="Button.accent">
+        <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+        <Setter Property="Foreground" Value="#11111B"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#A5C8FF"/>
+    </Style>
+    <Style Selector="Button.ghost">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Foreground" Value="{StaticResource OverlayBrush}"/>
+        <Setter Property="Padding" Value="6,2"/>
+    </Style>
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource Surface0}"/>
+    </Style>
+
+    <!-- TextBox -->
+    <Style Selector="TextBox">
+        <Setter Property="Background" Value="{StaticResource CrustBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Surface1}"/>
+        <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+
+    <!-- ComboBox -->
+    <Style Selector="ComboBox">
+        <Setter Property="Background" Value="{StaticResource Surface0}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Surface1}"/>
+        <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+
+    <!-- TabControl / TabItem -->
+    <Style Selector="TabItem">
+        <Setter Property="Foreground" Value="{StaticResource SubtextBrush}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="MinHeight" Value="0"/>
+    </Style>
+    <Style Selector="TabItem:selected">
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+    </Style>
+
+    <!-- TreeView / ListBox items -->
+    <Style Selector="TreeViewItem">
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+    </Style>
+    <Style Selector="ListBoxItem">
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="Padding" Value="8,5"/>
+        <Setter Property="MinHeight" Value="0"/>
+    </Style>
+
+    <!-- DataGrid -->
+    <Style Selector="DataGrid">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="GridLinesVisibility" Value="None"/>
+        <Setter Property="RowBackground" Value="Transparent"/>
+    </Style>
+    <Style Selector="DataGridColumnHeader">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource OverlayBrush}"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <!-- CheckBox -->
+    <Style Selector="CheckBox">
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+    </Style>
+
+    <!-- ProgressBar -->
+    <Style Selector="ProgressBar">
+        <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+        <Setter Property="Background" Value="{StaticResource Surface0}"/>
+        <Setter Property="MinHeight" Value="6"/>
+        <Setter Property="Height" Value="6"/>
+    </Style>
+
+    <!-- Menús -->
+    <Style Selector="MenuItem">
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+    </Style>
+</Styles>
+

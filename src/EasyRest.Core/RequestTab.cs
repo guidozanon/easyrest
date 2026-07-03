@@ -3,7 +3,6 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Windows.Media;
 using System.Xml.Linq;
 using EasyRest.Models;
 using EasyRest.Services;
@@ -15,10 +14,6 @@ namespace EasyRest;
 /// mantiene la respuesta de la última ejecución y la sincronización URL &lt;-&gt; query params.</summary>
 public class RequestTab : Observable
 {
-    static readonly Brush GrayBrush = new SolidColorBrush(Color.FromRgb(0x6C, 0x70, 0x86));
-    static readonly Brush GreenBrush = new SolidColorBrush(Color.FromRgb(0xA6, 0xE3, 0xA1));
-    static readonly Brush RedBrush = new SolidColorBrush(Color.FromRgb(0xF3, 0x8B, 0xA8));
-
     readonly Func<EnvironmentModel?> _envProvider;
     readonly Func<RequestCollection?> _ownerProvider;
     readonly Func<string> _pathProvider;
@@ -27,7 +22,7 @@ public class RequestTab : Observable
     bool _trackDirty;
 
     string _statusText = "";
-    Brush _statusBrush = GrayBrush;
+    LogKind _statusKind = LogKind.Neutral;
     string _timeText = "";
     string _sizeText = "";
     string _responseBody = "";
@@ -101,7 +96,7 @@ public class RequestTab : Observable
     }
 
     public string StatusText { get => _statusText; set => Set(ref _statusText, value); }
-    public Brush StatusBrush { get => _statusBrush; set => Set(ref _statusBrush, value); }
+    public LogKind StatusKind { get => _statusKind; set => Set(ref _statusKind, value); }
     public string TimeText { get => _timeText; set => Set(ref _timeText, value); }
     public string SizeText { get => _sizeText; set => Set(ref _sizeText, value); }
     public string ResponseBody { get => _responseBody; set => Set(ref _responseBody, value); }
@@ -130,8 +125,8 @@ public class RequestTab : Observable
     string _testsSummary = "";
     public string TestsSummary { get => _testsSummary; set => Set(ref _testsSummary, value); }
 
-    Brush _testsBrush = GrayBrush;
-    public Brush TestsBrush { get => _testsBrush; set => Set(ref _testsBrush, value); }
+    LogKind _testsKind = LogKind.Neutral;
+    public LogKind TestsKind { get => _testsKind; set => Set(ref _testsKind, value); }
 
     public string[] BodyViews { get; } = { "Texto", "Árbol" };
 
@@ -142,16 +137,13 @@ public class RequestTab : Observable
         set
         {
             if (!Set(ref _selectedBodyView, value)) return;
-            Raise(nameof(BodyTextVisibility));
-            Raise(nameof(BodyTreeVisibility));
+            Raise(nameof(ShowBodyText));
+            Raise(nameof(ShowBodyTree));
         }
     }
 
-    public System.Windows.Visibility BodyTextVisibility =>
-        SelectedBodyView == "Texto" ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
-
-    public System.Windows.Visibility BodyTreeVisibility =>
-        SelectedBodyView == "Árbol" ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+    public bool ShowBodyText => SelectedBodyView == "Texto";
+    public bool ShowBodyTree => SelectedBodyView == "Árbol";
 
     public string[] HeaderViews { get; } = { "Tabla", "Raw" };
 
@@ -162,16 +154,13 @@ public class RequestTab : Observable
         set
         {
             if (!Set(ref _selectedHeaderView, value)) return;
-            Raise(nameof(HeadersTableVisibility));
-            Raise(nameof(HeadersRawVisibility));
+            Raise(nameof(ShowHeadersTable));
+            Raise(nameof(ShowHeadersRaw));
         }
     }
 
-    public System.Windows.Visibility HeadersTableVisibility =>
-        SelectedHeaderView == "Tabla" ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
-
-    public System.Windows.Visibility HeadersRawVisibility =>
-        SelectedHeaderView == "Raw" ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+    public bool ShowHeadersTable => SelectedHeaderView == "Tabla";
+    public bool ShowHeadersRaw => SelectedHeaderView == "Raw";
 
     public bool IsSending
     {
@@ -489,7 +478,7 @@ public class RequestTab : Observable
         if (Request.Body.Type == BodyType.Json && BodyJsonError.Length > 0)
         {
             StatusText = "JSON inválido";
-            StatusBrush = RedBrush;
+            StatusKind = LogKind.Failure;
             ResponseBody = BodyJsonError + "\n\nCorregí el body antes de enviar.";
             ResponseTree.Clear();
             TreeHint = "La respuesta no es JSON.";
@@ -498,7 +487,7 @@ public class RequestTab : Observable
 
         IsSending = true;
         StatusText = "Enviando…";
-        StatusBrush = GrayBrush;
+        StatusKind = LogKind.Neutral;
         TimeText = "";
         SizeText = "";
         ResponseBody = "";
@@ -516,7 +505,7 @@ public class RequestTab : Observable
             if (r.Error != null)
             {
                 StatusText = "Error";
-                StatusBrush = RedBrush;
+                StatusKind = LogKind.Failure;
                 ResponseBody = r.Error;
                 TimeText = $"{r.ElapsedMs} ms";
                 TreeHint = "La respuesta no es JSON.";
@@ -525,7 +514,7 @@ public class RequestTab : Observable
             {
                 foreach (var header in r.HeaderList) ResponseHeaderRows.Add(header);
                 StatusText = $"{r.StatusCode} {r.StatusText}";
-                StatusBrush = r.StatusCode < 400 ? GreenBrush : RedBrush;
+                StatusKind = r.StatusCode < 400 ? LogKind.Success : LogKind.Failure;
                 TimeText = $"{r.ElapsedMs} ms";
                 SizeText = FormatSize(r.SizeBytes);
                 _rawBody = r.Body;
@@ -563,7 +552,7 @@ public class RequestTab : Observable
             foreach (var t in tests) TestResults.Add(t);
             var passed = tests.Count(t => t.Passed);
             TestsSummary = $"Tests: {passed}/{tests.Count}";
-            TestsBrush = passed == tests.Count ? GreenBrush : RedBrush;
+            TestsKind = passed == tests.Count ? LogKind.Success : LogKind.Failure;
             TestsHint = "";
         }
         else

@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="EasyRest.Avalonia.Views.ImportWindow"
+        Title="Importar OpenAPI" Width="460" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" CanResize="False" ShowInTaskbar="False"
+        Background="#1E1E2E">
+    <StackPanel Margin="18" Spacing="0">
+        <TextBlock x:Name="TitleText" Text="Importando…" FontSize="15" FontWeight="Bold" Foreground="#CDD6F4"/>
+        <TextBlock x:Name="FileText" Foreground="#6C7086" FontSize="12" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+        <ProgressBar x:Name="Progress" IsIndeterminate="True" Margin="0,14,0,0"/>
+        <TextBlock x:Name="ResultText" TextWrapping="Wrap" Margin="0,14,0,0" FontSize="13" IsVisible="False"/>
+        <Button x:Name="OkBtn" Content="Aceptar" Width="100" HorizontalAlignment="Right" Margin="0,16,0,0"
+                IsEnabled="False" Classes="accent" Click="Ok_Click"/>
+    </StackPanel>
+</Window>
+

@@ -1,0 +1,34 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="EasyRest.Avalonia.Views.EnvironmentsWindow"
+        Title="Ambientes" Width="780" Height="480"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Background="#1E1E2E">
+    <Grid Margin="12" ColumnDefinitions="230,12,*">
+        <DockPanel>
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                <Button Content="+ Agregar" Click="Add_Click"/>
+                <Button Content="Renombrar" Click="Rename_Click"/>
+                <Button Content="Eliminar" Click="Delete_Click"/>
+            </StackPanel>
+            <ListBox x:Name="EnvList" SelectionChanged="EnvList_SelectionChanged">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+        <DockPanel Grid.Column="2">
+            <TextBlock DockPanel.Dock="Top" Margin="0,0,0,6" Foreground="#CDD6F4"
+                       Text="Variables — usalas en las requests como {{nombre}}"/>
+            <DataGrid x:Name="VarsGrid" AutoGenerateColumns="False" IsEnabled="False">
+                <DataGrid.Columns>
+                    <DataGridCheckBoxColumn Header="" Width="36" Binding="{Binding Enabled}"/>
+                    <DataGridTextColumn Header="VARIABLE" Width="2*" Binding="{Binding Key}"/>
+                    <DataGridTextColumn Header="VALOR" Width="3*" Binding="{Binding Value}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+    </Grid>
+</Window>
+

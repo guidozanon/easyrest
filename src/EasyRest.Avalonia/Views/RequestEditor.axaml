@@ -1,0 +1,256 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:EasyRest.Avalonia"
+             xmlns:core="clr-namespace:EasyRest;assembly=EasyRest.Core"
+             xmlns:svc="clr-namespace:EasyRest.Services;assembly=EasyRest.Core"
+             x:Class="EasyRest.Avalonia.Views.RequestEditor"
+             x:DataType="core:RequestTab">
+    <UserControl.Resources>
+        <conv:MethodToBrushConverter x:Key="MethodBrush"/>
+        <conv:LogKindToBrushConverter x:Key="LogKindBrush"/>
+        <conv:JsonKindToBrushConverter x:Key="JsonKindBrush"/>
+        <conv:PassedToIconConverter x:Key="PassIcon"/>
+        <conv:PassedToBrushConverter x:Key="PassBrush"/>
+        <conv:AuthTypeToLabelConverter x:Key="AuthLabel"/>
+        <conv:NotEmptyConverter x:Key="NotEmpty"/>
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto,*" Margin="0,8,0,0">
+        <!-- Breadcrumb + acciones -->
+        <DockPanel Grid.Row="0">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+                <Button Content="💾 Guardar" Click="Save_Click"/>
+                <Button Content="⟳ Runner" Click="OpenRunner_Click"/>
+                <Button Content="↗ Compartir" Click="Share_Click"/>
+            </StackPanel>
+            <TextBlock Text="ⓘ" FontSize="15" VerticalAlignment="Center" Margin="2,0,8,0"
+                       Foreground="{DynamicResource AccentBrush}"
+                       IsVisible="{Binding Request.Description, Converter={StaticResource NotEmpty}}"
+                       ToolTip.Tip="{Binding Request.Description}"/>
+            <Panel>
+                <TextBlock x:Name="BreadcrumbText" Text="{Binding Breadcrumb}" FontSize="14"
+                           FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           DoubleTapped="Breadcrumb_DoubleTapped"/>
+                <TextBox x:Name="NameEditBox" FontSize="14" FontWeight="SemiBold" IsVisible="False"
+                         KeyDown="NameEdit_KeyDown" LostFocus="NameEdit_LostFocus"/>
+            </Panel>
+        </DockPanel>
+
+        <!-- Método + URL + Enviar -->
+        <DockPanel Grid.Row="1" Margin="0,8,0,0">
+            <Button DockPanel.Dock="Right" Content="Enviar" Classes="accent"
+                    IsEnabled="{Binding IsNotSending}" Click="Send_Click"/>
+            <ComboBox x:Name="MethodCombo" Width="110" SelectedItem="{Binding Request.Method}"
+                      FontWeight="Bold" Margin="0,0,6,0"/>
+            <TextBox x:Name="UrlBox" Text="{Binding Request.Url}" FontFamily="Consolas,Menlo,monospace"
+                     VerticalContentAlignment="Center" Margin="0,0,6,0"
+                     ToolTip.Tip="También podés pegar un comando cURL acá"/>
+        </DockPanel>
+
+        <!-- Tabs de la request -->
+        <TabControl Grid.Row="2" Margin="0,10,0,0" Background="{DynamicResource PanelBrush}">
+            <TabItem Header="Params">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" FontSize="11" Margin="8,6,8,4"
+                               Foreground="{DynamicResource OverlayBrush}"
+                               Text="Los cambios se reflejan en la URL. Los parámetros desactivados no se envían."/>
+                    <DataGrid ItemsSource="{Binding Request.QueryParams}" AutoGenerateColumns="False"
+                             >
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="" Width="36" Binding="{Binding Enabled}"/>
+                            <DataGridTextColumn Header="PARÁMETRO" Width="2*" Binding="{Binding Key}"/>
+                            <DataGridTextColumn Header="VALOR" Width="3*" Binding="{Binding Value}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+            <TabItem Header="Headers">
+                <DataGrid ItemsSource="{Binding Request.Headers}" AutoGenerateColumns="False">
+                    <DataGrid.Columns>
+                        <DataGridCheckBoxColumn Header="" Width="36" Binding="{Binding Enabled}"/>
+                        <DataGridTextColumn Header="HEADER" Width="2*" Binding="{Binding Key}"/>
+                        <DataGridTextColumn Header="VALOR" Width="3*" Binding="{Binding Value}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+            <TabItem Header="Auth">
+                <StackPanel Margin="10" Spacing="8">
+                    <ComboBox x:Name="AuthTypeCombo" Width="240" HorizontalAlignment="Left"
+                              SelectedItem="{Binding Request.Auth.Type}" SelectionChanged="AuthType_Changed">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={StaticResource AuthLabel}}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <StackPanel x:Name="BearerPanel" IsVisible="False" Spacing="4">
+                        <TextBlock Text="Token" Foreground="{DynamicResource SubtextBrush}"/>
+                        <TextBox Text="{Binding Request.Auth.BearerToken}" FontFamily="Consolas,Menlo,monospace"/>
+                    </StackPanel>
+                    <StackPanel x:Name="BasicPanel" IsVisible="False" Spacing="4">
+                        <TextBlock Text="Usuario" Foreground="{DynamicResource SubtextBrush}"/>
+                        <TextBox Text="{Binding Request.Auth.Username}"/>
+                        <TextBlock Text="Contraseña" Foreground="{DynamicResource SubtextBrush}"/>
+                        <TextBox Text="{Binding Request.Auth.Password}" FontFamily="Consolas,Menlo,monospace"/>
+                    </StackPanel>
+                    <StackPanel x:Name="ApiKeyPanel" IsVisible="False" Spacing="4">
+                        <TextBlock Text="Nombre de la key" Foreground="{DynamicResource SubtextBrush}"/>
+                        <TextBox Text="{Binding Request.Auth.ApiKeyName}"/>
+                        <TextBlock Text="Valor" Foreground="{DynamicResource SubtextBrush}"/>
+                        <TextBox Text="{Binding Request.Auth.ApiKeyValue}" FontFamily="Consolas,Menlo,monospace"/>
+                        <TextBlock Text="Enviar en" Foreground="{DynamicResource SubtextBrush}"/>
+                        <ComboBox x:Name="ApiKeyInCombo" Width="160" HorizontalAlignment="Left"
+                                  SelectedItem="{Binding Request.Auth.ApiKeyIn}"/>
+                    </StackPanel>
+                    <TextBlock x:Name="InheritHint" FontSize="11" Foreground="{DynamicResource OverlayBrush}"/>
+                </StackPanel>
+            </TabItem>
+            <TabItem Header="Body">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8" Spacing="8">
+                        <ComboBox x:Name="BodyTypeCombo" Width="220"
+                                  SelectedItem="{Binding Request.Body.Type}" SelectionChanged="BodyType_Changed"/>
+                        <Button x:Name="BeautifyBtn" Content="✦ Beautify" IsVisible="False" Click="Beautify_Click"/>
+                    </StackPanel>
+                    <TextBlock DockPanel.Dock="Bottom" FontSize="11" Margin="10,0,8,8" TextWrapping="Wrap"
+                               Foreground="{DynamicResource RedBrush}" Text="{Binding BodyJsonError}"
+                               IsVisible="{Binding BodyJsonError, Converter={StaticResource NotEmpty}}"/>
+                    <TextBox x:Name="BodyRawBox" Text="{Binding Request.Body.Raw}" IsVisible="False"
+                             AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas,Menlo,monospace"
+                             Margin="8,0,8,8"/>
+                    <DataGrid x:Name="FormGrid" ItemsSource="{Binding Request.Body.FormItems}" IsVisible="False"
+                              AutoGenerateColumns="False" Margin="8,0,8,8">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="" Width="36" Binding="{Binding Enabled}"/>
+                            <DataGridTextColumn Header="CAMPO" Width="2*" Binding="{Binding Key}"/>
+                            <DataGridTextColumn Header="VALOR" Width="3*" Binding="{Binding Value}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+            <TabItem Header="Scripts">
+                <DockPanel>
+                    <ComboBox x:Name="ScriptViewCombo" DockPanel.Dock="Top" Width="240" HorizontalAlignment="Left"
+                              Margin="8" SelectionChanged="ScriptView_Changed"/>
+                    <TextBlock x:Name="ScriptHint" DockPanel.Dock="Bottom" FontSize="11" Margin="10,0,8,8"
+                               TextWrapping="Wrap" Foreground="{DynamicResource OverlayBrush}"/>
+                    <TextBox x:Name="PreScriptBox" Text="{Binding Request.PreRequestScript}"
+                             AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas,Menlo,monospace"
+                             FontSize="12" Margin="8,0,8,4"/>
+                    <TextBox x:Name="TestScriptBox" Text="{Binding Request.TestScript}" IsVisible="False"
+                             AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas,Menlo,monospace"
+                             FontSize="12" Margin="8,0,8,4"/>
+                </DockPanel>
+            </TabItem>
+        </TabControl>
+
+        <GridSplitter Grid.Row="3" Height="6" HorizontalAlignment="Stretch"
+                      Background="{DynamicResource Surface0}"/>
+
+        <!-- Respuesta -->
+        <Grid Grid.Row="4" RowDefinitions="Auto,*">
+            <DockPanel Margin="2,4,0,6">
+                <Button DockPanel.Dock="Right" Content="💾 Guardar respuesta…" Classes="ghost" FontSize="11"
+                        Click="SaveResponse_Click"/>
+                <StackPanel Orientation="Horizontal" Spacing="14">
+                    <TextBlock Text="Respuesta" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding StatusText}" FontWeight="Bold" VerticalAlignment="Center"
+                               Foreground="{Binding StatusKind, Converter={StaticResource LogKindBrush}}"/>
+                    <TextBlock Text="{Binding TimeText}" Foreground="{DynamicResource OverlayBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding SizeText}" Foreground="{DynamicResource OverlayBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding TestsSummary}" FontWeight="Bold" VerticalAlignment="Center"
+                               Foreground="{Binding TestsKind, Converter={StaticResource LogKindBrush}}"/>
+                </StackPanel>
+            </DockPanel>
+            <TabControl Grid.Row="1" Background="{DynamicResource PanelBrush}">
+                <TabItem Header="Body">
+                    <Grid RowDefinitions="Auto,*">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,3,4,3" Spacing="6">
+                            <TextBlock Text="Vista" Foreground="{DynamicResource OverlayBrush}" FontSize="11"
+                                       VerticalAlignment="Center"/>
+                            <ComboBox ItemsSource="{Binding BodyViews}" SelectedItem="{Binding SelectedBodyView}"
+                                      Width="90" FontSize="11"/>
+                            <TextBlock Text="Ver como" Foreground="{DynamicResource OverlayBrush}" FontSize="11"
+                                       VerticalAlignment="Center" IsVisible="{Binding ShowBodyText}"/>
+                            <ComboBox ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat}"
+                                      Width="90" FontSize="11" IsVisible="{Binding ShowBodyText}"/>
+                        </StackPanel>
+                        <TextBox Grid.Row="1" Text="{Binding ResponseBody}" IsReadOnly="True" AcceptsReturn="True"
+                                 FontFamily="Consolas,Menlo,monospace" FontSize="12" Background="Transparent"
+                                 BorderThickness="0" IsVisible="{Binding ShowBodyText}"/>
+                        <Panel Grid.Row="1" IsVisible="{Binding ShowBodyTree}">
+                            <TreeView ItemsSource="{Binding ResponseTree}">
+                                <TreeView.ItemTemplate>
+                                    <TreeDataTemplate ItemsSource="{Binding Children}" x:DataType="core:JsonTreeNode">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Key}" Foreground="{DynamicResource AccentBrush}"
+                                                       FontFamily="Consolas,Menlo,monospace" FontSize="12"/>
+                                            <TextBlock Text=": " Foreground="{DynamicResource OverlayBrush}"
+                                                       FontFamily="Consolas,Menlo,monospace" FontSize="12"/>
+                                            <TextBlock Text="{Binding Value}" FontFamily="Consolas,Menlo,monospace"
+                                                       FontSize="12"
+                                                       Foreground="{Binding Kind, Converter={StaticResource JsonKindBrush}}"/>
+                                        </StackPanel>
+                                    </TreeDataTemplate>
+                                </TreeView.ItemTemplate>
+                            </TreeView>
+                            <TextBlock Text="{Binding TreeHint}" Foreground="{DynamicResource OverlayBrush}"
+                                       FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       IsVisible="{Binding TreeHint, Converter={StaticResource NotEmpty}}"/>
+                        </Panel>
+                    </Grid>
+                </TabItem>
+                <TabItem Header="Tests">
+                    <DockPanel>
+                        <TextBox DockPanel.Dock="Bottom" Text="{Binding ScriptOutput}" IsReadOnly="True"
+                                 FontFamily="Consolas,Menlo,monospace" FontSize="11" Background="Transparent"
+                                 BorderThickness="0" Foreground="{DynamicResource SubtextBrush}" MaxHeight="120"
+                                 IsVisible="{Binding ScriptOutput, Converter={StaticResource NotEmpty}}"/>
+                        <Panel>
+                            <ItemsControl ItemsSource="{Binding TestResults}" Margin="8,6">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="svc:ScriptTestResult">
+                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+                                            <TextBlock Text="{Binding Passed, Converter={StaticResource PassIcon}}"
+                                                       FontWeight="Bold" Width="18"
+                                                       Foreground="{Binding Passed, Converter={StaticResource PassBrush}}"/>
+                                            <TextBlock Text="{Binding Name}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding TestsHint}" Foreground="{DynamicResource OverlayBrush}"
+                                       FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       TextWrapping="Wrap" MaxWidth="420" TextAlignment="Center"
+                                       IsVisible="{Binding TestsHint, Converter={StaticResource NotEmpty}}"/>
+                        </Panel>
+                    </DockPanel>
+                </TabItem>
+                <TabItem Header="Headers">
+                    <Grid RowDefinitions="Auto,*">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,3,4,3" Spacing="6">
+                            <TextBlock Text="Ver como" Foreground="{DynamicResource OverlayBrush}" FontSize="11"
+                                       VerticalAlignment="Center"/>
+                            <ComboBox ItemsSource="{Binding HeaderViews}" SelectedItem="{Binding SelectedHeaderView}"
+                                      Width="85" FontSize="11"/>
+                        </StackPanel>
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding ResponseHeaderRows}" IsReadOnly="True"
+                                  AutoGenerateColumns="False" IsVisible="{Binding ShowHeadersTable}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="HEADER" Width="*" Binding="{Binding Name}"/>
+                                <DataGridTextColumn Header="VALOR" Width="2*" Binding="{Binding Value}"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBox Grid.Row="1" Text="{Binding ResponseHeaders}" IsReadOnly="True" AcceptsReturn="True"
+                                 FontFamily="Consolas,Menlo,monospace" Background="Transparent" BorderThickness="0"
+                                 IsVisible="{Binding ShowHeadersRaw}"/>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+        </Grid>
+    </Grid>
+</UserControl>
+
+

@@ -10,6 +10,8 @@
         <local:PassedToIconConverter x:Key="PassIcon"/>
         <local:PassedToBrushConverter x:Key="PassBrush"/>
         <local:JsonKindToBrushConverter x:Key="JsonKindBrush"/>
+        <local:LogKindToBrushConverter x:Key="LogKindBrush"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <DataTemplate x:Key="AuthTypeItem">
             <TextBlock Text="{Binding Converter={StaticResource AuthLabel}}"/>
         </DataTemplate>
@@ -228,13 +230,13 @@
                         ToolTip="Guardar el body de la respuesta en un archivo"/>
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="Respuesta" FontWeight="Bold" Margin="0,0,14,0" VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusBrush}"
+                    <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusKind, Converter={StaticResource LogKindBrush}}"
                                FontWeight="Bold" Margin="0,0,14,0" VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding TimeText}" Foreground="{StaticResource OverlayBrush}"
                                Margin="0,0,14,0" VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding SizeText}" Foreground="{StaticResource OverlayBrush}"
                                VerticalAlignment="Center" Margin="0,0,14,0"/>
-                    <TextBlock Text="{Binding TestsSummary}" Foreground="{Binding TestsBrush}"
+                    <TextBlock Text="{Binding TestsSummary}" Foreground="{Binding TestsKind, Converter={StaticResource LogKindBrush}}"
                                FontWeight="Bold" VerticalAlignment="Center"/>
                 </StackPanel>
             </DockPanel>
@@ -252,15 +254,15 @@
                                       Width="85" FontSize="11" Margin="0,0,10,0"/>
                             <TextBlock Text="Ver como" Foreground="{StaticResource OverlayBrush}" FontSize="11"
                                        VerticalAlignment="Center" Margin="0,0,6,0"
-                                       Visibility="{Binding BodyTextVisibility}"/>
+                                       Visibility="{Binding ShowBodyText, Converter={StaticResource BoolToVis}}"/>
                             <ComboBox ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat}"
-                                      Width="90" FontSize="11" Visibility="{Binding BodyTextVisibility}"/>
+                                      Width="90" FontSize="11" Visibility="{Binding ShowBodyText, Converter={StaticResource BoolToVis}}"/>
                         </StackPanel>
                         <TextBox Grid.Row="1" Text="{Binding ResponseBody, Mode=OneWay}" IsReadOnly="True"
                                  FontFamily="Consolas" BorderThickness="0" Background="Transparent"
                                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                                 Visibility="{Binding BodyTextVisibility}"/>
-                        <Grid Grid.Row="1" Visibility="{Binding BodyTreeVisibility}">
+                                 Visibility="{Binding ShowBodyText, Converter={StaticResource BoolToVis}}"/>
+                        <Grid Grid.Row="1" Visibility="{Binding ShowBodyTree, Converter={StaticResource BoolToVis}}">
                             <TreeView ItemsSource="{Binding ResponseTree}" Padding="4"
                                       ScrollViewer.HorizontalScrollBarVisibility="Auto">
                                 <TreeView.ItemContainerStyle>
@@ -315,7 +317,7 @@
                         </StackPanel>
                         <DataGrid Grid.Row="1" ItemsSource="{Binding ResponseHeaderRows}" IsReadOnly="True"
                                   AutoGenerateColumns="False" FontFamily="Consolas"
-                                  Visibility="{Binding HeadersTableVisibility}">
+                                  Visibility="{Binding ShowHeadersTable, Converter={StaticResource BoolToVis}}">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="HEADER" Width="*" Binding="{Binding Name}"/>
                                 <DataGridTextColumn Header="VALOR" Width="2*" Binding="{Binding Value}"/>
@@ -324,13 +326,14 @@
                         <TextBox Grid.Row="1" Text="{Binding ResponseHeaders, Mode=OneWay}" IsReadOnly="True"
                                  FontFamily="Consolas" BorderThickness="0" Background="Transparent"
                                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                                 Visibility="{Binding HeadersRawVisibility}"/>
+                                 Visibility="{Binding ShowHeadersRaw, Converter={StaticResource BoolToVis}}"/>
                     </Grid>
                 </TabItem>
             </TabControl>
         </Grid>
     </Grid>
 </UserControl>
+
 
 
 

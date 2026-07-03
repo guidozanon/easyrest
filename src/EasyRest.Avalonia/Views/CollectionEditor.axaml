@@ -1,0 +1,68 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:EasyRest.Avalonia"
+             xmlns:core="clr-namespace:EasyRest;assembly=EasyRest.Core"
+             x:Class="EasyRest.Avalonia.Views.CollectionEditor"
+             x:DataType="core:CollectionTab">
+    <UserControl.Resources>
+        <conv:AuthTypeToLabelConverter x:Key="AuthLabel"/>
+    </UserControl.Resources>
+    <Grid RowDefinitions="Auto,Auto,*" Margin="0,8,0,0">
+        <DockPanel Grid.Row="0">
+            <Button DockPanel.Dock="Right" Content="💾 Guardar" Click="Save_Click"/>
+            <TextBox Text="{Binding Collection.Name}" FontSize="14" FontWeight="SemiBold" Margin="0,0,10,0"/>
+        </DockPanel>
+        <TextBlock Grid.Row="1" Margin="2,8,0,0" FontSize="11" Foreground="{DynamicResource OverlayBrush}"
+                   Text="Configuración de la colección: los headers y la autenticación definidos acá se heredan en todas sus requests."/>
+        <TabControl Grid.Row="2" Margin="0,10,0,0" Background="{DynamicResource PanelBrush}">
+            <TabItem Header="Headers heredados">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" FontSize="11" Margin="8,6,8,4"
+                               Foreground="{DynamicResource OverlayBrush}"
+                               Text="Se agregan a todas las requests. Si una request define el mismo header, gana el de la request."/>
+                    <DataGrid ItemsSource="{Binding Collection.Headers}" AutoGenerateColumns="False">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="" Width="36" Binding="{Binding Enabled}"/>
+                            <DataGridTextColumn Header="HEADER" Width="2*" Binding="{Binding Key}"/>
+                            <DataGridTextColumn Header="VALOR" Width="3*" Binding="{Binding Value}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+            <TabItem Header="Auth">
+                <StackPanel Margin="10" Spacing="8">
+                    <TextBlock Text="Las requests con auth «Heredar de la colección» usan esta."
+                               Foreground="{DynamicResource OverlayBrush}" FontSize="11"/>
+                    <ComboBox x:Name="AuthTypeCombo" Width="240" HorizontalAlignment="Left"
+                              SelectedItem="{Binding Collection.Auth.Type}" SelectionChanged="AuthType_Changed">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={StaticResource AuthLabel}}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <StackPanel x:Name="BearerPanel" IsVisible="False" Spacing="4">
+                        <TextBlock Text="Token" Foreground="{DynamicResource SubtextBrush}"/>
+                        <TextBox Text="{Binding Collection.Auth.BearerToken}" FontFamily="Consolas,Menlo,monospace"/>
+                    </StackPanel>
+                    <StackPanel x:Name="BasicPanel" IsVisible="False" Spacing="4">
+                        <TextBlock Text="Usuario" Foreground="{DynamicResource SubtextBrush}"/>
+                        <TextBox Text="{Binding Collection.Auth.Username}"/>
+                        <TextBlock Text="Contraseña" Foreground="{DynamicResource SubtextBrush}"/>
+                        <TextBox Text="{Binding Collection.Auth.Password}" FontFamily="Consolas,Menlo,monospace"/>
+                    </StackPanel>
+                    <StackPanel x:Name="ApiKeyPanel" IsVisible="False" Spacing="4">
+                        <TextBlock Text="Nombre de la key" Foreground="{DynamicResource SubtextBrush}"/>
+                        <TextBox Text="{Binding Collection.Auth.ApiKeyName}"/>
+                        <TextBlock Text="Valor" Foreground="{DynamicResource SubtextBrush}"/>
+                        <TextBox Text="{Binding Collection.Auth.ApiKeyValue}" FontFamily="Consolas,Menlo,monospace"/>
+                        <TextBlock Text="Enviar en" Foreground="{DynamicResource SubtextBrush}"/>
+                        <ComboBox x:Name="ApiKeyInCombo" Width="160" HorizontalAlignment="Left"
+                                  SelectedItem="{Binding Collection.Auth.ApiKeyIn}"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>
+

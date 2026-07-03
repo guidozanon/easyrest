@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="EasyRest.Avalonia.Views.SaveTargetWindow"
+        Title="Guardar request" Width="430" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" CanResize="False" ShowInTaskbar="False"
+        Background="#1E1E2E">
+    <StackPanel Margin="18" Spacing="10">
+        <TextBlock Text="¿Dónde querés guardar la request?" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+        <ComboBox x:Name="TargetCombo" HorizontalAlignment="Stretch"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Content="Guardar" MinWidth="100" Classes="accent" Click="Ok_Click"/>
+            <Button Content="Cancelar" MinWidth="100" Click="Cancel_Click"/>
+        </StackPanel>
+    </StackPanel>
+</Window>
+

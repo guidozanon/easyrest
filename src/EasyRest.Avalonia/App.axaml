@@ -4,5 +4,8 @@
              RequestedThemeVariant="Dark">
     <Application.Styles>
         <FluentTheme/>
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
+        <StyleInclude Source="avares://EasyRest.Avalonia/Theme.axaml"/>
     </Application.Styles>
 </Application>
+

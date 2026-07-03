@@ -1,61 +1,237 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:EasyRest.Avalonia"
+        xmlns:views="clr-namespace:EasyRest.Avalonia.Views"
+        xmlns:m="clr-namespace:EasyRest.Models;assembly=EasyRest.Core"
+        xmlns:core="clr-namespace:EasyRest;assembly=EasyRest.Core"
+        xmlns:acv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
         x:Class="EasyRest.Avalonia.MainWindow"
-        Title="EasyRest (Avalonia preview)" Width="1200" Height="760"
-        Background="#1E1E2E">
+        Title="EasyRest" Width="1360" Height="840" Background="#1E1E2E">
+    <Window.Resources>
+        <conv:MethodToBrushConverter x:Key="MethodBrush"/>
+        <conv:TreeChildrenConverter x:Key="TreeChildren"/>
+        <conv:LogKindToBrushConverter x:Key="LogKindBrush"/>
+        <conv:NotEmptyConverter x:Key="NotEmpty"/>
+    </Window.Resources>
+    <Window.DataTemplates>
+        <DataTemplate DataType="core:RequestTab"><views:RequestEditor/></DataTemplate>
+        <DataTemplate DataType="core:CollectionTab"><views:CollectionEditor/></DataTemplate>
+        <DataTemplate DataType="core:RunnerTab"><views:RunnerEditor/></DataTemplate>
+    </Window.DataTemplates>
+
     <DockPanel>
-        <Border DockPanel.Dock="Top" Background="#181825" Padding="12,10">
-            <StackPanel Orientation="Horizontal" Spacing="14">
-                <TextBlock Text="⚡ EasyRest" Foreground="#89B4FA" FontSize="17" FontWeight="Bold"
-                           VerticalAlignment="Center"/>
-                <TextBlock Text="preview multiplataforma — mismo core, misma data del workspace"
-                           Foreground="#6C7086" FontSize="12" VerticalAlignment="Center"/>
-            </StackPanel>
+        <!-- Toolbar -->
+        <Border DockPanel.Dock="Top" Background="#181825" Padding="12,9" BorderBrush="#313244" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="Ambiente" Foreground="#A6ADC8" VerticalAlignment="Center"/>
+                    <ComboBox x:Name="EnvCombo" Width="190" SelectionChanged="EnvCombo_SelectionChanged"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="⚡ EasyRest" Foreground="#89B4FA" FontSize="17" FontWeight="Bold"
+                               VerticalAlignment="Center" Margin="2,0,18,0"/>
+                    <Button Content="Ambientes" Click="Environments_Click"/>
+                    <Button Content="▶ Runner" Click="Runner_Click"/>
+                </StackPanel>
+            </DockPanel>
         </Border>
 
-        <Grid ColumnDefinitions="340,4,*">
-            <!-- Requests del workspace (aplanadas) -->
-            <DockPanel Background="#181825">
-                <TextBlock DockPanel.Dock="Top" Text="REQUESTS" Foreground="#6C7086" FontSize="11"
-                           FontWeight="Bold" Margin="14,12,0,8"/>
-                <ListBox x:Name="RequestsList" Background="Transparent"
-                         SelectionChanged="RequestsList_SelectionChanged">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="{Binding Method}" FontWeight="Bold" FontSize="11"
-                                           Foreground="#A6E3A1" Width="52" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding Display}" Foreground="#CDD6F4"
-                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+        <!-- Barra de estado -->
+        <Border DockPanel.Dock="Bottom" Background="#11111B" Padding="8,2" BorderBrush="#313244" BorderThickness="0,1,0,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+                    <Button x:Name="GitStatusBtn" Classes="ghost" FontSize="11" Content="⎇ workspace" Click="Workspace_Click"/>
+                    <TextBlock x:Name="StatusEnvText" FontSize="11" Foreground="#6C7086" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                    <ToggleButton x:Name="VarsToggle" Classes="ghost" FontSize="11" Content="{}{{x}} Variables" IsCheckedChanged="VarsToggle_Changed"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <ToggleButton x:Name="SidebarToggle" Classes="ghost" FontSize="11" Content="◧ Colecciones" IsChecked="True" IsCheckedChanged="SidebarToggle_Changed"/>
+                    <ToggleButton x:Name="LogsToggle" Classes="ghost" FontSize="11" Content="☰ Logs" IsCheckedChanged="LogsToggle_Changed"/>
+                </StackPanel>
             </DockPanel>
+        </Border>
 
-            <GridSplitter Grid.Column="1" Background="#313244"/>
-
-            <!-- Editor mínimo -->
-            <Grid Grid.Column="2" Margin="12" RowDefinitions="Auto,Auto,*">
-                <TextBlock x:Name="BreadcrumbText" Foreground="#CDD6F4" FontSize="14" FontWeight="SemiBold"
-                           Margin="0,0,0,8" Text="Seleccioná una request de la izquierda"/>
-                <DockPanel Grid.Row="1">
-                    <Button x:Name="SendBtn" DockPanel.Dock="Right" Content="Enviar" FontWeight="Bold"
-                            Background="#89B4FA" Foreground="#11111B" Click="Send_Click" Margin="6,0,0,0"/>
-                    <TextBox x:Name="MethodBox" Width="90" IsReadOnly="True" Margin="0,0,6,0"
-                             FontWeight="Bold"/>
-                    <TextBox x:Name="UrlBox" FontFamily="Consolas,Menlo,monospace"/>
-                </DockPanel>
-                <Border Grid.Row="2" Background="#181825" CornerRadius="8" Margin="0,10,0,0" Padding="8">
+        <Grid RowDefinitions="*,4,Auto">
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,4,*,4,Auto">
+                <!-- Sidebar -->
+                <Border x:Name="SidebarBorder" Width="310" Background="#181825">
                     <DockPanel>
-                        <TextBlock x:Name="StatusText" DockPanel.Dock="Top" Foreground="#6C7086"
-                                   FontWeight="Bold" Margin="4,2,0,6"/>
-                        <TextBox x:Name="ResponseBox" IsReadOnly="True" AcceptsReturn="True"
-                                 FontFamily="Consolas,Menlo,monospace" FontSize="12"
-                                 Background="Transparent" BorderThickness="0" TextWrapping="NoWrap"/>
+                        <Grid DockPanel.Dock="Top" Margin="10,10,10,2" ColumnDefinitions="*,Auto,Auto">
+                            <TextBox x:Name="FilterBox" Watermark="Filtrar" FontSize="12" TextChanged="Filter_Changed"/>
+                            <Button Grid.Column="1" Content="+" FontSize="14" Margin="6,0,0,0" Click="NewCollection_Click"/>
+                            <Button Grid.Column="2" Content="⋯" FontSize="14" Margin="4,0,0,0" Click="SidebarMenu_Click"/>
+                        </Grid>
+                        <TextBlock DockPanel.Dock="Top" Text="COLECCIONES" Foreground="#6C7086" FontSize="11"
+                                   FontWeight="Bold" Margin="14,10,0,6"/>
+                        <TreeView x:Name="Tree" Background="Transparent"
+                                  DoubleTapped="Tree_DoubleTapped">
+                            <TreeView.Styles>
+                                <Style Selector="TreeViewItem" x:DataType="m:TreeDisplayable">
+                                    <Setter Property="IsVisible" Value="{Binding IsVisibleInTree}"/>
+                                    <Setter Property="IsExpanded" Value="{Binding IsExpandedInTree, Mode=TwoWay}"/>
+                                </Style>
+                            </TreeView.Styles>
+                            <TreeView.DataTemplates>
+                                <TreeDataTemplate DataType="m:RequestCollection"
+                                                  ItemsSource="{Binding Converter={StaticResource TreeChildren}}">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                </TreeDataTemplate>
+                                <TreeDataTemplate DataType="m:Folder"
+                                                  ItemsSource="{Binding Converter={StaticResource TreeChildren}}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="📁" FontSize="11"/>
+                                        <TextBlock Text="{Binding Name}" Foreground="#A6ADC8"/>
+                                    </StackPanel>
+                                </TreeDataTemplate>
+                                <TreeDataTemplate DataType="m:RequestItem">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{Binding Method}" FontWeight="Bold" FontSize="10.5" Width="52"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{Binding Method, Converter={StaticResource MethodBrush}}"/>
+                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </TreeDataTemplate>
+                            </TreeView.DataTemplates>
+                        </TreeView>
+                    </DockPanel>
+                </Border>
+
+                <GridSplitter Grid.Column="1" Background="#313244"/>
+
+                <!-- Editor / tabs -->
+                <Panel Grid.Column="2" Margin="10,8,10,10">
+                    <StackPanel x:Name="Placeholder" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                        <TextBlock Text="⚡" FontSize="42" HorizontalAlignment="Center" Foreground="#45475A"/>
+                        <TextBlock Text="Doble click sobre una request para abrirla en una pestaña"
+                                   Foreground="#6C7086" FontSize="14"/>
+                    </StackPanel>
+                    <Grid x:Name="TabsHost" IsVisible="False">
+                        <TabControl x:Name="RequestTabs" Margin="0,0,34,0">
+                            <TabControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Panel>
+                                        <StackPanel Orientation="Horizontal" Spacing="6"
+                                                    IsVisible="{Binding Request, Converter={x:Static acv:ObjectConverters.IsNotNull}}">
+                                            <TextBlock Text="{Binding Request.Method}" FontWeight="Bold" FontSize="10.5"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{Binding Request.Method, Converter={StaticResource MethodBrush}}"/>
+                                            <TextBlock Text="{Binding Request.Name}" VerticalAlignment="Center" MaxWidth="150"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="*" Foreground="#F9E2AF" FontWeight="Bold"
+                                                       IsVisible="{Binding IsDirty}"/>
+                                            <Button Content="✕" Classes="ghost" FontSize="10" Tag="{Binding}" Click="CloseTab_Click"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="6"
+                                                    IsVisible="{Binding Collection, Converter={x:Static acv:ObjectConverters.IsNotNull}}">
+                                            <TextBlock Text="⚙" Foreground="#F9E2AF" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Collection.Name}" VerticalAlignment="Center" MaxWidth="150"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <Button Content="✕" Classes="ghost" FontSize="10" Tag="{Binding}" Click="CloseTab_Click"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="6"
+                                                    IsVisible="{Binding Collections, Converter={x:Static acv:ObjectConverters.IsNotNull}}">
+                                            <TextBlock Text="▶" Foreground="#A6E3A1" FontSize="10.5" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Runner" VerticalAlignment="Center"/>
+                                            <Button Content="✕" Classes="ghost" FontSize="10" Tag="{Binding}" Click="CloseTab_Click"/>
+                                        </StackPanel>
+                                    </Panel>
+                                </DataTemplate>
+                            </TabControl.ItemTemplate>
+                        </TabControl>
+                        <Button Content="+" Width="28" Height="26" FontSize="14" Padding="0"
+                                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,0,0"
+                                ToolTip.Tip="Nueva request" Click="NewTab_Click"/>
+                    </Grid>
+                </Panel>
+
+                <GridSplitter x:Name="VarsSplitter" Grid.Column="3" Background="#313244" IsVisible="False"/>
+
+                <!-- Panel de variables -->
+                <Border x:Name="VarsPanel" Grid.Column="4" Width="300" IsVisible="False" Background="#181825"
+                        BorderBrush="#313244" BorderThickness="1,0,0,0">
+                    <DockPanel Margin="10">
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,2,0,8">
+                            <TextBlock Text="VARIABLES" FontSize="11" FontWeight="Bold" Foreground="#6C7086" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="VarsEnvName" FontSize="11" Foreground="#89B4FA" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0">
+                            <Button x:Name="SaveVarsBtn" Content="💾 Guardar variables" HorizontalAlignment="Stretch" Click="SaveVars_Click"/>
+                            <TextBlock Text="Usalas en las requests como {{nombre}}." Foreground="#6C7086" FontSize="11"/>
+                        </StackPanel>
+                        <DataGrid x:Name="VarsGrid" AutoGenerateColumns="False">
+                            <DataGrid.Columns>
+                                <DataGridCheckBoxColumn Header="" Width="30" Binding="{Binding Enabled}"/>
+                                <DataGridTextColumn Header="VARIABLE" Width="*" Binding="{Binding Key}"/>
+                                <DataGridTextColumn Header="VALOR" Width="*" Binding="{Binding Value}"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
                     </DockPanel>
                 </Border>
             </Grid>
+
+            <GridSplitter x:Name="LogsSplitter" Grid.Row="1" HorizontalAlignment="Stretch" Background="#313244" IsVisible="False"/>
+
+            <!-- Panel de logs -->
+            <Border x:Name="LogsPanel" Grid.Row="2" Height="220" IsVisible="False" Background="#11111B"
+                    BorderBrush="#313244" BorderThickness="0,1,0,0">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="10,6,10,4">
+                        <Button DockPanel.Dock="Right" Content="Limpiar" Classes="ghost" FontSize="11" Click="ClearLogs_Click"/>
+                        <TextBlock Text="LOGS" FontSize="11" FontWeight="Bold" Foreground="#6C7086" VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <ScrollViewer Padding="10,0,10,6">
+                        <ItemsControl x:Name="LogsItems">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Expander Margin="0,1">
+                                        <Expander.Header>
+                                            <DockPanel>
+                                                <TextBlock DockPanel.Dock="Left" Text="{Binding Time}" FontSize="11"
+                                                           Foreground="#6C7086" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                <TextBlock DockPanel.Dock="Left" Text="{Binding Method}" FontWeight="Bold" FontSize="11"
+                                                           VerticalAlignment="Center" Margin="0,0,8,0"
+                                                           Foreground="{Binding Method, Converter={StaticResource MethodBrush}}"/>
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Meta}" FontSize="11"
+                                                           Foreground="#6C7086" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" FontWeight="Bold" FontSize="11"
+                                                           VerticalAlignment="Center" Margin="10,0,0,0"
+                                                           Foreground="{Binding Kind, Converter={StaticResource LogKindBrush}}"/>
+                                                <TextBlock Text="{Binding Url}" FontFamily="Consolas,Menlo,monospace" FontSize="12"
+                                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                            </DockPanel>
+                                        </Expander.Header>
+                                        <StackPanel>
+                                            <Expander Header="Request Headers">
+                                                <TextBox Text="{Binding RequestHeaders}" IsReadOnly="True" AcceptsReturn="True"
+                                                         FontFamily="Consolas,Menlo,monospace" FontSize="12" BorderThickness="0"
+                                                         Background="Transparent" MaxHeight="200"/>
+                                            </Expander>
+                                            <Expander Header="Request Body" IsVisible="{Binding RequestBody, Converter={StaticResource NotEmpty}}">
+                                                <TextBox Text="{Binding RequestBody}" IsReadOnly="True" AcceptsReturn="True"
+                                                         FontFamily="Consolas,Menlo,monospace" FontSize="12" BorderThickness="0"
+                                                         Background="Transparent" MaxHeight="240"/>
+                                            </Expander>
+                                            <Expander Header="Response Headers">
+                                                <TextBox Text="{Binding ResponseHeaders}" IsReadOnly="True" AcceptsReturn="True"
+                                                         FontFamily="Consolas,Menlo,monospace" FontSize="12" BorderThickness="0"
+                                                         Background="Transparent" MaxHeight="200"/>
+                                            </Expander>
+                                            <Expander Header="Response Body" IsVisible="{Binding ResponseBody, Converter={StaticResource NotEmpty}}">
+                                                <TextBox Text="{Binding ResponseBody}" IsReadOnly="True" AcceptsReturn="True"
+                                                         FontFamily="Consolas,Menlo,monospace" FontSize="12" BorderThickness="0"
+                                                         Background="Transparent" MaxHeight="280"/>
+                                            </Expander>
+                                        </StackPanel>
+                                    </Expander>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
         </Grid>
     </DockPanel>
 </Window>
+
+
+
