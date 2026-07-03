@@ -64,6 +64,7 @@
                         <TextBlock DockPanel.Dock="Top" Text="COLECCIONES" Foreground="#6C7086" FontSize="11"
                                    FontWeight="Bold" Margin="14,10,0,6"/>
                         <TreeView x:Name="Tree" Background="Transparent"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                   DoubleTapped="Tree_DoubleTapped"
                                   PointerPressed="Tree_PointerPressed"
                                   PointerMoved="Tree_PointerMoved">
@@ -76,22 +77,27 @@
                             <TreeView.DataTemplates>
                                 <TreeDataTemplate DataType="m:RequestCollection"
                                                   ItemsSource="{Binding Converter={StaticResource TreeChildren}}">
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis"/>
                                 </TreeDataTemplate>
                                 <TreeDataTemplate DataType="m:Folder"
                                                   ItemsSource="{Binding Converter={StaticResource TreeChildren}}">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <TextBlock Text="📁" FontSize="11"/>
-                                        <TextBlock Text="{Binding Name}" Foreground="#A6ADC8"/>
-                                    </StackPanel>
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Left" Text="📁" FontSize="11" Margin="0,0,6,0"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Name}" Foreground="#A6ADC8"
+                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    </DockPanel>
                                 </TreeDataTemplate>
                                 <TreeDataTemplate DataType="m:RequestItem">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <TextBlock Text="{Binding Method}" FontWeight="Bold" FontSize="10.5" Width="52"
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Left" Text="{Binding Method}" FontWeight="Bold"
+                                                   FontSize="10.5" Width="52" Margin="0,0,6,0"
                                                    VerticalAlignment="Center"
                                                    Foreground="{Binding Method, Converter={StaticResource MethodBrush}}"/>
-                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
-                                    </StackPanel>
+                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </DockPanel>
                                 </TreeDataTemplate>
                             </TreeView.DataTemplates>
                         </TreeView>
