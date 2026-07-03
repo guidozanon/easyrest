@@ -91,6 +91,15 @@ public class AuthTypeToLabelConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => null;
 }
 
+/// <summary>true si el objeto es del tipo nombrado en el parámetro (para discriminar tabs por tipo).</summary>
+public class IsTypeConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value != null && value.GetType().Name == parameter as string;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => null;
+}
+
 /// <summary>true si el string no está vacío (para IsVisible).</summary>
 public class NotEmptyConverter : IValueConverter
 {

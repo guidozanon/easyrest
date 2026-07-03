@@ -12,6 +12,7 @@
         <conv:TreeChildrenConverter x:Key="TreeChildren"/>
         <conv:LogKindToBrushConverter x:Key="LogKindBrush"/>
         <conv:NotEmptyConverter x:Key="NotEmpty"/>
+        <conv:IsTypeConverter x:Key="IsType"/>
     </Window.Resources>
     <Window.DataTemplates>
         <DataTemplate DataType="core:RequestTab"><views:RequestEditor/></DataTemplate>
@@ -119,7 +120,7 @@
                                 <DataTemplate>
                                     <Panel>
                                         <StackPanel Orientation="Horizontal" Spacing="6"
-                                                    IsVisible="{Binding Request, Converter={x:Static acv:ObjectConverters.IsNotNull}}">
+                                                    IsVisible="{Binding Converter={StaticResource IsType}, ConverterParameter=RequestTab}">
                                             <TextBlock Text="{Binding Request.Method}" FontWeight="Bold" FontSize="10.5"
                                                        VerticalAlignment="Center"
                                                        Foreground="{Binding Request.Method, Converter={StaticResource MethodBrush}}"/>
@@ -130,14 +131,14 @@
                                             <Button Content="✕" Classes="ghost" FontSize="10" Tag="{Binding}" Click="CloseTab_Click"/>
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal" Spacing="6"
-                                                    IsVisible="{Binding Collection, Converter={x:Static acv:ObjectConverters.IsNotNull}}">
+                                                    IsVisible="{Binding Converter={StaticResource IsType}, ConverterParameter=CollectionTab}">
                                             <TextBlock Text="⚙" Foreground="#F9E2AF" VerticalAlignment="Center"/>
                                             <TextBlock Text="{Binding Collection.Name}" VerticalAlignment="Center" MaxWidth="150"
                                                        TextTrimming="CharacterEllipsis"/>
                                             <Button Content="✕" Classes="ghost" FontSize="10" Tag="{Binding}" Click="CloseTab_Click"/>
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal" Spacing="6"
-                                                    IsVisible="{Binding Collections, Converter={x:Static acv:ObjectConverters.IsNotNull}}">
+                                                    IsVisible="{Binding Converter={StaticResource IsType}, ConverterParameter=RunnerTab}">
                                             <TextBlock Text="▶" Foreground="#A6E3A1" FontSize="10.5" VerticalAlignment="Center"/>
                                             <TextBlock Text="Runner" VerticalAlignment="Center"/>
                                             <Button Content="✕" Classes="ghost" FontSize="10" Tag="{Binding}" Click="CloseTab_Click"/>
