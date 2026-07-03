@@ -20,7 +20,7 @@
                     <TextBlock DockPanel.Dock="Top" FontSize="11" Margin="8,6,8,4"
                                Foreground="{DynamicResource OverlayBrush}"
                                Text="Se agregan a todas las requests. Si una request define el mismo header, gana el de la request."/>
-                    <DataGrid ItemsSource="{Binding Collection.Headers}" AutoGenerateColumns="False">
+                    <DataGrid x:Name="HeadersGrid" AutoGenerateColumns="False">
                         <DataGrid.Columns>
                             <DataGridCheckBoxColumn Header="" Width="36" Binding="{Binding Enabled}"/>
                             <DataGridTextColumn Header="HEADER" Width="2*" Binding="{Binding Key}"/>

@@ -30,6 +30,9 @@ public partial class MainWindow : Window
         LogsItems.ItemsSource = ExecutionLog.Entries;
         OpenTabs.CollectionChanged += (_, _) => UpdateTabsVisibility();
 
+        Tree.AddHandler(DragDrop.DragOverEvent, Tree_DragOver);
+        Tree.AddHandler(DragDrop.DropEvent, Tree_Drop);
+
         RefreshEnvCombo();
         var settings = Storage.LoadSettings();
         var activeEnv = Environments.FirstOrDefault(e => e.Id == settings.ActiveEnvironmentId);
@@ -396,7 +399,7 @@ public partial class MainWindow : Window
     {
         if (VarsGrid == null) return;
         var env = ActiveEnv;
-        VarsGrid.ItemsSource = env?.Variables;
+        KvGrid.Bind(VarsGrid, env?.Variables);
         VarsEnvName.Text = env?.Name ?? "";
         VarsGrid.IsEnabled = env != null;
         SaveVarsBtn.IsEnabled = env != null;
@@ -502,4 +505,156 @@ public partial class MainWindow : Window
     }
 
     bool _closingConfirmed;
+
+    // ----- Drag & drop del árbol -----
+
+    const string DragFormat = "er-tree-item";
+    global::Avalonia.Point _dragStart;
+    object? _dragCandidate;
+
+    static object? NodeData(object? source)
+    {
+        var node = source as global::Avalonia.StyledElement;
+        while (node != null)
+        {
+            if (node.DataContext is RequestItem or Folder or RequestCollection) return node.DataContext;
+            node = node.Parent;
+        }
+        return null;
+    }
+
+    void Tree_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        _dragCandidate = null;
+        var data = NodeData(e.Source);
+        if (data is RequestItem or Folder)  // colecciones no se arrastran
+        {
+            _dragStart = e.GetPosition(Tree);
+            _dragCandidate = data;
+        }
+    }
+
+    async void Tree_PointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_dragCandidate == null || !e.GetCurrentPoint(Tree).Properties.IsLeftButtonPressed) return;
+        var pos = e.GetPosition(Tree);
+        if (Math.Abs(pos.X - _dragStart.X) < 6 && Math.Abs(pos.Y - _dragStart.Y) < 6) return;
+
+        var dragged = _dragCandidate;
+        _dragCandidate = null;
+        var data = new DataObject();
+        data.Set(DragFormat, dragged!);
+        await DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
+    }
+
+    void Tree_DragOver(object? sender, DragEventArgs e)
+    {
+        e.DragEffects = ResolveDrop(e, out _, out _, out _) != DropKind.None
+            ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    void Tree_Drop(object? sender, DragEventArgs e)
+    {
+        var kind = ResolveDrop(e, out var dragged, out var target, out var after);
+        e.Handled = true;
+        switch (kind)
+        {
+            case DropKind.ReorderRequest when dragged is RequestItem req && target is RequestItem tr:
+                MoveRequestNextTo(req, tr, after); break;
+            case DropKind.MoveRequestInto when dragged is RequestItem req:
+                MoveRequestInto(req, target!); break;
+            case DropKind.ReorderFolder when dragged is Folder f && target is Folder tf:
+                ReorderFolder(f, tf, after); break;
+        }
+    }
+
+    enum DropKind { None, ReorderRequest, MoveRequestInto, ReorderFolder }
+
+    DropKind ResolveDrop(DragEventArgs e, out object? dragged, out object? target, out bool after)
+    {
+        dragged = e.Data.Contains(DragFormat) ? e.Data.Get(DragFormat) : null;
+        target = NodeData(e.Source);
+        after = false;
+        if (dragged == null || target == null || ReferenceEquals(dragged, target)) return DropKind.None;
+
+        // mitad superior de la fila = antes; inferior = después
+        var node = e.Source as global::Avalonia.StyledElement;
+        while (node != null && node.DataContext != target) node = node.Parent;
+        if (node is global::Avalonia.Visual visual)
+        {
+            var y = e.GetPosition(visual).Y;
+            after = y > visual.Bounds.Height / 2;
+        }
+
+        switch (dragged)
+        {
+            case RequestItem:
+                return target switch
+                {
+                    RequestItem => DropKind.ReorderRequest,
+                    Folder or RequestCollection => DropKind.MoveRequestInto,
+                    _ => DropKind.None
+                };
+            case Folder df when target is Folder tf:
+                var sp = FindFolderParent(df);
+                var tp = FindFolderParent(tf);
+                return sp != null && tp != null && ReferenceEquals(sp.Value.List, tp.Value.List)
+                    ? DropKind.ReorderFolder : DropKind.None;
+            default:
+                return DropKind.None;
+        }
+    }
+
+    void MoveRequestNextTo(RequestItem req, RequestItem targetReq, bool after)
+    {
+        var source = FindOwner(req);
+        var dest = FindOwner(targetReq);
+        if (source == null || dest == null) return;
+        source.Value.List.Remove(req);
+        var index = dest.Value.List.IndexOf(targetReq) + (after ? 1 : 0);
+        dest.Value.List.Insert(Math.Clamp(index, 0, dest.Value.List.Count), req);
+        Storage.SaveCollection(source.Value.Collection);
+        if (dest.Value.Collection != source.Value.Collection) Storage.SaveCollection(dest.Value.Collection);
+        OpenTabs.OfType<RequestTab>().FirstOrDefault(t => t.Original == req)?.RefreshBreadcrumb();
+        RefreshGitStatus();
+    }
+
+    void MoveRequestInto(RequestItem req, object container)
+    {
+        var source = FindOwner(req);
+        if (source == null) return;
+        var destList = container switch
+        {
+            Folder folder => folder.Requests,
+            RequestCollection col => col.Requests,
+            _ => null
+        };
+        if (destList == null || ReferenceEquals(destList, source.Value.List)) return;
+        var destCollection = container switch
+        {
+            Folder folder => FindOwnerCollection(folder),
+            RequestCollection col => col,
+            _ => null
+        };
+        if (destCollection == null) return;
+        source.Value.List.Remove(req);
+        destList.Add(req);
+        if (container is Folder f) f.IsExpandedInTree = true;
+        Storage.SaveCollection(source.Value.Collection);
+        if (destCollection != source.Value.Collection) Storage.SaveCollection(destCollection);
+        OpenTabs.OfType<RequestTab>().FirstOrDefault(t => t.Original == req)?.RefreshBreadcrumb();
+        RefreshGitStatus();
+    }
+
+    void ReorderFolder(Folder folder, Folder targetFolder, bool after)
+    {
+        var parent = FindFolderParent(folder);
+        if (parent == null) return;
+        parent.Value.List.Remove(folder);
+        var index = parent.Value.List.IndexOf(targetFolder) + (after ? 1 : 0);
+        parent.Value.List.Insert(Math.Clamp(index, 0, parent.Value.List.Count), folder);
+        Storage.SaveCollection(parent.Value.Collection);
+        RefreshGitStatus();
+    }
 }

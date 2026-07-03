@@ -23,7 +23,7 @@ public partial class RequestEditor : UserControl
         ScriptViewCombo.ItemsSource = new[] { "Pre-request", "Post-response (tests)" };
         ScriptViewCombo.SelectedIndex = 0;
 
-        DataContextChanged += (_, _) => UpdatePanels();
+        DataContextChanged += (_, _) => { UpdatePanels(); BindGrids(); };
         UrlBox.AddHandler(TextInputEvent, UrlBox_TextInput, RoutingStrategies.Tunnel);
         UrlBox.PastingFromClipboard += UrlBox_Pasting;
     }
@@ -35,6 +35,13 @@ public partial class RequestEditor : UserControl
         UpdateAuthPanels();
         UpdateBodyPanels();
         ScriptView_Changed(this, null);
+    }
+
+    void BindGrids()
+    {
+        KvGrid.Bind(ParamsGrid, Vm?.Request.QueryParams);
+        KvGrid.Bind(HeadersGrid, Vm?.Request.Headers);
+        KvGrid.Bind(FormGrid, Vm?.Request.Body.FormItems);
     }
 
     // ----- Auth -----
