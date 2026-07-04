@@ -36,6 +36,10 @@ public partial class MainWindow : Window
 
         Tree.AddHandler(DragDrop.DragOverEvent, Tree_DragOver);
         Tree.AddHandler(DragDrop.DropEvent, Tree_Drop);
+        // el TreeViewItem marca PointerPressed como manejado al seleccionar, así que
+        // registramos con handledEventsToo para poder iniciar el drag igual
+        Tree.AddHandler(PointerPressedEvent, Tree_PointerPressed, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
+        Tree.AddHandler(PointerMovedEvent, Tree_PointerMoved, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
 
         RefreshEnvCombo();
         var settings = Storage.LoadSettings();

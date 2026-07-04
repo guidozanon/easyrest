@@ -83,17 +83,32 @@
                         </Grid>
                         <TextBlock DockPanel.Dock="Top" Text="COLECCIONES" Foreground="#6C7086" FontSize="11"
                                    FontWeight="Bold" Margin="14,10,0,6"/>
-                        <TreeView x:Name="Tree" Background="Transparent"
+                        <TreeView x:Name="Tree" Background="Transparent" Padding="0,0,4,0"
                                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                   DragDrop.AllowDrop="True"
                                   DoubleTapped="Tree_DoubleTapped"
-                                  ContextRequested="Tree_ContextRequested"
-                                  PointerPressed="Tree_PointerPressed"
-                                  PointerMoved="Tree_PointerMoved">
+                                  ContextRequested="Tree_ContextRequested">
                             <TreeView.Styles>
                                 <Style Selector="TreeViewItem" x:DataType="m:TreeDisplayable">
                                     <Setter Property="IsVisible" Value="{Binding IsVisibleInTree}"/>
                                     <Setter Property="IsExpanded" Value="{Binding IsExpandedInTree, Mode=TwoWay}"/>
+                                </Style>
+                                <!-- la selección/hover del TreeViewItem no debe pintar toda la fila:
+                                     apagamos el fondo del template y lo pintamos en un borde interno -->
+                                <Style Selector="TreeViewItem /template/ Border#PART_LayoutRoot">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                </Style>
+                                <Style Selector="Border.rowhi">
+                                    <Setter Property="CornerRadius" Value="4"/>
+                                    <Setter Property="Padding" Value="4,3"/>
+                                    <Setter Property="Margin" Value="0,0,4,0"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                </Style>
+                                <Style Selector="DockPanel.treerow:pointerover Border.rowhi">
+                                    <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                </Style>
+                                <Style Selector="TreeViewItem:selected Border.rowhi">
+                                    <Setter Property="Background" Value="{DynamicResource Surface1}"/>
                                 </Style>
                                 <!-- el ⋯ aparece al pasar el mouse por cualquier parte de la fila -->
                                 <Style Selector="Button.rowmenu">
@@ -107,35 +122,45 @@
                                 <TreeDataTemplate DataType="m:RequestCollection"
                                                   ItemsSource="{Binding Converter={StaticResource TreeChildren}}">
                                     <DockPanel Classes="treerow" Background="Transparent" HorizontalAlignment="Stretch">
-                                        <Button DockPanel.Dock="Right" Classes="ghost rowmenu" Content="⋯" FontSize="12"
-                                                Padding="4,0" Click="RowMenu_Click"/>
-                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
-                                                   TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
+                                        <Button DockPanel.Dock="Right" Classes="ghost rowmenu" Content="⋯" FontSize="13"
+                                                Padding="7,1" Margin="2,0,6,0" Click="RowMenu_Click"/>
+                                        <Border Classes="rowhi">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
+                                        </Border>
                                     </DockPanel>
                                 </TreeDataTemplate>
                                 <TreeDataTemplate DataType="m:Folder"
                                                   ItemsSource="{Binding Converter={StaticResource TreeChildren}}">
                                     <DockPanel Classes="treerow" Background="Transparent" HorizontalAlignment="Stretch">
-                                        <Button DockPanel.Dock="Right" Classes="ghost rowmenu" Content="⋯" FontSize="12"
-                                                Padding="4,0" Click="RowMenu_Click"/>
-                                        <Path DockPanel.Dock="Left" Data="{StaticResource IconFolder}" Stroke="#A6ADC8"
-                                              StrokeThickness="1.4" Width="14" Height="14" Stretch="Uniform"
-                                              Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding Name}" Foreground="#A6ADC8"
-                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                                   ToolTip.Tip="{Binding Name}"/>
+                                        <Button DockPanel.Dock="Right" Classes="ghost rowmenu" Content="⋯" FontSize="13"
+                                                Padding="7,1" Margin="2,0,6,0" Click="RowMenu_Click"/>
+                                        <Border Classes="rowhi">
+                                            <DockPanel>
+                                                <Path DockPanel.Dock="Left" Data="{StaticResource IconFolder}" Stroke="#A6ADC8"
+                                                      StrokeThickness="1.4" Width="15" Height="15" Stretch="Uniform"
+                                                      Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Name}" Foreground="#A6ADC8"
+                                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                           ToolTip.Tip="{Binding Name}"/>
+                                            </DockPanel>
+                                        </Border>
                                     </DockPanel>
                                 </TreeDataTemplate>
                                 <TreeDataTemplate DataType="m:RequestItem">
                                     <DockPanel Classes="treerow" Background="Transparent" HorizontalAlignment="Stretch">
-                                        <Button DockPanel.Dock="Right" Classes="ghost rowmenu" Content="⋯" FontSize="12"
-                                                Padding="4,0" Click="RowMenu_Click"/>
-                                        <TextBlock DockPanel.Dock="Left" Text="{Binding Method}" FontWeight="Bold"
-                                                   FontSize="10.5" Width="42" Margin="0,0,4,0"
-                                                   VerticalAlignment="Center"
-                                                   Foreground="{Binding Method, Converter={StaticResource MethodBrush}}"/>
-                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
-                                                   TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
+                                        <Button DockPanel.Dock="Right" Classes="ghost rowmenu" Content="⋯" FontSize="13"
+                                                Padding="7,1" Margin="2,0,6,0" Click="RowMenu_Click"/>
+                                        <Border Classes="rowhi">
+                                            <DockPanel>
+                                                <TextBlock DockPanel.Dock="Left" Text="{Binding Method}" FontWeight="Bold"
+                                                           FontSize="10.5" Width="42" Margin="0,0,4,0"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{Binding Method, Converter={StaticResource MethodBrush}}"/>
+                                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
+                                            </DockPanel>
+                                        </Border>
                                     </DockPanel>
                                 </TreeDataTemplate>
                             </TreeView.DataTemplates>
