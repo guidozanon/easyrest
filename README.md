@@ -35,7 +35,23 @@ Windows (x64) y macOS (arm64/x64):
 - **Manual**: se puede correr el workflow a mano (*Actions → build → Run workflow*); los binarios
   quedan como artefactos de esa corrida.
 
-En macOS los binarios no están firmados: la primera vez, abrilos con click derecho → Abrir.
+### macOS
+
+El zip de Mac trae `EasyRest.app`. Como **no está firmado** (haría falta cuenta de Apple Developer),
+Gatekeeper lo bloquea la primera vez. Para abrirlo:
+
+1. Descomprimí y movelo a `Aplicaciones`.
+2. **Click derecho → Abrir → Abrir** (así se abre "de un desarrollador no identificado").
+
+Si sale *"está dañado y no se puede abrir"* (por el atributo de cuarentena al bajarlo del navegador),
+quitá la cuarentena en Terminal y abrilo:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/EasyRest.app
+open /Applications/EasyRest.app
+```
+
+Elegí el zip según tu Mac: `macos-arm64` (Apple Silicon M1/M2/M3…) o `macos-x64` (Intel).
 
 ## Funcionalidades
 

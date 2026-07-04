@@ -39,23 +39,36 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      # Windows: single-file autocontenido. macOS: carpeta (se arma un .app abajo).
       - name: Publish (${{ matrix.rid }})
-        run: >
-          dotnet publish src/EasyRest.Avalonia/EasyRest.Avalonia.csproj
-          -c Release -r ${{ matrix.rid }} --self-contained true
-          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:DebugType=none -p:DebugSymbols=false
-          -o publish/${{ matrix.name }}
-
-      - name: Empaquetar
         shell: bash
         run: |
-          cd publish/${{ matrix.name }}
+          EXTRA=""
           if [ "${{ runner.os }}" = "Windows" ]; then
-            7z a "../../EasyRest-${{ matrix.name }}.zip" .
-          else
-            zip -r "../../EasyRest-${{ matrix.name }}.zip" .
+            EXTRA="-p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true"
           fi
+          dotnet publish src/EasyRest.Avalonia/EasyRest.Avalonia.csproj \
+            -c Release -r ${{ matrix.rid }} --self-contained true \
+            -p:DebugType=none -p:DebugSymbols=false $EXTRA \
+            -o publish/${{ matrix.name }}
+
+      - name: Empaquetar (Windows .exe)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: 7z a "EasyRest-${{ matrix.name }}.zip" "./publish/${{ matrix.name }}/EasyRest.exe"
+
+      - name: Empaquetar (macOS .app)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"; [ "$VERSION" = "${GITHUB_REF_NAME}" ] && VERSION="0.0.0"
+          APP="EasyRest.app"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp -R "publish/${{ matrix.name }}/." "$APP/Contents/MacOS/"
+          chmod +x "$APP/Contents/MacOS/EasyRest"
+          sed "s/__VERSION__/${VERSION}/g" build/Info.plist > "$APP/Contents/Info.plist"
+          # ditto preserva el bundle y los permisos (zip común los pierde)
+          ditto -c -k --keepParent "$APP" "EasyRest-${{ matrix.name }}.zip"
 
       - name: Subir artefacto
         uses: actions/upload-artifact@v4
