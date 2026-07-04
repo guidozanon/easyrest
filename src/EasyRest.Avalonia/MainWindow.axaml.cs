@@ -101,6 +101,12 @@ public partial class MainWindow : Window
 
     RequestCollection? FindOwnerCollection(Folder folder) => Collections.FirstOrDefault(c => c.AllFolders.Contains(folder));
 
+    void SaveOwnerOf(RequestItem req)
+    {
+        var owner = FindOwner(req);
+        if (owner != null) Storage.SaveCollection(owner.Value.Collection);
+    }
+
     (RequestCollection Collection, ObservableCollection<Folder> List)? FindFolderParent(Folder folder)
     {
         foreach (var col in Collections)
@@ -372,6 +378,184 @@ public partial class MainWindow : Window
             case RequestCollection col: OpenCollectionTab(col); break;
         }
     }
+
+    // ----- Menú contextual del árbol -----
+
+    void RowMenu_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control btn || btn.DataContext is not { } node) return;
+        var menu = BuildNodeMenu(node);
+        menu.PlacementTarget = btn;
+        menu.Open(btn);
+    }
+
+    void Tree_ContextRequested(object? sender, global::Avalonia.Controls.ContextRequestedEventArgs e)
+    {
+        var node = e.Source as global::Avalonia.StyledElement;
+        while (node != null && node.DataContext is not (RequestItem or Folder or RequestCollection)) node = node.Parent;
+        if (node?.DataContext is not { } data || node is not Control anchor) return;
+        var menu = BuildNodeMenu(data);
+        menu.PlacementTarget = anchor;
+        menu.Open(anchor);
+        e.Handled = true;
+    }
+
+    ContextMenu BuildNodeMenu(object node)
+    {
+        var menu = new ContextMenu();
+        MenuItem Item(string header, Action action)
+        {
+            var mi = new MenuItem { Header = header };
+            mi.Click += (_, _) => action();
+            return mi;
+        }
+
+        switch (node)
+        {
+            case RequestItem req:
+                menu.Items.Add(Item("Abrir en pestaña", () => OpenTab(req)));
+                menu.Items.Add(Item("▶ Ejecutar en Runner", () => OpenRunner(req)));
+                menu.Items.Add(Item("Duplicar", () => DuplicateRequest(req)));
+                menu.Items.Add(Item("Renombrar", () => RenameNode(req)));
+                menu.Items.Add(new Separator());
+                menu.Items.Add(Item("Eliminar", () => DeleteRequest(req)));
+                break;
+            case Folder folder:
+                menu.Items.Add(Item("Nueva request", () => NewRequestIn(folder)));
+                menu.Items.Add(Item("Nueva carpeta", () => NewFolderIn(folder)));
+                menu.Items.Add(Item("Expandir todo", () => SetExpansion(folder, true)));
+                menu.Items.Add(Item("Contraer todo", () => SetExpansion(folder, false)));
+                menu.Items.Add(Item("Renombrar", () => RenameNode(folder)));
+                menu.Items.Add(new Separator());
+                menu.Items.Add(Item("Eliminar", () => DeleteFolder(folder)));
+                break;
+            case RequestCollection col:
+                menu.Items.Add(Item("Configuración", () => OpenCollectionTab(col)));
+                menu.Items.Add(Item("Nueva request", () => NewRequestIn(col)));
+                menu.Items.Add(Item("Nueva carpeta", () => NewFolderIn(col)));
+                menu.Items.Add(Item("Expandir todo", () => SetExpansion(col, true)));
+                menu.Items.Add(Item("Contraer todo", () => SetExpansion(col, false)));
+                menu.Items.Add(Item("Renombrar", () => RenameNode(col)));
+                menu.Items.Add(new Separator());
+                menu.Items.Add(Item("Eliminar", () => DeleteCollection(col)));
+                break;
+        }
+        return menu;
+    }
+
+    async void NewRequestIn(object container)
+    {
+        var name = await Dialogs.Prompt(this, "Nueva request", "Nombre de la request:", "Nueva request");
+        if (string.IsNullOrWhiteSpace(name)) return;
+        var req = new RequestItem { Name = name.Trim() };
+        switch (container)
+        {
+            case RequestCollection col: col.Requests.Add(req); col.IsExpandedInTree = true; Storage.SaveCollection(col); break;
+            case Folder folder:
+                folder.Requests.Add(req); folder.IsExpandedInTree = true;
+                var owner = FindOwnerCollection(folder);
+                if (owner != null) Storage.SaveCollection(owner);
+                break;
+        }
+        OpenTab(req);
+        RefreshGitStatus();
+    }
+
+    async void NewFolderIn(object container)
+    {
+        var name = await Dialogs.Prompt(this, "Nueva carpeta", "Nombre de la carpeta:", "Nueva carpeta");
+        if (string.IsNullOrWhiteSpace(name)) return;
+        var folder = new Folder { Name = name.Trim() };
+        switch (container)
+        {
+            case RequestCollection col: col.Folders.Add(folder); col.IsExpandedInTree = true; Storage.SaveCollection(col); break;
+            case Folder parent:
+                parent.Folders.Add(folder); parent.IsExpandedInTree = true;
+                var owner = FindOwnerCollection(parent);
+                if (owner != null) Storage.SaveCollection(owner);
+                break;
+        }
+        RefreshGitStatus();
+    }
+
+    async void RenameNode(object node)
+    {
+        switch (node)
+        {
+            case RequestItem req:
+                var rn = await Dialogs.Prompt(this, "Renombrar request", "Nuevo nombre:", req.Name);
+                if (!string.IsNullOrWhiteSpace(rn)) { req.Name = rn.Trim(); SaveOwnerOf(req); RefreshOpenTab(req); }
+                break;
+            case Folder folder:
+                var fn = await Dialogs.Prompt(this, "Renombrar carpeta", "Nuevo nombre:", folder.Name);
+                if (!string.IsNullOrWhiteSpace(fn)) { folder.Name = fn.Trim(); var o = FindOwnerCollection(folder); if (o != null) Storage.SaveCollection(o); }
+                break;
+            case RequestCollection col:
+                var cn = await Dialogs.Prompt(this, "Renombrar colección", "Nuevo nombre:", col.Name);
+                if (!string.IsNullOrWhiteSpace(cn)) { col.Name = cn.Trim(); Storage.SaveCollection(col); }
+                break;
+        }
+        RefreshGitStatus();
+    }
+
+    void DuplicateRequest(RequestItem req)
+    {
+        var owner = FindOwner(req);
+        if (owner == null) return;
+        var copy = System.Text.Json.JsonSerializer.Deserialize<RequestItem>(
+            System.Text.Json.JsonSerializer.Serialize(req))!;
+        copy.Id = Guid.NewGuid().ToString("N");
+        copy.Name = req.Name + " (copia)";
+        owner.Value.List.Insert(owner.Value.List.IndexOf(req) + 1, copy);
+        Storage.SaveCollection(owner.Value.Collection);
+        RefreshGitStatus();
+    }
+
+    async void DeleteRequest(RequestItem req)
+    {
+        if (await Dialogs.Confirm(this, $"¿Eliminar la request \"{req.Name}\"?", "Eliminar") != DialogResult.Yes) return;
+        var owner = FindOwner(req);
+        if (owner == null) return;
+        CloseTabsOf(new[] { req });
+        owner.Value.List.Remove(req);
+        Storage.SaveCollection(owner.Value.Collection);
+        RefreshGitStatus();
+    }
+
+    async void DeleteFolder(Folder folder)
+    {
+        if (await Dialogs.Confirm(this, $"¿Eliminar la carpeta \"{folder.Name}\" y todo su contenido?", "Eliminar") != DialogResult.Yes) return;
+        var parent = FindFolderParent(folder);
+        if (parent == null) return;
+        CloseTabsOf(folder.AllRequests);
+        parent.Value.List.Remove(folder);
+        Storage.SaveCollection(parent.Value.Collection);
+        RefreshGitStatus();
+    }
+
+    async void DeleteCollection(RequestCollection col)
+    {
+        if (await Dialogs.Confirm(this, $"¿Eliminar la colección \"{col.Name}\" y todo su contenido?", "Eliminar") != DialogResult.Yes) return;
+        CloseTabsOf(col.AllRequests);
+        foreach (var t in OpenTabs.OfType<CollectionTab>().Where(t => t.Collection == col).ToList()) RemoveTab(t);
+        Collections.Remove(col);
+        Storage.DeleteCollection(col);
+        RefreshGitStatus();
+    }
+
+    static void SetExpansion(RequestCollection col, bool expand)
+    {
+        col.IsExpandedInTree = expand;
+        foreach (var f in col.AllFolders) f.IsExpandedInTree = expand;
+    }
+
+    static void SetExpansion(Folder folder, bool expand)
+    {
+        foreach (var f in folder.SelfAndDescendants) f.IsExpandedInTree = expand;
+    }
+
+    void RefreshOpenTab(RequestItem req) =>
+        OpenTabs.OfType<RequestTab>().FirstOrDefault(t => t.Original == req)?.RefreshBreadcrumb();
 
     // ----- Filtro -----
 

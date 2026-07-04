@@ -35,6 +35,13 @@
         <SolidColorBrush x:Key="PeachBrush" Color="{StaticResource PeachColor}"/>
         <SolidColorBrush x:Key="MauveBrush" Color="{StaticResource MauveColor}"/>
         <SolidColorBrush x:Key="YellowBrush" Color="{StaticResource YellowColor}"/>
+
+        <!-- Íconos vectoriales (monocromos, respetan Foreground como en el head WPF) -->
+        <StreamGeometry x:Key="IconBolt">M13,2 L4,14 L11,14 L9,22 L20,9 L12,9 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconFolder">M2.5,5.5 L9,5.5 L11,7.6 L21.5,7.6 L21.5,18.5 L2.5,18.5 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconTrash">M5,7 L19,7 M10,7 L10,4.5 L14,4.5 L14,7 M6.5,7 L7.6,20 L16.4,20 L17.5,7 M10,10.5 L10,16.5 M14,10.5 L14,16.5</StreamGeometry>
+        <StreamGeometry x:Key="IconPlay">M7,5 L19,12 L7,19 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconGear">M19.14,12.94 c0.04,-0.3 0.06,-0.61 0.06,-0.94 c0,-0.32 -0.02,-0.64 -0.07,-0.94 l2.03,-1.58 c0.18,-0.14 0.23,-0.41 0.12,-0.61 l-1.92,-3.32 c-0.12,-0.22 -0.37,-0.29 -0.59,-0.22 l-2.39,0.96 c-0.5,-0.38 -1.03,-0.7 -1.62,-0.94 l-0.36,-2.54 c-0.04,-0.24 -0.24,-0.41 -0.48,-0.41 h-3.84 c-0.24,0 -0.43,0.17 -0.47,0.41 l-0.36,2.54 c-0.59,0.24 -1.13,0.57 -1.62,0.94 l-2.39,-0.96 c-0.22,-0.08 -0.47,0 -0.59,0.22 L2.74,8.87 C2.62,9.08 2.66,9.34 2.86,9.48 l2.03,1.58 C4.84,11.36 4.82,11.69 4.82,12 s0.02,0.64 0.07,0.94 l-2.03,1.58 c-0.18,0.14 -0.23,0.41 -0.12,0.61 l1.92,3.32 c0.12,0.22 0.37,0.29 0.59,0.22 l2.39,-0.96 c0.5,0.38 1.03,0.7 1.62,0.94 l0.36,2.54 c0.05,0.24 0.24,0.41 0.48,0.41 h3.84 c0.24,0 0.44,-0.17 0.47,-0.41 l0.36,-2.54 c0.59,-0.24 1.13,-0.56 1.62,-0.94 l2.39,0.96 c0.22,0.08 0.47,0 0.59,-0.22 l1.92,-3.32 c0.12,-0.22 0.07,-0.47 -0.12,-0.61 L19.14,12.94 z M12,15.6 c-1.98,0 -3.6,-1.62 -3.6,-3.6 s1.62,-3.6 3.6,-3.6 s3.6,1.62 3.6,3.6 S13.98,15.6 12,15.6 z</StreamGeometry>
     </Styles.Resources>
 
     <!-- Ventana -->

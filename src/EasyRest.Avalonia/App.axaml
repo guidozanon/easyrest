@@ -2,6 +2,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="EasyRest.Avalonia.App"
              RequestedThemeVariant="Dark">
+    <Application.Resources>
+        <!-- Acento Catppuccin (#89B4FA) para botones, focus, checkboxes, selección, etc. -->
+        <Color x:Key="SystemAccentColor">#89B4FA</Color>
+        <Color x:Key="SystemAccentColorLight1">#9CC0FB</Color>
+        <Color x:Key="SystemAccentColorLight2">#B0CDFC</Color>
+        <Color x:Key="SystemAccentColorLight3">#C4DAFD</Color>
+        <Color x:Key="SystemAccentColorDark1">#6E96DB</Color>
+        <Color x:Key="SystemAccentColorDark2">#5678BC</Color>
+        <Color x:Key="SystemAccentColorDark3">#3E5A9D</Color>
+    </Application.Resources>
     <Application.Styles>
         <FluentTheme/>
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
