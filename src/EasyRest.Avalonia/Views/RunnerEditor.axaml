@@ -22,12 +22,22 @@
                 <TextBlock Text="Ambiente" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
                 <ComboBox Width="150" Margin="0,0,14,6" ItemsSource="{Binding EnvOptions}"
                           SelectedItem="{Binding SelectedEnvOption}"/>
-                <TextBlock Text="Iteraciones" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
-                <TextBox Width="55" Text="{Binding IterationsText}" Margin="0,0,14,6"
+                <TextBlock Text="Modo" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
+                <ComboBox Width="120" Margin="0,0,14,6" ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}"/>
+                <TextBlock Text="Iteraciones" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center"
+                           Margin="0,0,6,6" IsVisible="{Binding IsIterationsMode}"/>
+                <TextBox Width="55" Text="{Binding IterationsText}" Margin="0,0,14,6" IsVisible="{Binding IsIterationsMode}"
                          ToolTip.Tip="Iteraciones que hace cada usuario virtual"/>
+                <TextBlock Text="Duración (s)" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center"
+                           Margin="0,0,6,6" IsVisible="{Binding IsDurationMode}"/>
+                <TextBox Width="55" Text="{Binding DurationText}" Margin="0,0,14,6" IsVisible="{Binding IsDurationMode}"
+                         ToolTip.Tip="Segundos que dura la corrida; cada usuario repite las requests hasta cumplirse"/>
                 <TextBlock Text="Usuarios" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
                 <TextBox Width="55" Text="{Binding VirtualUsersText}" Margin="0,0,14,6"
                          ToolTip.Tip="Usuarios virtuales que corren las iteraciones en simultáneo (simulación de carga)"/>
+                <TextBlock Text="Ramp-up (s)" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
+                <TextBox Width="55" Text="{Binding RampUpText}" Margin="0,0,14,6"
+                         ToolTip.Tip="Segundos para ir sumando usuarios de a poco (0 = todos arrancan juntos)"/>
                 <TextBlock Text="Delay (ms)" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
                 <TextBox Width="55" Text="{Binding DelayText}" Margin="0,0,14,6"/>
                 <CheckBox Content="Frenar en error" IsChecked="{Binding StopOnError}" VerticalAlignment="Center" Margin="0,0,14,6"/>
@@ -81,10 +91,22 @@
                     <TextBlock Text="{Binding OkText}" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource GreenBrush}"/>
                 </StackPanel>
             </Border>
-            <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="10,7">
+            <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
                 <StackPanel>
                     <TextBlock Text="FALLIDAS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource OverlayBrush}"/>
                     <TextBlock Text="{Binding FailText}" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource RedBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
+                <StackPanel>
+                    <TextBlock Text="REQ/S PICO" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource OverlayBrush}"/>
+                    <TextBlock Text="{Binding PeakRpsText}" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="10,7">
+                <StackPanel>
+                    <TextBlock Text="ERRORES" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource OverlayBrush}"/>
+                    <TextBlock Text="{Binding ErrorRateText}" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource PeachBrush}"/>
                 </StackPanel>
             </Border>
         </UniformGrid>

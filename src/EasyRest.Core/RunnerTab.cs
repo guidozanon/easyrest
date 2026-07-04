@@ -38,6 +38,9 @@ public class RunnerTab : Observable
     object? _selectedEnvOption = NoEnvironment;
     string _iterationsText = "1";
     string _virtualUsersText = "1";
+    string _rampUpText = "0";
+    string _durationText = "30";
+    string _selectedMode = ModeIterations;
     string _delayText = "0";
     bool _stopOnError;
     bool _isRunning;
@@ -46,6 +49,10 @@ public class RunnerTab : Observable
     string _summary = "";
     string _avgText = "—", _p50Text = "—", _p95Text = "—", _p99Text = "—", _minText = "—", _maxText = "—";
     string _okText = "0", _failText = "0";
+    string _peakRpsText = "—", _errorRateText = "—";
+
+    public const string ModeIterations = "Iteraciones";
+    public const string ModeDuration = "Duración (s)";
 
     public RunnerTab(ObservableCollection<RequestCollection> collections,
                      ObservableCollection<EnvironmentModel> environments,
@@ -105,6 +112,29 @@ public class RunnerTab : Observable
     /// <summary>Cantidad de usuarios virtuales que corren las iteraciones en simultáneo.</summary>
     public string VirtualUsersText { get => _virtualUsersText; set => Set(ref _virtualUsersText, value); }
 
+    /// <summary>Segundos para escalonar el arranque de los usuarios (0 = todos juntos).</summary>
+    public string RampUpText { get => _rampUpText; set => Set(ref _rampUpText, value); }
+
+    /// <summary>Duración de la corrida en segundos (modo Duración).</summary>
+    public string DurationText { get => _durationText; set => Set(ref _durationText, value); }
+
+    public string[] Modes { get; } = { ModeIterations, ModeDuration };
+
+    /// <summary>Modo de corrida: cantidad fija de iteraciones, o correr durante X segundos.</summary>
+    public string SelectedMode
+    {
+        get => _selectedMode;
+        set
+        {
+            if (!Set(ref _selectedMode, value)) return;
+            Raise(nameof(IsIterationsMode));
+            Raise(nameof(IsDurationMode));
+        }
+    }
+
+    public bool IsIterationsMode => _selectedMode == ModeIterations;
+    public bool IsDurationMode => _selectedMode == ModeDuration;
+
     public string DelayText { get => _delayText; set => Set(ref _delayText, value); }
     public bool StopOnError { get => _stopOnError; set => Set(ref _stopOnError, value); }
 
@@ -128,6 +158,12 @@ public class RunnerTab : Observable
     public string MaxText { get => _maxText; set => Set(ref _maxText, value); }
     public string OkText { get => _okText; set => Set(ref _okText, value); }
     public string FailText { get => _failText; set => Set(ref _failText, value); }
+
+    /// <summary>Máximo de requests completadas en un segundo durante la corrida.</summary>
+    public string PeakRpsText { get => _peakRpsText; set => Set(ref _peakRpsText, value); }
+
+    /// <summary>Porcentaje de requests fallidas.</summary>
+    public string ErrorRateText { get => _errorRateText; set => Set(ref _errorRateText, value); }
 
     void RebuildEnvOptions()
     {
@@ -168,20 +204,27 @@ public class RunnerTab : Observable
             return;
         }
 
+        var useDuration = IsDurationMode;
         if (!int.TryParse(IterationsText, out var iterations) || iterations < 1) iterations = 1;
+        if (!int.TryParse(DurationText, out var durationSec) || durationSec < 1) durationSec = 1;
+        var durationMs = durationSec * 1000L;
         if (!int.TryParse(VirtualUsersText, out var users) || users < 1) users = 1;
+        if (!int.TryParse(RampUpText, out var rampSec) || rampSec < 0) rampSec = 0;
+        var rampMs = rampSec * 1000.0;
         int.TryParse(DelayText, out var delay);
         var env = SelectedEnvOption as EnvironmentModel;
 
         Results.Clear();
         Samples.Clear();
         var times = new List<double>();
-        int ok = 0, failed = 0;
+        var perSecond = new Dictionary<long, int>();
+        int ok = 0, failed = 0, peakRps = 0;
+        PeakRpsText = "—";
         UpdateStats(times, ok, failed);
 
         _cts = new CancellationTokenSource();
         IsRunning = true;
-        ProgressMax = (double)users * iterations * requests.Count;
+        ProgressMax = useDuration ? durationMs : (double)users * iterations * requests.Count;
         ProgressValue = 0;
         Summary = "";
         var runWatch = Stopwatch.StartNew();
@@ -191,14 +234,25 @@ public class RunnerTab : Observable
         var gate = new object();
         long lastRedraw = -1000;
 
-        // un "usuario virtual": corre todas las iteraciones de la lista de requests
+        // un "usuario virtual": corre las iteraciones (o corre hasta que se cumple la duración)
         async Task RunUser(int userId)
         {
-            for (var iteration = 1; iteration <= iterations; iteration++)
+            // ramp-up: escalonar el arranque de cada usuario a lo largo del período configurado
+            if (rampMs > 0 && userId > 1)
+                await Task.Delay((int)(rampMs * (userId - 1) / users), _cts!.Token);
+
+            var iteration = 0;
+            while (true)
             {
+                _cts!.Token.ThrowIfCancellationRequested();
+                if (useDuration) { if (runWatch.ElapsedMilliseconds >= durationMs) break; }
+                else if (iteration >= iterations) break;
+                iteration++;
+
                 foreach (var req in requests)
                 {
-                    _cts!.Token.ThrowIfCancellationRequested();
+                    _cts.Token.ThrowIfCancellationRequested();
+                    if (useDuration && runWatch.ElapsedMilliseconds >= durationMs) break;
 
                     var r = await HttpExecutor.ExecuteAsync(req, col, env, _cts.Token);
                     var testsTotal = r.ScriptTests?.Count ?? 0;
@@ -216,7 +270,8 @@ public class RunnerTab : Observable
                     {
                         if (success) ok++; else failed++;
                         times.Add(r.ElapsedMs);
-                        Samples.Add(new SamplePoint { T = runWatch.ElapsedMilliseconds, Ms = r.ElapsedMs, Ok = success });
+                        var elapsedMs = runWatch.ElapsedMilliseconds;
+                        Samples.Add(new SamplePoint { T = elapsedMs, Ms = r.ElapsedMs, Ok = success });
                         Results.Add(new RunResult
                         {
                             Iteration = iteration,
@@ -227,19 +282,26 @@ public class RunnerTab : Observable
                             TimeMs = r.ElapsedMs,
                             Detail = detail
                         });
-                        ProgressValue++;
+
+                        // req/s pico: requests completadas en cada segundo
+                        var sec = elapsedMs / 1000;
+                        var inSec = perSecond.GetValueOrDefault(sec) + 1;
+                        perSecond[sec] = inSec;
+                        if (inSec > peakRps) { peakRps = inSec; PeakRpsText = $"{peakRps}"; }
+
+                        ProgressValue = useDuration ? Math.Min(durationMs, elapsedMs) : ProgressValue + 1;
                         UpdateStats(times, ok, failed);
+
                         var done = ok + failed;
-                        var secs = runWatch.ElapsedMilliseconds / 1000.0;
+                        var secs = elapsedMs / 1000.0;
                         var rps = secs > 0 ? done / secs : 0;
-                        Summary = users > 1
-                            ? $"{done}/{ProgressMax:0} requests · {users} usuarios · {rps:0.#} req/s"
-                            : $"{done}/{ProgressMax:0} requests · {rps:0.#} req/s";
+                        Summary = useDuration
+                            ? $"{done} requests · {users} usuario(s) · {rps:0.#} req/s · {secs:0}s/{durationSec}s"
+                            : $"{done}/{ProgressMax:0} requests · {users} usuario(s) · {rps:0.#} req/s";
 
                         // el redibujo del gráfico se limita a ~8 fps para no ahogar la UI con muchos VUs
-                        var now = runWatch.ElapsedMilliseconds;
-                        redraw = now - lastRedraw >= 120;
-                        if (redraw) lastRedraw = now;
+                        redraw = elapsedMs - lastRedraw >= 120;
+                        if (redraw) lastRedraw = elapsedMs;
                     }
                     if (redraw) Updated?.Invoke();
 
@@ -252,6 +314,7 @@ public class RunnerTab : Observable
         try
         {
             await Task.WhenAll(Enumerable.Range(1, users).Select(RunUser));
+            ProgressValue = ProgressMax;
             Summary += " · completado";
         }
         catch (OperationCanceledException)
@@ -271,6 +334,8 @@ public class RunnerTab : Observable
     {
         OkText = ok.ToString();
         FailText = failed.ToString();
+        var total = ok + failed;
+        ErrorRateText = total == 0 ? "—" : $"{100.0 * failed / total:0.#}%";
         if (times.Count == 0)
         {
             AvgText = P50Text = P95Text = P99Text = MinText = MaxText = "—";
