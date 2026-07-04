@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>EasyRest.Avalonia</RootNamespace>
+    <!-- el ejecutable/assembly se llama "EasyRest"; las URIs avares:// usan este nombre -->
+    <AssemblyName>EasyRest</AssemblyName>
     <ApplicationManifest></ApplicationManifest>
     <ApplicationIcon>Assets\easyrest.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>

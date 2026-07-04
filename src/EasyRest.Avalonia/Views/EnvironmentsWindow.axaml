@@ -4,7 +4,7 @@
         x:Class="EasyRest.Avalonia.Views.EnvironmentsWindow"
         Title="Ambientes" Width="780" Height="480"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
-        Icon="avares://EasyRest.Avalonia/Assets/easyrest.ico" Background="#1E1E2E">
+        Icon="avares://EasyRest/Assets/easyrest.ico" Background="#1E1E2E">
     <Grid Margin="12" ColumnDefinitions="230,12,*">
         <DockPanel>
             <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">

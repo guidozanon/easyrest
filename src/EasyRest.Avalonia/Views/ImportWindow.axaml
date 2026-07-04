@@ -3,7 +3,7 @@
         x:Class="EasyRest.Avalonia.Views.ImportWindow"
         Title="Importar OpenAPI" Width="460" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" CanResize="False" ShowInTaskbar="False"
-        Icon="avares://EasyRest.Avalonia/Assets/easyrest.ico"
+        Icon="avares://EasyRest/Assets/easyrest.ico"
         Background="#1E1E2E">
     <StackPanel Margin="18" Spacing="0">
         <TextBlock x:Name="TitleText" Text="Importando…" FontSize="15" FontWeight="Bold" Foreground="#CDD6F4"/>

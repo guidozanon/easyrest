@@ -3,7 +3,7 @@
         x:Class="EasyRest.Avalonia.Views.SaveTargetWindow"
         Title="Guardar request" Width="430" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" CanResize="False" ShowInTaskbar="False"
-        Icon="avares://EasyRest.Avalonia/Assets/easyrest.ico"
+        Icon="avares://EasyRest/Assets/easyrest.ico"
         Background="#1E1E2E">
     <StackPanel Margin="18" Spacing="10">
         <TextBlock Text="¿Dónde querés guardar la request?" FontWeight="SemiBold" Foreground="#CDD6F4"/>
