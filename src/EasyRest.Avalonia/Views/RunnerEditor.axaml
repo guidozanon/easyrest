@@ -23,7 +23,11 @@
                 <ComboBox Width="150" Margin="0,0,14,6" ItemsSource="{Binding EnvOptions}"
                           SelectedItem="{Binding SelectedEnvOption}"/>
                 <TextBlock Text="Iteraciones" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
-                <TextBox Width="55" Text="{Binding IterationsText}" Margin="0,0,14,6"/>
+                <TextBox Width="55" Text="{Binding IterationsText}" Margin="0,0,14,6"
+                         ToolTip.Tip="Iteraciones que hace cada usuario virtual"/>
+                <TextBlock Text="Usuarios" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
+                <TextBox Width="55" Text="{Binding VirtualUsersText}" Margin="0,0,14,6"
+                         ToolTip.Tip="Usuarios virtuales que corren las iteraciones en simultáneo (simulación de carga)"/>
                 <TextBlock Text="Delay (ms)" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
                 <TextBox Width="55" Text="{Binding DelayText}" Margin="0,0,14,6"/>
                 <CheckBox Content="Frenar en error" IsChecked="{Binding StopOnError}" VerticalAlignment="Center" Margin="0,0,14,6"/>
@@ -109,6 +113,7 @@
             <DataGrid x:Name="ResultsGrid" ItemsSource="{Binding Results}" IsReadOnly="True" AutoGenerateColumns="False">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="#" Binding="{Binding Iteration}" Width="46"/>
+                    <DataGridTextColumn Header="VU" Binding="{Binding User}" Width="46"/>
                     <DataGridTextColumn Header="REQUEST" Binding="{Binding Name}" Width="2*"/>
                     <DataGridTextColumn Header="MÉTODO" Binding="{Binding Method}" Width="80"/>
                     <DataGridTextColumn Header="STATUS" Binding="{Binding Status}" Width="150"/>

@@ -8,6 +8,8 @@ namespace EasyRest;
 public class RunResult
 {
     public int Iteration { get; set; }
+    /// <summary>Usuario virtual (1..N) que ejecutó esta request.</summary>
+    public int User { get; set; }
     public string Name { get; set; } = "";
     public string Method { get; set; } = "";
     public string Status { get; set; } = "";
@@ -35,6 +37,7 @@ public class RunnerTab : Observable
     object? _selectedRequestOption = AllRequestsOption;
     object? _selectedEnvOption = NoEnvironment;
     string _iterationsText = "1";
+    string _virtualUsersText = "1";
     string _delayText = "0";
     bool _stopOnError;
     bool _isRunning;
@@ -98,6 +101,10 @@ public class RunnerTab : Observable
     }
 
     public string IterationsText { get => _iterationsText; set => Set(ref _iterationsText, value); }
+
+    /// <summary>Cantidad de usuarios virtuales que corren las iteraciones en simultáneo.</summary>
+    public string VirtualUsersText { get => _virtualUsersText; set => Set(ref _virtualUsersText, value); }
+
     public string DelayText { get => _delayText; set => Set(ref _delayText, value); }
     public bool StopOnError { get => _stopOnError; set => Set(ref _stopOnError, value); }
 
@@ -162,6 +169,7 @@ public class RunnerTab : Observable
         }
 
         if (!int.TryParse(IterationsText, out var iterations) || iterations < 1) iterations = 1;
+        if (!int.TryParse(VirtualUsersText, out var users) || users < 1) users = 1;
         int.TryParse(DelayText, out var delay);
         var env = SelectedEnvOption as EnvironmentModel;
 
@@ -173,52 +181,77 @@ public class RunnerTab : Observable
 
         _cts = new CancellationTokenSource();
         IsRunning = true;
-        ProgressMax = iterations * requests.Count;
+        ProgressMax = (double)users * iterations * requests.Count;
         ProgressValue = 0;
         Summary = "";
         var runWatch = Stopwatch.StartNew();
 
-        try
+        // el estado compartido lo tocan varios usuarios virtuales a la vez → un candado.
+        // (las continuaciones vuelven al hilo de UI, pero el lock lo deja explícito y seguro)
+        var gate = new object();
+        long lastRedraw = -1000;
+
+        // un "usuario virtual": corre todas las iteraciones de la lista de requests
+        async Task RunUser(int userId)
         {
             for (var iteration = 1; iteration <= iterations; iteration++)
             {
                 foreach (var req in requests)
                 {
-                    _cts.Token.ThrowIfCancellationRequested();
+                    _cts!.Token.ThrowIfCancellationRequested();
 
                     var r = await HttpExecutor.ExecuteAsync(req, col, env, _cts.Token);
                     var testsTotal = r.ScriptTests?.Count ?? 0;
                     var testsPassed = r.ScriptTests?.Count(t => t.Passed) ?? 0;
                     var success = r.Error == null && r.IsSuccess && testsPassed == testsTotal &&
                                   r.ScriptError == null;
-                    if (success) ok++; else failed++;
-                    times.Add(r.ElapsedMs);
-                    Samples.Add(new SamplePoint { T = runWatch.ElapsedMilliseconds, Ms = r.ElapsedMs, Ok = success });
-
                     var detail = r.Error
                         ?? r.ScriptError
                         ?? (testsTotal > 0
                             ? $"{testsPassed}/{testsTotal} tests OK"
                             : success ? "OK" : "Falló");
 
-                    Results.Add(new RunResult
+                    bool redraw;
+                    lock (gate)
                     {
-                        Iteration = iteration,
-                        Name = req.Name,
-                        Method = req.Method,
-                        Status = r.Error != null ? "ERROR" : $"{r.StatusCode} {r.StatusText}",
-                        TimeMs = r.ElapsedMs,
-                        Detail = detail
-                    });
-                    ProgressValue++;
-                    UpdateStats(times, ok, failed);
-                    Summary = $"{ok + failed}/{ProgressMax:0} requests";
-                    Updated?.Invoke();
+                        if (success) ok++; else failed++;
+                        times.Add(r.ElapsedMs);
+                        Samples.Add(new SamplePoint { T = runWatch.ElapsedMilliseconds, Ms = r.ElapsedMs, Ok = success });
+                        Results.Add(new RunResult
+                        {
+                            Iteration = iteration,
+                            User = userId,
+                            Name = req.Name,
+                            Method = req.Method,
+                            Status = r.Error != null ? "ERROR" : $"{r.StatusCode} {r.StatusText}",
+                            TimeMs = r.ElapsedMs,
+                            Detail = detail
+                        });
+                        ProgressValue++;
+                        UpdateStats(times, ok, failed);
+                        var done = ok + failed;
+                        var secs = runWatch.ElapsedMilliseconds / 1000.0;
+                        var rps = secs > 0 ? done / secs : 0;
+                        Summary = users > 1
+                            ? $"{done}/{ProgressMax:0} requests · {users} usuarios · {rps:0.#} req/s"
+                            : $"{done}/{ProgressMax:0} requests · {rps:0.#} req/s";
 
-                    if (!success && StopOnError) throw new OperationCanceledException();
+                        // el redibujo del gráfico se limita a ~8 fps para no ahogar la UI con muchos VUs
+                        var now = runWatch.ElapsedMilliseconds;
+                        redraw = now - lastRedraw >= 120;
+                        if (redraw) lastRedraw = now;
+                    }
+                    if (redraw) Updated?.Invoke();
+
+                    if (!success && StopOnError) { _cts.Cancel(); _cts.Token.ThrowIfCancellationRequested(); }
                     if (delay > 0) await Task.Delay(delay, _cts.Token);
                 }
             }
+        }
+
+        try
+        {
+            await Task.WhenAll(Enumerable.Range(1, users).Select(RunUser));
             Summary += " · completado";
         }
         catch (OperationCanceledException)
