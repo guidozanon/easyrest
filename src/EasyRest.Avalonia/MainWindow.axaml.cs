@@ -14,6 +14,10 @@ namespace EasyRest.Avalonia;
 public partial class MainWindow : Window
 {
     const string NoEnvironment = "(Sin ambiente)";
+    const string NewEnvironmentItem = "＋ Nuevo ambiente…";
+    const string ManageEnvironmentsItem = "⚙ Administrar ambientes…";
+    bool _envComboGuard;
+    object? _lastRealEnvItem;
 
     public ObservableCollection<RequestCollection> Collections { get; } = new();
     public ObservableCollection<EnvironmentModel> Environments { get; } = new();
@@ -57,8 +61,14 @@ public partial class MainWindow : Window
         var selected = ActiveEnv;
         var items = new List<object> { NoEnvironment };
         items.AddRange(Environments);
+        items.Add(NewEnvironmentItem);
+        items.Add(ManageEnvironmentsItem);
+
+        _envComboGuard = true;
         EnvCombo.ItemsSource = items;
         EnvCombo.SelectedItem = selected != null && Environments.Contains(selected) ? selected : items[0];
+        _lastRealEnvItem = EnvCombo.SelectedItem;
+        _envComboGuard = false;
     }
 
     void SaveAll()
@@ -288,16 +298,40 @@ public partial class MainWindow : Window
         RefreshGitStatus();
     }
 
-    async void Environments_Click(object? sender, RoutedEventArgs e)
+    async void OpenEnvironmentsManager()
     {
         await new EnvironmentsWindow(Environments).ShowDialog(this);
         Storage.SaveEnvironments(Environments);
         RefreshEnvCombo();
     }
 
+    async void CreateNewEnvironment()
+    {
+        var name = await Dialogs.Prompt(this, "Nuevo ambiente", "Nombre del ambiente:", "Desarrollo");
+        if (string.IsNullOrWhiteSpace(name)) return;
+        var env = new EnvironmentModel { Name = name.Trim() };
+        Environments.Add(env);
+        Storage.SaveEnvironments(Environments);
+        RefreshEnvCombo();
+        EnvCombo.SelectedItem = env;
+        if (VarsToggle.IsChecked != true) VarsToggle.IsChecked = true;
+    }
+
     void EnvCombo_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (!IsLoaded) return;
+        if (!IsLoaded || _envComboGuard) return;
+
+        if (EnvCombo.SelectedItem is string s && s is NewEnvironmentItem or ManageEnvironmentsItem)
+        {
+            _envComboGuard = true;
+            EnvCombo.SelectedItem = _lastRealEnvItem;
+            _envComboGuard = false;
+            if (s == NewEnvironmentItem) CreateNewEnvironment();
+            else OpenEnvironmentsManager();
+            return;
+        }
+
+        _lastRealEnvItem = EnvCombo.SelectedItem;
         Storage.SaveSettings(new AppSettings { ActiveEnvironmentId = ActiveEnv?.Id });
         UpdateStatusEnv();
     }

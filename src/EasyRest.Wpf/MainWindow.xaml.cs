@@ -19,6 +19,10 @@ public partial class MainWindow : Window
     public ObservableCollection<object> OpenTabs { get; } = new();
 
     const string NoEnvironment = "(Sin ambiente)";
+    const string NewEnvironmentItem = "＋ Nuevo ambiente…";
+    const string ManageEnvironmentsItem = "⚙ Administrar ambientes…";
+    bool _envComboGuard;
+    object? _lastRealEnvItem;
 
     public MainWindow()
     {
@@ -221,8 +225,14 @@ public partial class MainWindow : Window
         var selected = ActiveEnv;
         var items = new List<object> { NoEnvironment };
         items.AddRange(Environments);
+        items.Add(NewEnvironmentItem);
+        items.Add(ManageEnvironmentsItem);
+
+        _envComboGuard = true;
         EnvCombo.ItemsSource = items;
         EnvCombo.SelectedItem = selected != null && Environments.Contains(selected) ? selected : items[0];
+        _lastRealEnvItem = EnvCombo.SelectedItem;
+        _envComboGuard = false;
     }
 
     void SaveAll()
@@ -579,16 +589,41 @@ public partial class MainWindow : Window
         req.Url.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
         req.Method.Contains(filter, StringComparison.OrdinalIgnoreCase);
 
-    void Environments_Click(object sender, RoutedEventArgs e)
+    void OpenEnvironmentsManager()
     {
         new EnvironmentsWindow(Environments) { Owner = this }.ShowDialog();
         Storage.SaveEnvironments(Environments);
         RefreshEnvCombo();
     }
 
+    void CreateNewEnvironment()
+    {
+        var name = PromptWindow.Show(this, "Nuevo ambiente", "Nombre del ambiente:", "Desarrollo");
+        if (string.IsNullOrWhiteSpace(name)) return;
+        var env = new EnvironmentModel { Name = name.Trim() };
+        Environments.Add(env);
+        Storage.SaveEnvironments(Environments);
+        RefreshEnvCombo();
+        EnvCombo.SelectedItem = env;        // lo activa (dispara el guardado del setting)
+        if (VarsToggle.IsChecked != true) VarsToggle.IsChecked = true; // mostrar variables para cargarlas
+    }
+
     void EnvCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!IsLoaded) return;
+        if (!IsLoaded || _envComboGuard) return;
+
+        // Ítems especiales: ejecutar la acción y revertir la selección al ambiente real anterior
+        if (EnvCombo.SelectedItem is string s && s is NewEnvironmentItem or ManageEnvironmentsItem)
+        {
+            _envComboGuard = true;
+            EnvCombo.SelectedItem = _lastRealEnvItem;
+            _envComboGuard = false;
+            if (s == NewEnvironmentItem) CreateNewEnvironment();
+            else OpenEnvironmentsManager();
+            return;
+        }
+
+        _lastRealEnvItem = EnvCombo.SelectedItem;
         Storage.SaveSettings(new AppSettings { ActiveEnvironmentId = ActiveEnv?.Id });
         UpdateStatusEnv();
     }

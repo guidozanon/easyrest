@@ -79,7 +79,6 @@
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="⚡ EasyRest" Foreground="{StaticResource AccentBrush}" FontSize="17"
                                FontWeight="Bold" VerticalAlignment="Center" Margin="2,0,24,0"/>
-                    <Button Content="Ambientes" Click="Environments_Click" Margin="0,0,6,0"/>
                     <Button Content="▶ Runner" Click="Runner_Click"/>
                 </StackPanel>
             </DockPanel>
