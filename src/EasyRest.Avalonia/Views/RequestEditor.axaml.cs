@@ -39,9 +39,9 @@ public partial class RequestEditor : UserControl
 
     void BindGrids()
     {
-        KvGrid.Bind(ParamsGrid, Vm?.Request.QueryParams);
-        KvGrid.Bind(HeadersGrid, Vm?.Request.Headers);
-        KvGrid.Bind(FormGrid, Vm?.Request.Body.FormItems);
+        KvGrid.Bind(ParamsGrid, Vm?.Request.QueryParams, "PARÁMETRO", "VALOR");
+        KvGrid.Bind(HeadersGrid, Vm?.Request.Headers, "HEADER", "VALOR");
+        KvGrid.Bind(FormGrid, Vm?.Request.Body.FormItems, "CAMPO", "VALOR");
     }
 
     // ----- Auth -----

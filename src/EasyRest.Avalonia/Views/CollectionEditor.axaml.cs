@@ -11,7 +11,7 @@ public partial class CollectionEditor : UserControl
         InitializeComponent();
         AuthTypeCombo.ItemsSource = new[] { AuthType.None, AuthType.Bearer, AuthType.Basic, AuthType.ApiKey };
         ApiKeyInCombo.ItemsSource = new[] { "header", "query" };
-        DataContextChanged += (_, _) => { UpdateAuthPanels(); KvGrid.Bind(HeadersGrid, Vm?.Collection.Headers); };
+        DataContextChanged += (_, _) => { UpdateAuthPanels(); KvGrid.Bind(HeadersGrid, Vm?.Collection.Headers, "HEADER", "VALOR"); };
     }
 
     CollectionTab? Vm => DataContext as CollectionTab;

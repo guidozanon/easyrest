@@ -54,23 +54,11 @@
                     <TextBlock DockPanel.Dock="Top" FontSize="11" Margin="8,6,8,4"
                                Foreground="{DynamicResource OverlayBrush}"
                                Text="Los cambios se reflejan en la URL. Los parámetros desactivados no se envían."/>
-                    <DataGrid x:Name="ParamsGrid" AutoGenerateColumns="False">
-                        <DataGrid.Columns>
-                            <DataGridCheckBoxColumn Header="" Width="36" Binding="{Binding Enabled}"/>
-                            <DataGridTextColumn Header="PARÁMETRO" Width="2*" Binding="{Binding Key}"/>
-                            <DataGridTextColumn Header="VALOR" Width="3*" Binding="{Binding Value}"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                    <DataGrid x:Name="ParamsGrid" AutoGenerateColumns="False"/>
                 </DockPanel>
             </TabItem>
             <TabItem Header="Headers">
-                <DataGrid x:Name="HeadersGrid" AutoGenerateColumns="False">
-                    <DataGrid.Columns>
-                        <DataGridCheckBoxColumn Header="" Width="36" Binding="{Binding Enabled}"/>
-                        <DataGridTextColumn Header="HEADER" Width="2*" Binding="{Binding Key}"/>
-                        <DataGridTextColumn Header="VALOR" Width="3*" Binding="{Binding Value}"/>
-                    </DataGrid.Columns>
-                </DataGrid>
+                <DataGrid x:Name="HeadersGrid" AutoGenerateColumns="False"/>
             </TabItem>
             <TabItem Header="Auth">
                 <StackPanel Margin="10" Spacing="8">
@@ -118,13 +106,7 @@
                              AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas,Menlo,monospace"
                              Margin="8,0,8,8"/>
                     <DataGrid x:Name="FormGrid" IsVisible="False"
-                              AutoGenerateColumns="False" Margin="8,0,8,8">
-                        <DataGrid.Columns>
-                            <DataGridCheckBoxColumn Header="" Width="36" Binding="{Binding Enabled}"/>
-                            <DataGridTextColumn Header="CAMPO" Width="2*" Binding="{Binding Key}"/>
-                            <DataGridTextColumn Header="VALOR" Width="3*" Binding="{Binding Value}"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                              AutoGenerateColumns="False" Margin="8,0,8,8"/>
                 </DockPanel>
             </TabItem>
             <TabItem Header="Scripts">

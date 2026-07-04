@@ -21,7 +21,7 @@ public partial class EnvironmentsWindow : Window
     void EnvList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         var env = EnvList.SelectedItem as EnvironmentModel;
-        KvGrid.Bind(VarsGrid, env?.Variables);
+        KvGrid.Bind(VarsGrid, env?.Variables, "VARIABLE", "VALOR");
         VarsGrid.IsEnabled = env != null;
     }
 
