@@ -3,6 +3,7 @@
         x:Class="EasyRest.Avalonia.Views.WorkspaceWindow"
         Title="Workspace y Git" Width="560" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" CanResize="False" ShowInTaskbar="False"
+        Icon="avares://EasyRest.Avalonia/Assets/easyrest.ico"
         Background="#1E1E2E">
     <StackPanel Margin="18" Spacing="0">
         <TextBlock Text="WORKSPACES" FontSize="11" FontWeight="Bold" Foreground="#6C7086"/>

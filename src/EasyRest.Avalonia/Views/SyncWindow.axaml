@@ -3,6 +3,7 @@
         x:Class="EasyRest.Avalonia.Views.SyncWindow"
         Title="Cambios y sincronización" Width="580" Height="560"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Icon="avares://EasyRest.Avalonia/Assets/easyrest.ico"
         Background="#1E1E2E">
     <DockPanel Margin="18">
         <!-- Encabezado: workspace + rama -->
