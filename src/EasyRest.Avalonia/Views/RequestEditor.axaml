@@ -20,7 +20,13 @@
         <!-- Breadcrumb + acciones -->
         <DockPanel Grid.Row="0">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
-                <Button Content="💾 Guardar" Click="Save_Click"/>
+                <Button Click="Save_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Path Data="{StaticResource IconSave}" Stroke="{DynamicResource TextBrush}" StrokeThickness="1.4"
+                              Width="14" Height="14" Stretch="Uniform" VerticalAlignment="Center"/>
+                        <TextBlock Text="Guardar" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
                 <Button Content="⟳ Runner" Click="OpenRunner_Click"/>
                 <Button Content="↗ Compartir" Click="Share_Click"/>
             </StackPanel>
@@ -135,8 +141,13 @@
         <!-- Respuesta -->
         <Grid Grid.Row="4" RowDefinitions="Auto,*">
             <DockPanel Margin="2,4,0,6">
-                <Button DockPanel.Dock="Right" Content="💾 Guardar respuesta…" Classes="ghost" FontSize="11"
-                        Click="SaveResponse_Click"/>
+                <Button DockPanel.Dock="Right" Classes="ghost" FontSize="11" Click="SaveResponse_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                        <Path Data="{StaticResource IconSave}" Stroke="{DynamicResource OverlayBrush}" StrokeThickness="1.4"
+                              Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center"/>
+                        <TextBlock Text="Guardar respuesta…" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
                 <StackPanel Orientation="Horizontal" Spacing="14">
                     <TextBlock Text="Respuesta" FontWeight="Bold" VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding StatusText}" FontWeight="Bold" VerticalAlignment="Center"

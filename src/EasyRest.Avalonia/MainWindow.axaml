@@ -131,7 +131,7 @@
                                         <Button DockPanel.Dock="Right" Classes="ghost rowmenu" Content="⋯" FontSize="12"
                                                 Padding="4,0" Click="RowMenu_Click"/>
                                         <TextBlock DockPanel.Dock="Left" Text="{Binding Method}" FontWeight="Bold"
-                                                   FontSize="10.5" Width="52" Margin="0,0,6,0"
+                                                   FontSize="10.5" Width="42" Margin="0,0,4,0"
                                                    VerticalAlignment="Center"
                                                    Foreground="{Binding Method, Converter={StaticResource MethodBrush}}"/>
                                         <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
@@ -204,7 +204,13 @@
                             <TextBlock x:Name="VarsEnvName" FontSize="11" Foreground="#89B4FA" VerticalAlignment="Center"/>
                         </StackPanel>
                         <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0">
-                            <Button x:Name="SaveVarsBtn" Content="💾 Guardar variables" HorizontalAlignment="Stretch" Click="SaveVars_Click"/>
+                            <Button x:Name="SaveVarsBtn" HorizontalAlignment="Stretch" Click="SaveVars_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource IconSave}" Stroke="{DynamicResource TextBrush}" StrokeThickness="1.4"
+                                          Width="14" Height="14" Stretch="Uniform" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Guardar variables" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
                             <TextBlock Text="Usalas en las requests como {{nombre}}." Foreground="#6C7086" FontSize="11"/>
                         </StackPanel>
                         <views:KvEditor x:Name="VarsGrid"/>
