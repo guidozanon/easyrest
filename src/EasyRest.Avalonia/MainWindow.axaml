@@ -59,10 +59,22 @@
             </DockPanel>
         </Border>
 
-        <Grid RowDefinitions="*,4,Auto">
-            <Grid Grid.Row="0" ColumnDefinitions="Auto,4,*,4,Auto">
+        <Grid x:Name="OuterGrid">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="0"/>
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="0" x:Name="MainGrid">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="310" MinWidth="0"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*" MinWidth="200"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="0" MinWidth="0"/>
+                </Grid.ColumnDefinitions>
                 <!-- Sidebar -->
-                <Border x:Name="SidebarBorder" Width="310" Background="#181825">
+                <Border x:Name="SidebarBorder" Background="#181825">
                     <DockPanel>
                         <Grid DockPanel.Dock="Top" Margin="10,10,10,2" ColumnDefinitions="*,Auto,Auto">
                             <TextBox x:Name="FilterBox" Watermark="Filtrar" FontSize="12" TextChanged="Filter_Changed"/>
@@ -82,7 +94,7 @@
                                     <Setter Property="IsVisible" Value="{Binding IsVisibleInTree}"/>
                                     <Setter Property="IsExpanded" Value="{Binding IsExpandedInTree, Mode=TwoWay}"/>
                                 </Style>
-                                <!-- el ⋯ aparece solo al pasar el mouse por la fila -->
+                                <!-- el ⋯ aparece al pasar el mouse por cualquier parte de la fila -->
                                 <Style Selector="Button.rowmenu">
                                     <Setter Property="IsVisible" Value="False"/>
                                 </Style>
@@ -93,7 +105,7 @@
                             <TreeView.DataTemplates>
                                 <TreeDataTemplate DataType="m:RequestCollection"
                                                   ItemsSource="{Binding Converter={StaticResource TreeChildren}}">
-                                    <DockPanel Classes="treerow">
+                                    <DockPanel Classes="treerow" Background="Transparent" HorizontalAlignment="Stretch">
                                         <Button DockPanel.Dock="Right" Classes="ghost rowmenu" Content="⋯" FontSize="12"
                                                 Padding="4,0" Click="RowMenu_Click"/>
                                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
@@ -102,7 +114,7 @@
                                 </TreeDataTemplate>
                                 <TreeDataTemplate DataType="m:Folder"
                                                   ItemsSource="{Binding Converter={StaticResource TreeChildren}}">
-                                    <DockPanel Classes="treerow">
+                                    <DockPanel Classes="treerow" Background="Transparent" HorizontalAlignment="Stretch">
                                         <Button DockPanel.Dock="Right" Classes="ghost rowmenu" Content="⋯" FontSize="12"
                                                 Padding="4,0" Click="RowMenu_Click"/>
                                         <Path DockPanel.Dock="Left" Data="{StaticResource IconFolder}" Stroke="#A6ADC8"
@@ -114,7 +126,7 @@
                                     </DockPanel>
                                 </TreeDataTemplate>
                                 <TreeDataTemplate DataType="m:RequestItem">
-                                    <DockPanel Classes="treerow">
+                                    <DockPanel Classes="treerow" Background="Transparent" HorizontalAlignment="Stretch">
                                         <Button DockPanel.Dock="Right" Classes="ghost rowmenu" Content="⋯" FontSize="12"
                                                 Padding="4,0" Click="RowMenu_Click"/>
                                         <TextBlock DockPanel.Dock="Left" Text="{Binding Method}" FontWeight="Bold"
@@ -130,7 +142,7 @@
                     </DockPanel>
                 </Border>
 
-                <GridSplitter Grid.Column="1" Background="#313244"/>
+                <GridSplitter x:Name="SidebarSplitter" Grid.Column="1" Width="4" Background="#313244"/>
 
                 <!-- Editor / tabs -->
                 <Panel Grid.Column="2" Margin="10,8,10,10">
@@ -180,10 +192,10 @@
                     </Grid>
                 </Panel>
 
-                <GridSplitter x:Name="VarsSplitter" Grid.Column="3" Background="#313244" IsVisible="False"/>
+                <GridSplitter x:Name="VarsSplitter" Grid.Column="3" Width="4" Background="#313244" IsVisible="False"/>
 
                 <!-- Panel de variables -->
-                <Border x:Name="VarsPanel" Grid.Column="4" Width="300" IsVisible="False" Background="#181825"
+                <Border x:Name="VarsPanel" Grid.Column="4" IsVisible="False" Background="#181825"
                         BorderBrush="#313244" BorderThickness="1,0,0,0">
                     <DockPanel Margin="10">
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,2,0,8">
@@ -199,10 +211,11 @@
                 </Border>
             </Grid>
 
-            <GridSplitter x:Name="LogsSplitter" Grid.Row="1" HorizontalAlignment="Stretch" Background="#313244" IsVisible="False"/>
+            <GridSplitter x:Name="LogsSplitter" Grid.Row="1" Height="4" HorizontalAlignment="Stretch"
+                          Background="#313244" IsVisible="False"/>
 
             <!-- Panel de logs -->
-            <Border x:Name="LogsPanel" Grid.Row="2" Height="220" IsVisible="False" Background="#11111B"
+            <Border x:Name="LogsPanel" Grid.Row="2" IsVisible="False" Background="#11111B"
                     BorderBrush="#313244" BorderThickness="0,1,0,0">
                 <DockPanel>
                     <DockPanel DockPanel.Dock="Top" Margin="10,6,10,4">
@@ -262,6 +275,8 @@
         </Grid>
     </DockPanel>
 </Window>
+
+
 
 
 

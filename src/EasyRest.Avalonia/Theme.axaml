@@ -127,6 +127,49 @@
         <Setter Property="Background" Value="{StaticResource Surface0}"/>
     </Style>
 
+    <!-- Expander compacto (para el panel de logs); el del FluentTheme es muy voluminoso -->
+    <Style Selector="Expander">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <StackPanel>
+                    <ToggleButton Name="PART_toggle" HorizontalAlignment="Stretch"
+                                  HorizontalContentAlignment="Stretch" Background="Transparent"
+                                  BorderThickness="0" Padding="4,3" Cursor="Hand"
+                                  Content="{TemplateBinding Header}"
+                                  ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                  IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource AncestorType=Expander}, Mode=TwoWay}">
+                        <ToggleButton.Template>
+                            <ControlTemplate>
+                                <Border Name="hb" Background="{TemplateBinding Background}" CornerRadius="4" Padding="4,3">
+                                    <DockPanel>
+                                        <Path Name="chev" DockPanel.Dock="Left" Data="M0,0 L4,4 L0,8"
+                                              Stroke="{StaticResource OverlayBrush}" StrokeThickness="1.4"
+                                              Width="5" Height="9" Margin="2,0,8,0" VerticalAlignment="Center"
+                                              RenderTransformOrigin="50%,50%"/>
+                                        <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                </Border>
+                            </ControlTemplate>
+                        </ToggleButton.Template>
+                    </ToggleButton>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      IsVisible="{TemplateBinding IsExpanded}"
+                                      Margin="16,0,0,4"/>
+                </StackPanel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="Expander /template/ ToggleButton#PART_toggle:pointerover /template/ Border#hb">
+        <Setter Property="Background" Value="{StaticResource HoverBrush}"/>
+    </Style>
+    <Style Selector="Expander[IsExpanded=true] /template/ ToggleButton#PART_toggle /template/ Path#chev">
+        <Setter Property="RenderTransform" Value="rotate(90deg)"/>
+    </Style>
+
     <!-- TreeView / ListBox items -->
     <Style Selector="TreeViewItem">
         <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>

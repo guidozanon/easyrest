@@ -597,20 +597,52 @@ public partial class MainWindow : Window
         req.Method.ToLowerInvariant().Contains(f);
 
     // ----- Paneles y estado -----
+    // Toggle por tamaño de columna/fila (no IsVisible) para que el GridSplitter funcione
+    // y el contenido se estire. Se recuerda el tamaño previo al ocultar.
+
+    global::Avalonia.Controls.GridLength _sidebarW = new(310);
+    global::Avalonia.Controls.GridLength _varsW = new(320);
+    global::Avalonia.Controls.GridLength _logsH = new(240);
+
+    global::Avalonia.Controls.ColumnDefinition SidebarCol => MainGrid.ColumnDefinitions[0];
+    global::Avalonia.Controls.ColumnDefinition VarsCol => MainGrid.ColumnDefinitions[4];
+    global::Avalonia.Controls.RowDefinition LogsRow => OuterGrid.RowDefinitions[2];
 
     void SidebarToggle_Changed(object? sender, RoutedEventArgs e)
     {
-        if (SidebarBorder == null) return;
-        SidebarBorder.IsVisible = SidebarToggle.IsChecked == true;
+        if (MainGrid == null) return;
+        var show = SidebarToggle.IsChecked == true;
+        if (show)
+        {
+            SidebarCol.Width = _sidebarW;
+            SidebarSplitter.IsVisible = true;
+        }
+        else
+        {
+            if (SidebarCol.Width.Value > 0) _sidebarW = SidebarCol.Width;
+            SidebarCol.Width = new global::Avalonia.Controls.GridLength(0);
+            SidebarSplitter.IsVisible = false;
+        }
     }
 
     void VarsToggle_Changed(object? sender, RoutedEventArgs e)
     {
-        if (VarsPanel == null) return;
+        if (MainGrid == null) return;
         var show = VarsToggle.IsChecked == true;
-        VarsPanel.IsVisible = show;
-        VarsSplitter.IsVisible = show;
-        if (show) UpdateVarsPanel();
+        if (show)
+        {
+            VarsCol.Width = _varsW;
+            VarsSplitter.IsVisible = true;
+            VarsPanel.IsVisible = true;
+            UpdateVarsPanel();
+        }
+        else
+        {
+            if (VarsCol.Width.Value > 0) _varsW = VarsCol.Width;
+            VarsCol.Width = new global::Avalonia.Controls.GridLength(0);
+            VarsSplitter.IsVisible = false;
+            VarsPanel.IsVisible = false;
+        }
     }
 
     void UpdateVarsPanel()
@@ -627,10 +659,21 @@ public partial class MainWindow : Window
 
     void LogsToggle_Changed(object? sender, RoutedEventArgs e)
     {
-        if (LogsPanel == null) return;
+        if (OuterGrid == null) return;
         var show = LogsToggle.IsChecked == true;
-        LogsPanel.IsVisible = show;
-        LogsSplitter.IsVisible = show;
+        if (show)
+        {
+            LogsRow.Height = _logsH;
+            LogsSplitter.IsVisible = true;
+            LogsPanel.IsVisible = true;
+        }
+        else
+        {
+            if (LogsRow.Height.Value > 0) _logsH = LogsRow.Height;
+            LogsRow.Height = new global::Avalonia.Controls.GridLength(0);
+            LogsSplitter.IsVisible = false;
+            LogsPanel.IsVisible = false;
+        }
     }
 
     void ClearLogs_Click(object? sender, RoutedEventArgs e) => ExecutionLog.Entries.Clear();
