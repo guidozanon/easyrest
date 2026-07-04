@@ -156,8 +156,8 @@
                                             </Border.Background>
                                             <DockPanel>
                                                 <Path DockPanel.Dock="Left" Data="{StaticResource IconFolder}" Stroke="#A6ADC8"
-                                                      StrokeThickness="1.5" Width="16" Height="16" Stretch="Uniform"
-                                                      Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                                      StrokeThickness="1.5" Width="15" Height="15" Stretch="Uniform"
+                                                      Margin="0,2,7,0" VerticalAlignment="Center"/>
                                                 <TextBlock Text="{Binding Name}" Foreground="#A6ADC8"
                                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                                            ToolTip.Tip="{Binding Name}"/>
