@@ -67,7 +67,9 @@ jobs:
           cp -R "publish/${{ matrix.name }}/." "$APP/Contents/MacOS/"
           chmod +x "$APP/Contents/MacOS/EasyRest"
           sed "s/__VERSION__/${VERSION}/g" build/Info.plist > "$APP/Contents/Info.plist"
-          # ditto preserva el bundle y los permisos (zip común los pierde)
+          # firma ad-hoc (sin certificado): en Apple Silicon un binario sin firma lo mata el SO
+          codesign --force --deep --sign - "$APP"
+          # ditto preserva el bundle, los permisos y la firma (zip común los pierde)
           ditto -c -k --keepParent "$APP" "EasyRest-${{ matrix.name }}.zip"
 
       - name: Subir artefacto
