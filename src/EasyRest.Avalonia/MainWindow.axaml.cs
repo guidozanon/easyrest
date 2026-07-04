@@ -336,6 +336,7 @@ public partial class MainWindow : Window
     void RemoveTab(object tab)
     {
         (tab as RequestTab)?.Detach();
+        (tab as RunTab)?.Stop();   // si la corrida sigue, cancelarla al cerrar el tab
         OpenTabs.Remove(tab);
     }
 
@@ -364,7 +365,28 @@ public partial class MainWindow : Window
             tab = new RunnerTab(Collections, Environments, ActiveEnv);
             OpenTabs.Add(tab);
         }
-        if (preselect != null && !tab.IsRunning) tab.PreselectRequest(preselect);
+        if (preselect != null) tab.PreselectRequest(preselect);
+        RequestTabs.SelectedItem = tab;
+    }
+
+    /// <summary>Abre un tab de corrida a partir de la config del runner y arranca la ejecución.</summary>
+    public void OpenRun(RunConfig cfg)
+    {
+        var tab = new RunTab(cfg);
+        OpenTabs.Add(tab);
+        RequestTabs.SelectedItem = tab;   // el RunView arranca la corrida solo al cargarse
+    }
+
+    /// <summary>Abre (o reactiva) el tab de comparación de corridas guardadas.</summary>
+    public void OpenComparison()
+    {
+        var tab = OpenTabs.OfType<RunComparisonTab>().FirstOrDefault();
+        if (tab == null)
+        {
+            tab = new RunComparisonTab();
+            OpenTabs.Add(tab);
+        }
+        else tab.Reload();
         RequestTabs.SelectedItem = tab;
     }
 

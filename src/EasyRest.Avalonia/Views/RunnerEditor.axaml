@@ -1,150 +1,61 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:EasyRest.Avalonia"
              xmlns:core="clr-namespace:EasyRest;assembly=EasyRest.Core"
              xmlns:m="clr-namespace:EasyRest.Models;assembly=EasyRest.Core"
              x:Class="EasyRest.Avalonia.Views.RunnerEditor"
              x:DataType="core:RunnerTab">
+    <UserControl.Resources>
+        <conv:NotEmptyConverter x:Key="NotEmpty"/>
+    </UserControl.Resources>
     <DockPanel Margin="0,8,0,0">
         <WrapPanel DockPanel.Dock="Top">
-            <WrapPanel IsEnabled="{Binding IsNotRunning}">
-                <TextBlock Text="Colección" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
-                <ComboBox Width="190" Margin="0,0,14,6" ItemsSource="{Binding Collections}"
-                          SelectedItem="{Binding SelectedCollection}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate x:DataType="m:RequestCollection">
-                            <TextBlock Text="{Binding Name}"/>
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
-                <TextBlock Text="Request" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
-                <ComboBox Width="210" Margin="0,0,14,6" ItemsSource="{Binding RequestOptions}"
-                          SelectedItem="{Binding SelectedRequestOption}"/>
-                <TextBlock Text="Ambiente" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
-                <ComboBox Width="150" Margin="0,0,14,6" ItemsSource="{Binding EnvOptions}"
-                          SelectedItem="{Binding SelectedEnvOption}"/>
-                <TextBlock Text="Modo" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
-                <ComboBox Width="120" Margin="0,0,14,6" ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}"/>
-                <TextBlock Text="Iteraciones" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center"
-                           Margin="0,0,6,6" IsVisible="{Binding IsIterationsMode}"/>
-                <TextBox Width="55" Text="{Binding IterationsText}" Margin="0,0,14,6" IsVisible="{Binding IsIterationsMode}"
-                         ToolTip.Tip="Iteraciones que hace cada usuario virtual"/>
-                <TextBlock Text="Duración (s)" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center"
-                           Margin="0,0,6,6" IsVisible="{Binding IsDurationMode}"/>
-                <TextBox Width="55" Text="{Binding DurationText}" Margin="0,0,14,6" IsVisible="{Binding IsDurationMode}"
-                         ToolTip.Tip="Segundos que dura la corrida; cada usuario repite las requests hasta cumplirse"/>
-                <TextBlock Text="Usuarios" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
-                <TextBox Width="55" Text="{Binding VirtualUsersText}" Margin="0,0,14,6"
-                         ToolTip.Tip="Usuarios virtuales que corren las iteraciones en simultáneo (simulación de carga)"/>
-                <TextBlock Text="Ramp-up (s)" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
-                <TextBox Width="55" Text="{Binding RampUpText}" Margin="0,0,14,6"
-                         ToolTip.Tip="Segundos para ir sumando usuarios de a poco (0 = todos arrancan juntos)"/>
-                <TextBlock Text="Delay (ms)" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
-                <TextBox Width="55" Text="{Binding DelayText}" Margin="0,0,14,6"/>
-                <CheckBox Content="Frenar en error" IsChecked="{Binding StopOnError}" VerticalAlignment="Center" Margin="0,0,14,6"/>
-            </WrapPanel>
-            <Button Content="▶ Ejecutar" Classes="accent" Margin="0,0,6,6" IsEnabled="{Binding IsNotRunning}" Click="Run_Click"/>
-            <Button Content="■ Detener" Margin="0,0,0,6" IsEnabled="{Binding IsRunning}" Click="Stop_Click"/>
+            <TextBlock Text="Colección" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
+            <ComboBox Width="190" Margin="0,0,14,6" ItemsSource="{Binding Collections}"
+                      SelectedItem="{Binding SelectedCollection}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="m:RequestCollection">
+                        <TextBlock Text="{Binding Name}"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Text="Request" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
+            <ComboBox Width="210" Margin="0,0,14,6" ItemsSource="{Binding RequestOptions}"
+                      SelectedItem="{Binding SelectedRequestOption}"/>
+            <TextBlock Text="Ambiente" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
+            <ComboBox Width="150" Margin="0,0,14,6" ItemsSource="{Binding EnvOptions}"
+                      SelectedItem="{Binding SelectedEnvOption}"/>
+            <TextBlock Text="Modo" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
+            <ComboBox Width="120" Margin="0,0,14,6" ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}"/>
+            <TextBlock Text="Iteraciones" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center"
+                       Margin="0,0,6,6" IsVisible="{Binding IsIterationsMode}"/>
+            <TextBox Width="55" Text="{Binding IterationsText}" Margin="0,0,14,6" IsVisible="{Binding IsIterationsMode}"
+                     ToolTip.Tip="Iteraciones que hace cada usuario virtual"/>
+            <TextBlock Text="Duración (s)" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center"
+                       Margin="0,0,6,6" IsVisible="{Binding IsDurationMode}"/>
+            <TextBox Width="55" Text="{Binding DurationText}" Margin="0,0,14,6" IsVisible="{Binding IsDurationMode}"
+                     ToolTip.Tip="Segundos que dura la corrida; cada usuario repite las requests hasta cumplirse"/>
+            <TextBlock Text="Usuarios" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
+            <TextBox Width="55" Text="{Binding VirtualUsersText}" Margin="0,0,14,6"
+                     ToolTip.Tip="Usuarios virtuales que corren las iteraciones en simultáneo (simulación de carga)"/>
+            <TextBlock Text="Ramp-up (s)" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
+            <TextBox Width="55" Text="{Binding RampUpText}" Margin="0,0,14,6"
+                     ToolTip.Tip="Segundos para ir sumando usuarios de a poco (0 = todos arrancan juntos)"/>
+            <TextBlock Text="Delay (ms)" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
+            <TextBox Width="55" Text="{Binding DelayText}" Margin="0,0,14,6"/>
+            <CheckBox Content="Frenar en error" IsChecked="{Binding StopOnError}" VerticalAlignment="Center" Margin="0,0,14,6"/>
+            <Button Content="▶ Correr" Classes="accent" Margin="0,0,6,6" Click="Run_Click"/>
+            <Button Content="⇄ Comparar corridas" Margin="0,0,0,6" Click="Compare_Click"/>
         </WrapPanel>
 
-        <ProgressBar DockPanel.Dock="Top" Margin="0,2,0,10" Maximum="{Binding ProgressMax}" Value="{Binding ProgressValue}"/>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding ConfigError}" Foreground="{DynamicResource RedBrush}"
+                   Margin="2,4,0,0" IsVisible="{Binding ConfigError, Converter={StaticResource NotEmpty}}"/>
 
-        <UniformGrid DockPanel.Dock="Top" Rows="1" Margin="0,0,0,10">
-            <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
-                <StackPanel>
-                    <TextBlock Text="AVG" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource OverlayBrush}"/>
-                    <TextBlock Text="{Binding AvgText}" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
-                </StackPanel>
-            </Border>
-            <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
-                <StackPanel>
-                    <TextBlock Text="P50" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource OverlayBrush}"/>
-                    <TextBlock Text="{Binding P50Text}" FontSize="17" FontWeight="Bold"/>
-                </StackPanel>
-            </Border>
-            <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
-                <StackPanel>
-                    <TextBlock Text="P95" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource OverlayBrush}"/>
-                    <TextBlock Text="{Binding P95Text}" FontSize="17" FontWeight="Bold"/>
-                </StackPanel>
-            </Border>
-            <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
-                <StackPanel>
-                    <TextBlock Text="P99" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource OverlayBrush}"/>
-                    <TextBlock Text="{Binding P99Text}" FontSize="17" FontWeight="Bold"/>
-                </StackPanel>
-            </Border>
-            <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
-                <StackPanel>
-                    <TextBlock Text="MIN" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource OverlayBrush}"/>
-                    <TextBlock Text="{Binding MinText}" FontSize="17" FontWeight="Bold"/>
-                </StackPanel>
-            </Border>
-            <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
-                <StackPanel>
-                    <TextBlock Text="MAX" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource OverlayBrush}"/>
-                    <TextBlock Text="{Binding MaxText}" FontSize="17" FontWeight="Bold"/>
-                </StackPanel>
-            </Border>
-            <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
-                <StackPanel>
-                    <TextBlock Text="EXITOSAS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource OverlayBrush}"/>
-                    <TextBlock Text="{Binding OkText}" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource GreenBrush}"/>
-                </StackPanel>
-            </Border>
-            <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
-                <StackPanel>
-                    <TextBlock Text="FALLIDAS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource OverlayBrush}"/>
-                    <TextBlock Text="{Binding FailText}" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource RedBrush}"/>
-                </StackPanel>
-            </Border>
-            <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="10,7" Margin="0,0,6,0">
-                <StackPanel>
-                    <TextBlock Text="REQ/S PICO" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource OverlayBrush}"/>
-                    <TextBlock Text="{Binding PeakRpsText}" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
-                </StackPanel>
-            </Border>
-            <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="10,7">
-                <StackPanel>
-                    <TextBlock Text="ERRORES" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource OverlayBrush}"/>
-                    <TextBlock Text="{Binding ErrorRateText}" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource PeachBrush}"/>
-                </StackPanel>
-            </Border>
-        </UniformGrid>
-
-        <Border DockPanel.Dock="Top" Background="{DynamicResource PanelBrush}" CornerRadius="8"
-                Height="190" Margin="0,0,0,10" Padding="8">
-            <Panel>
-                <Canvas x:Name="ChartCanvas" ClipToBounds="True" SizeChanged="Chart_SizeChanged"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Top"
-                            Spacing="4" Margin="0,-2,0,0">
-                    <Rectangle Width="14" Height="3" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                    <TextBlock Text="req/s" FontSize="10" Foreground="{DynamicResource SubtextBrush}" Margin="0,0,12,0"/>
-                    <Rectangle Width="14" Height="3" Fill="{DynamicResource PeachBrush}" VerticalAlignment="Center"/>
-                    <TextBlock Text="avg ms" FontSize="10" Foreground="{DynamicResource SubtextBrush}"/>
-                </StackPanel>
-                <TextBlock x:Name="ChartHint" Text="Ejecutá el runner para ver el gráfico"
-                           Foreground="{DynamicResource OverlayBrush}" FontSize="11"
-                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-            </Panel>
-        </Border>
-
-        <TextBlock DockPanel.Dock="Bottom" Text="{Binding Summary}" FontWeight="SemiBold" Margin="2,8,0,0"
-                   Foreground="{DynamicResource TextBrush}"/>
-
-        <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="6">
-            <DataGrid x:Name="ResultsGrid" ItemsSource="{Binding Results}" IsReadOnly="True" AutoGenerateColumns="False">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="#" Binding="{Binding Iteration}" Width="46"/>
-                    <DataGridTextColumn Header="VU" Binding="{Binding User}" Width="46"/>
-                    <DataGridTextColumn Header="REQUEST" Binding="{Binding Name}" Width="2*"/>
-                    <DataGridTextColumn Header="MÉTODO" Binding="{Binding Method}" Width="80"/>
-                    <DataGridTextColumn Header="STATUS" Binding="{Binding Status}" Width="150"/>
-                    <DataGridTextColumn Header="TIEMPO (MS)" Binding="{Binding TimeMs}" Width="100"/>
-                    <DataGridTextColumn Header="DETALLE" Binding="{Binding Detail}" Width="2*"/>
-                </DataGrid.Columns>
-            </DataGrid>
-        </Border>
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+            <Path Data="{StaticResource IconPlay}" Fill="#45475A" Width="46" Height="46" Stretch="Uniform"
+                  HorizontalAlignment="Center"/>
+            <TextBlock Text="Configurá la carga y tocá «Correr»: se abre una pestaña con la corrida y sus resultados."
+                       Foreground="#6C7086" FontSize="14" MaxWidth="440" TextWrapping="Wrap" TextAlignment="Center"/>
+        </StackPanel>
     </DockPanel>
 </UserControl>
-
-

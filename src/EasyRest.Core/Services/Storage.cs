@@ -2,6 +2,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using EasyRest;
 using EasyRest.Models;
 
 namespace EasyRest.Services;
@@ -326,5 +327,38 @@ public static class Storage
         settings.WorkspacePath = null;      // ya migrado al esquema nuevo
         settings.ActiveEnvironmentId = null; // ya migrado a ActiveEnvByWorkspace
         File.WriteAllText(SettingsFile, JsonSerializer.Serialize(settings, Options));
+    }
+
+    // ----- Corridas del runner (siempre en AppData: pueden traer datos de respuestas) -----
+
+    static string RunsDir => Path.Combine(AppDataRoot, "runs");
+
+    public static List<RunRecord> LoadRuns()
+    {
+        Directory.CreateDirectory(RunsDir);
+        var list = new List<RunRecord>();
+        foreach (var file in Directory.GetFiles(RunsDir, "*.json"))
+        {
+            try
+            {
+                var r = JsonSerializer.Deserialize<RunRecord>(File.ReadAllText(file));
+                if (r != null) list.Add(r);
+            }
+            catch { /* corrida corrupta: se ignora */ }
+        }
+        return list.OrderByDescending(r => r.SavedAt).ToList();
+    }
+
+    public static void SaveRun(RunRecord record)
+    {
+        Directory.CreateDirectory(RunsDir);
+        File.WriteAllText(Path.Combine(RunsDir, record.Id + ".json"),
+            JsonSerializer.Serialize(record, Options));
+    }
+
+    public static void DeleteRun(string id)
+    {
+        var path = Path.Combine(RunsDir, id + ".json");
+        if (File.Exists(path)) File.Delete(path);
     }
 }

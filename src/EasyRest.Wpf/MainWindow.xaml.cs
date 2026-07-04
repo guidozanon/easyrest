@@ -457,7 +457,6 @@ public partial class MainWindow : Window
     void RemoveTab(object tab)
     {
         (tab as RequestTab)?.Detach();
-        (tab as RunnerTab)?.Stop();
         OpenTabs.Remove(tab);
     }
 
@@ -479,7 +478,7 @@ public partial class MainWindow : Window
             tab = new RunnerTab(Collections, Environments, ActiveEnv);
             OpenTabs.Add(tab);
         }
-        if (preselect != null && !tab.IsRunning) tab.PreselectRequest(preselect);
+        if (preselect != null) tab.PreselectRequest(preselect);
         RequestTabs.SelectedItem = tab;
     }
 

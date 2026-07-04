@@ -21,6 +21,8 @@
         <DataTemplate DataType="core:CollectionTab"><views:CollectionEditor/></DataTemplate>
         <DataTemplate DataType="core:FolderTab"><views:FolderEditor/></DataTemplate>
         <DataTemplate DataType="core:RunnerTab"><views:RunnerEditor/></DataTemplate>
+        <DataTemplate DataType="core:RunTab"><views:RunView/></DataTemplate>
+        <DataTemplate DataType="core:RunComparisonTab"><views:RunComparisonView/></DataTemplate>
     </Window.DataTemplates>
 
     <Panel>
@@ -245,6 +247,19 @@
                                                     IsVisible="{Binding Converter={StaticResource IsType}, ConverterParameter=RunnerTab}">
                                             <TextBlock Text="▶" Foreground="#A6E3A1" FontSize="10.5" VerticalAlignment="Center"/>
                                             <TextBlock Text="Runner" VerticalAlignment="Center"/>
+                                            <Button Content="✕" Classes="ghost" FontSize="10" Tag="{Binding}" Click="CloseTab_Click"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="6"
+                                                    IsVisible="{Binding Converter={StaticResource IsType}, ConverterParameter=RunTab}">
+                                            <TextBlock Text="▶" Foreground="#89B4FA" FontSize="10.5" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Title}" VerticalAlignment="Center" MaxWidth="170"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <Button Content="✕" Classes="ghost" FontSize="10" Tag="{Binding}" Click="CloseTab_Click"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="6"
+                                                    IsVisible="{Binding Converter={StaticResource IsType}, ConverterParameter=RunComparisonTab}">
+                                            <TextBlock Text="⇄" Foreground="#CBA6F7" FontSize="11" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Comparar corridas" VerticalAlignment="Center"/>
                                             <Button Content="✕" Classes="ghost" FontSize="10" Tag="{Binding}" Click="CloseTab_Click"/>
                                         </StackPanel>
                                     </Panel>
