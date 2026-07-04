@@ -26,6 +26,17 @@ Para macOS (desde cualquier plataforma):
 dotnet publish src/EasyRest.Avalonia -c Release -r osx-arm64 --self-contained
 ```
 
+## Descargas
+
+Un GitHub Action (`.github/workflows/build.yml`) compila binarios autocontenidos para
+Windows (x64) y macOS (arm64/x64):
+
+- **Release**: al pushear un tag `vX.Y.Z` se publica un Release con los `.zip` de cada plataforma.
+- **Manual**: se puede correr el workflow a mano (*Actions → build → Run workflow*); los binarios
+  quedan como artefactos de esa corrida.
+
+En macOS los binarios no están firmados: la primera vez, abrilos con click derecho → Abrir.
+
 ## Funcionalidades
 
 - **Colecciones con carpetas anidadas**: árbol a la izquierda, menú contextual (click derecho) para
