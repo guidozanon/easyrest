@@ -16,6 +16,22 @@ static class Palette
     public static readonly IBrush Mauve = Brush.Parse("#CBA6F7");
     public static readonly IBrush Blue = Brush.Parse("#89B4FA");
     public static readonly IBrush Text = Brush.Parse("#CDD6F4");
+    public static readonly IBrush Surface1 = Brush.Parse("#45475A");
+    public static readonly IBrush Hover = Brush.Parse("#2A2A3E");
+}
+
+/// <summary>Fondo del highlight de una fila del árbol: [0]=IsSelected, [1]=IsPointerOver.
+/// Se resuelve contra la propia fila para que seleccionar una carpeta no marque sus hijos.</summary>
+public class RowHighlightConverter : IMultiValueConverter
+{
+    public object Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var selected = values.Count > 0 && values[0] is true;
+        var hover = values.Count > 1 && values[1] is true;
+        if (selected) return Palette.Surface1;
+        if (hover) return Palette.Hover;
+        return Brushes.Transparent;
+    }
 }
 
 /// <summary>Color por método HTTP.</summary>

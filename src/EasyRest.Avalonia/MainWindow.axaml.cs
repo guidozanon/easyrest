@@ -36,6 +36,7 @@ public partial class MainWindow : Window
 
         Tree.AddHandler(DragDrop.DragOverEvent, Tree_DragOver);
         Tree.AddHandler(DragDrop.DropEvent, Tree_Drop);
+        Tree.AddHandler(DragDrop.DragLeaveEvent, Tree_DragLeave);
         // el TreeViewItem marca PointerPressed como manejado al seleccionar, así que
         // registramos con handledEventsToo para poder iniciar el drag igual
         Tree.AddHandler(PointerPressedEvent, Tree_PointerPressed, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
@@ -770,6 +771,10 @@ public partial class MainWindow : Window
     const string DragFormat = "er-tree-item";
     global::Avalonia.Point _dragStart;
     object? _dragCandidate;
+    // el objeto arrastrado se guarda acá: en Windows el DataObject pasa por OLE y no
+    // conserva la referencia .NET, pero el drag es siempre dentro del mismo proceso
+    object? _draggingNode;
+    global::Avalonia.Controls.Border? _dropHi;
 
     static object? NodeData(object? source)
     {
@@ -801,22 +806,60 @@ public partial class MainWindow : Window
 
         var dragged = _dragCandidate;
         _dragCandidate = null;
+        _draggingNode = dragged;
         var data = new DataObject();
-        data.Set(DragFormat, dragged!);
-        await DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
+        data.Set(DragFormat, "1");  // el contenido real viaja por _draggingNode
+        try { await DragDrop.DoDragDrop(e, data, DragDropEffects.Move); }
+        finally { _draggingNode = null; ClearDropHighlight(); }
     }
 
     void Tree_DragOver(object? sender, DragEventArgs e)
     {
-        e.DragEffects = ResolveDrop(e, out _, out _, out _) != DropKind.None
-            ? DragDropEffects.Move : DragDropEffects.None;
+        var kind = ResolveDrop(e, out _, out var target, out var after);
+        e.DragEffects = kind != DropKind.None ? DragDropEffects.Move : DragDropEffects.None;
         e.Handled = true;
+        ShowDropHighlight(kind, e.Source, after);
+    }
+
+    void Tree_DragLeave(object? sender, DragEventArgs e) => ClearDropHighlight();
+
+    // ----- feedback visual del drop -----
+
+    static global::Avalonia.Controls.Border? FindRowHi(object? source)
+    {
+        var v = source as global::Avalonia.Visual;
+        while (v != null)
+        {
+            if (v is global::Avalonia.Controls.Border b && b.Classes.Contains("rowhi")) return b;
+            v = v.GetVisualParent();
+        }
+        return null;
+    }
+
+    void ShowDropHighlight(DropKind kind, object? source, bool after)
+    {
+        var hi = kind == DropKind.None ? null : FindRowHi(source);
+        if (!ReferenceEquals(hi, _dropHi)) ClearDropHighlight();
+        _dropHi = hi;
+        if (hi == null) return;
+        // "into" (a carpeta/colección): anillo completo; reordenar: línea arriba/abajo
+        hi.BorderThickness = kind == DropKind.MoveRequestInto
+            ? new global::Avalonia.Thickness(1.5)
+            : after ? new global::Avalonia.Thickness(0, 0, 0, 2)
+                    : new global::Avalonia.Thickness(0, 2, 0, 0);
+    }
+
+    void ClearDropHighlight()
+    {
+        if (_dropHi != null) _dropHi.BorderThickness = default;
+        _dropHi = null;
     }
 
     void Tree_Drop(object? sender, DragEventArgs e)
     {
         var kind = ResolveDrop(e, out var dragged, out var target, out var after);
         e.Handled = true;
+        ClearDropHighlight();
         switch (kind)
         {
             case DropKind.ReorderRequest when dragged is RequestItem req && target is RequestItem tr:
@@ -832,7 +875,7 @@ public partial class MainWindow : Window
 
     DropKind ResolveDrop(DragEventArgs e, out object? dragged, out object? target, out bool after)
     {
-        dragged = e.Data.Contains(DragFormat) ? e.Data.Get(DragFormat) : null;
+        dragged = _draggingNode;
         target = NodeData(e.Source);
         after = false;
         if (dragged == null || target == null || ReferenceEquals(dragged, target)) return DropKind.None;
