@@ -86,12 +86,13 @@
         </UniformGrid>
 
         <Border DockPanel.Dock="Top" Background="{DynamicResource PanelBrush}" CornerRadius="8"
-                Height="170" Margin="0,0,0,10" Padding="8">
+                Height="190" Margin="0,0,0,10" Padding="8">
             <Panel>
                 <Canvas x:Name="ChartCanvas" ClipToBounds="True" SizeChanged="Chart_SizeChanged"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Spacing="4">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Top"
+                            Spacing="4" Margin="0,-2,0,0">
                     <Rectangle Width="14" Height="3" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                    <TextBlock Text="requests" FontSize="10" Foreground="{DynamicResource SubtextBrush}" Margin="0,0,12,0"/>
+                    <TextBlock Text="req/s" FontSize="10" Foreground="{DynamicResource SubtextBrush}" Margin="0,0,12,0"/>
                     <Rectangle Width="14" Height="3" Fill="{DynamicResource PeachBrush}" VerticalAlignment="Center"/>
                     <TextBlock Text="avg ms" FontSize="10" Foreground="{DynamicResource SubtextBrush}"/>
                 </StackPanel>
