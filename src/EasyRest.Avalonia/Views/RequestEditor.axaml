@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:EasyRest.Avalonia"
+             xmlns:views="clr-namespace:EasyRest.Avalonia.Views"
              xmlns:core="clr-namespace:EasyRest;assembly=EasyRest.Core"
              xmlns:svc="clr-namespace:EasyRest.Services;assembly=EasyRest.Core"
              x:Class="EasyRest.Avalonia.Views.RequestEditor"
@@ -54,11 +55,11 @@
                     <TextBlock DockPanel.Dock="Top" FontSize="11" Margin="8,6,8,4"
                                Foreground="{DynamicResource OverlayBrush}"
                                Text="Los cambios se reflejan en la URL. Los parámetros desactivados no se envían."/>
-                    <DataGrid x:Name="ParamsGrid" AutoGenerateColumns="False"/>
+                    <views:KvEditor x:Name="ParamsGrid" Margin="8,0"/>
                 </DockPanel>
             </TabItem>
             <TabItem Header="Headers">
-                <DataGrid x:Name="HeadersGrid" AutoGenerateColumns="False"/>
+                <views:KvEditor x:Name="HeadersGrid" Margin="8,4,8,0"/>
             </TabItem>
             <TabItem Header="Auth">
                 <StackPanel Margin="10" Spacing="8">
@@ -105,8 +106,7 @@
                     <TextBox x:Name="BodyRawBox" Text="{Binding Request.Body.Raw}" IsVisible="False"
                              AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas,Menlo,monospace"
                              Margin="8,0,8,8"/>
-                    <DataGrid x:Name="FormGrid" IsVisible="False"
-                              AutoGenerateColumns="False" Margin="8,0,8,8"/>
+                    <views:KvEditor x:Name="FormGrid" IsVisible="False" Margin="8,0,8,8"/>
                 </DockPanel>
             </TabItem>
             <TabItem Header="Scripts">

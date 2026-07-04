@@ -166,7 +166,7 @@
                             <Button x:Name="SaveVarsBtn" Content="💾 Guardar variables" HorizontalAlignment="Stretch" Click="SaveVars_Click"/>
                             <TextBlock Text="Usalas en las requests como {{nombre}}." Foreground="#6C7086" FontSize="11"/>
                         </StackPanel>
-                        <DataGrid x:Name="VarsGrid" AutoGenerateColumns="False"/>
+                        <views:KvEditor x:Name="VarsGrid"/>
                     </DockPanel>
                 </Border>
             </Grid>

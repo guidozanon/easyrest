@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:m="clr-namespace:EasyRest.Models;assembly=EasyRest.Core"
+             x:Class="EasyRest.Avalonia.Views.KvEditor">
+    <UserControl.Styles>
+        <!-- el tacho aparece solo al pasar el mouse por la fila -->
+        <Style Selector="Button.kvdel">
+            <Setter Property="IsVisible" Value="False"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="4,0"/>
+            <Setter Property="Foreground" Value="#6C7086"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Grid.kvrow:pointerover Button.kvdel">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+        <Style Selector="Button.kvdel:pointerover">
+            <Setter Property="Foreground" Value="#F38BA8"/>
+        </Style>
+    </UserControl.Styles>
+
+    <DockPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="34,2*,3*,34" Margin="0,2,0,4">
+            <TextBlock x:Name="KeyHeader" Grid.Column="1" Text="CLAVE" FontSize="11" FontWeight="SemiBold"
+                       Foreground="#6C7086" Margin="4,0,0,0"/>
+            <TextBlock x:Name="ValueHeader" Grid.Column="2" Text="VALOR" FontSize="11" FontWeight="SemiBold"
+                       Foreground="#6C7086" Margin="4,0,0,0"/>
+        </Grid>
+        <ScrollViewer>
+            <ItemsControl x:Name="Rows">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="m:KeyValueItem">
+                        <Grid Classes="kvrow" ColumnDefinitions="34,2*,3*,34" Margin="0,1"
+                              Background="Transparent">
+                            <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}"
+                                      HorizontalAlignment="Center" MinWidth="0"/>
+                            <TextBox Grid.Column="1" Text="{Binding Key}" FontFamily="Consolas,Menlo,monospace"
+                                     Margin="1,0" BorderThickness="0" Background="Transparent"/>
+                            <TextBox Grid.Column="2" Text="{Binding Value}" FontFamily="Consolas,Menlo,monospace"
+                                     Margin="1,0" BorderThickness="0" Background="Transparent"/>
+                            <Button Grid.Column="3" Classes="kvdel" Content="🗑" FontSize="12"
+                                    Click="Delete_Click"/>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

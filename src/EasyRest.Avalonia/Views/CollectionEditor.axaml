@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:EasyRest.Avalonia"
+             xmlns:views="clr-namespace:EasyRest.Avalonia.Views"
              xmlns:core="clr-namespace:EasyRest;assembly=EasyRest.Core"
              x:Class="EasyRest.Avalonia.Views.CollectionEditor"
              x:DataType="core:CollectionTab">
@@ -20,7 +21,7 @@
                     <TextBlock DockPanel.Dock="Top" FontSize="11" Margin="8,6,8,4"
                                Foreground="{DynamicResource OverlayBrush}"
                                Text="Se agregan a todas las requests. Si una request define el mismo header, gana el de la request."/>
-                    <DataGrid x:Name="HeadersGrid" AutoGenerateColumns="False"/>
+                    <views:KvEditor x:Name="HeadersGrid" Margin="8,4,8,0"/>
                 </DockPanel>
             </TabItem>
             <TabItem Header="Auth">

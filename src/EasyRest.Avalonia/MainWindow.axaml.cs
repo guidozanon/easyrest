@@ -433,7 +433,7 @@ public partial class MainWindow : Window
     {
         if (VarsGrid == null) return;
         var env = ActiveEnv;
-        KvGrid.Bind(VarsGrid, env?.Variables, "VARIABLE", "VALOR");
+        VarsGrid.Bind(env?.Variables, "VARIABLE", "VALOR");
         VarsEnvName.Text = env?.Name ?? "";
         VarsGrid.IsEnabled = env != null;
         SaveVarsBtn.IsEnabled = env != null;
