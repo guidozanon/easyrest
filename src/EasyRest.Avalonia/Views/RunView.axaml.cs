@@ -53,7 +53,9 @@ public partial class RunView : UserControl
     void OnUpdated()
     {
         RedrawChart();
-        if (Vm is { Results.Count: > 0 } vm) ResultsGrid.ScrollIntoView(vm.Results[^1], null);
+        // ScrollIntoView con virtualización + updates rápidos puede tirar; no es crítico
+        try { if (Vm is { Results.Count: > 0 } vm) ResultsGrid.ScrollIntoView(vm.Results[^1], null); }
+        catch { /* ignorar */ }
     }
 
     void Stop_Click(object? sender, RoutedEventArgs e) => Vm?.Stop();
