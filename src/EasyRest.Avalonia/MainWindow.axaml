@@ -246,23 +246,27 @@
                                         <StackPanel>
                                             <Expander Header="Request Headers">
                                                 <TextBox Text="{Binding RequestHeaders}" IsReadOnly="True" AcceptsReturn="True"
-                                                         FontFamily="Consolas,Menlo,monospace" FontSize="12" BorderThickness="0"
-                                                         Background="Transparent" MaxHeight="200"/>
+                                                         FontFamily="Consolas,Menlo,monospace" FontSize="12" BorderThickness="0" MinHeight="0"
+                                                         Background="Transparent" MaxHeight="220" TextWrapping="Wrap"
+                                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
                                             </Expander>
                                             <Expander Header="Request Body" IsVisible="{Binding RequestBody, Converter={StaticResource NotEmpty}}">
                                                 <TextBox Text="{Binding RequestBody}" IsReadOnly="True" AcceptsReturn="True"
-                                                         FontFamily="Consolas,Menlo,monospace" FontSize="12" BorderThickness="0"
-                                                         Background="Transparent" MaxHeight="240"/>
+                                                         FontFamily="Consolas,Menlo,monospace" FontSize="12" BorderThickness="0" MinHeight="0"
+                                                         Background="Transparent" MaxHeight="240" TextWrapping="Wrap"
+                                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
                                             </Expander>
                                             <Expander Header="Response Headers">
                                                 <TextBox Text="{Binding ResponseHeaders}" IsReadOnly="True" AcceptsReturn="True"
-                                                         FontFamily="Consolas,Menlo,monospace" FontSize="12" BorderThickness="0"
-                                                         Background="Transparent" MaxHeight="200"/>
+                                                         FontFamily="Consolas,Menlo,monospace" FontSize="12" BorderThickness="0" MinHeight="0"
+                                                         Background="Transparent" MaxHeight="220" TextWrapping="Wrap"
+                                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
                                             </Expander>
                                             <Expander Header="Response Body" IsVisible="{Binding ResponseBody, Converter={StaticResource NotEmpty}}">
                                                 <TextBox Text="{Binding ResponseBody}" IsReadOnly="True" AcceptsReturn="True"
-                                                         FontFamily="Consolas,Menlo,monospace" FontSize="12" BorderThickness="0"
-                                                         Background="Transparent" MaxHeight="280"/>
+                                                         FontFamily="Consolas,Menlo,monospace" FontSize="12" BorderThickness="0" MinHeight="0"
+                                                         Background="Transparent" MaxHeight="280" TextWrapping="Wrap"
+                                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
                                             </Expander>
                                         </StackPanel>
                                     </Expander>
@@ -275,6 +279,8 @@
         </Grid>
     </DockPanel>
 </Window>
+
+
 
 
 
