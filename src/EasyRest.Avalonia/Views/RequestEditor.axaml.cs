@@ -58,10 +58,10 @@ public partial class RequestEditor : UserControl
         InheritHint.IsVisible = type is AuthType.Inherit or AuthType.None;
         if (type == AuthType.Inherit)
         {
-            var collectionAuth = Vm?.Owner?.Auth.Type ?? AuthType.None;
-            InheritHint.Text = collectionAuth is AuthType.None or AuthType.Inherit
-                ? "La colección no tiene autenticación configurada: no se envía auth."
-                : $"Se envía la autenticación de la colección: {collectionAuth}.";
+            var inherited = Vm?.InheritedAuthType ?? AuthType.None;
+            InheritHint.Text = inherited is AuthType.None or AuthType.Inherit
+                ? "No hay autenticación heredada (carpeta ni colección): no se envía auth."
+                : $"Se hereda la autenticación de la carpeta o colección: {inherited}.";
         }
         else if (type == AuthType.None)
         {

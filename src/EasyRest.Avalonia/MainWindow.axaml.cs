@@ -16,7 +16,9 @@ public partial class MainWindow : Window
     const string NoEnvironment = "(Sin ambiente)";
     const string NewEnvironmentItem = "＋ Nuevo ambiente…";
     const string ManageEnvironmentsItem = "⚙ Administrar ambientes…";
+    const string ManageWorkspacesItem = "⚙ Administrar workspaces…";
     bool _envComboGuard;
+    bool _wsComboGuard;
     object? _lastRealEnvItem;
 
     public ObservableCollection<RequestCollection> Collections { get; } = new();
@@ -38,9 +40,9 @@ public partial class MainWindow : Window
         Tree.AddHandler(DragDrop.DropEvent, Tree_Drop);
 
         RefreshEnvCombo();
-        var settings = Storage.LoadSettings();
-        var activeEnv = Environments.FirstOrDefault(e => e.Id == settings.ActiveEnvironmentId);
+        var activeEnv = Environments.FirstOrDefault(e => e.Id == Storage.GetActiveEnvironmentId());
         if (activeEnv != null) EnvCombo.SelectedItem = activeEnv;
+        RefreshWorkspaceCombo();
 
         UpdateStatusEnv();
         Opened += (_, _) => RefreshGitStatus();
@@ -73,9 +75,21 @@ public partial class MainWindow : Window
 
     void SaveAll()
     {
+        var flushed = FlushOpenEditors();
         foreach (var c in Collections) Storage.SaveCollection(c);
         Storage.SaveEnvironments(Environments);
-        Storage.SaveSettings(new AppSettings { ActiveEnvironmentId = ActiveEnv?.Id });
+        Storage.SetActiveEnvironmentId(ActiveEnv?.Id);
+        foreach (var tab in flushed) tab.MarkSaved(); // ya quedaron persistidos recién arriba
+    }
+
+    /// <summary>Vuelca los borradores de las pestañas de request con cambios sobre su modelo real,
+    /// para que un guardado masivo (sync, cambio de workspace, cierre) no persista datos viejos.
+    /// Las requests nuevas sin colección destino se dejan como están (se piden al cerrar la pestaña).</summary>
+    List<RequestTab> FlushOpenEditors()
+    {
+        var flushed = OpenTabs.OfType<RequestTab>().Where(t => t.IsDirty && FindOwner(t.Original) != null).ToList();
+        foreach (var tab in flushed) tab.ApplyDraft();
+        return flushed;
     }
 
     public void SaveAllForSync() => SaveAll();
@@ -172,6 +186,21 @@ public partial class MainWindow : Window
         RequestTabs.SelectedItem = tab;
     }
 
+    public void OpenFolderTab(Folder folder)
+    {
+        var tab = OpenTabs.OfType<FolderTab>().FirstOrDefault(t => t.Folder == folder);
+        if (tab == null)
+        {
+            tab = new FolderTab(folder, () =>
+            {
+                var owner = FindOwnerCollection(folder);
+                if (owner != null) { Storage.SaveCollection(owner); RefreshGitStatus(); }
+            });
+            OpenTabs.Add(tab);
+        }
+        RequestTabs.SelectedItem = tab;
+    }
+
     void OpenNewRequestTab()
     {
         var req = new RequestItem();
@@ -236,6 +265,13 @@ public partial class MainWindow : Window
     {
         var set = requests.ToHashSet();
         foreach (var tab in OpenTabs.OfType<RequestTab>().Where(t => set.Contains(t.Original)).ToList())
+            RemoveTab(tab);
+    }
+
+    void CloseFolderTabsOf(IEnumerable<Folder> folders)
+    {
+        var set = folders.ToHashSet();
+        foreach (var tab in OpenTabs.OfType<FolderTab>().Where(t => set.Contains(t.Folder)).ToList())
             RemoveTab(tab);
     }
 
@@ -338,7 +374,7 @@ public partial class MainWindow : Window
         }
 
         _lastRealEnvItem = EnvCombo.SelectedItem;
-        Storage.SaveSettings(new AppSettings { ActiveEnvironmentId = ActiveEnv?.Id });
+        Storage.SetActiveEnvironmentId(ActiveEnv?.Id);
         UpdateStatusEnv();
     }
 
@@ -349,12 +385,8 @@ public partial class MainWindow : Window
         import.Click += ImportOpenApi_Click;
         var newCol = new MenuItem { Header = "Nueva colección" };
         newCol.Click += NewCollection_Click;
-        var ws = new MenuItem { Header = "Workspace y Git…" };
-        ws.Click += Workspace_Click;
         menu.Items.Add(import);
         menu.Items.Add(newCol);
-        menu.Items.Add(new Separator());
-        menu.Items.Add(ws);
         menu.Open(sender as Control);
     }
 
@@ -421,6 +453,7 @@ public partial class MainWindow : Window
                 menu.Items.Add(Item("Eliminar", () => DeleteRequest(req)));
                 break;
             case Folder folder:
+                menu.Items.Add(Item("Configuración", () => OpenFolderTab(folder)));
                 menu.Items.Add(Item("Nueva request", () => NewRequestIn(folder)));
                 menu.Items.Add(Item("Nueva carpeta", () => NewFolderIn(folder)));
                 menu.Items.Add(Item("Expandir todo", () => SetExpansion(folder, true)));
@@ -528,6 +561,7 @@ public partial class MainWindow : Window
         var parent = FindFolderParent(folder);
         if (parent == null) return;
         CloseTabsOf(folder.AllRequests);
+        CloseFolderTabsOf(folder.SelfAndDescendants);
         parent.Value.List.Remove(folder);
         Storage.SaveCollection(parent.Value.Collection);
         RefreshGitStatus();
@@ -537,6 +571,7 @@ public partial class MainWindow : Window
     {
         if (await Dialogs.Confirm(this, $"¿Eliminar la colección \"{col.Name}\" y todo su contenido?", "Eliminar") != DialogResult.Yes) return;
         CloseTabsOf(col.AllRequests);
+        CloseFolderTabsOf(col.AllFolders);
         foreach (var t in OpenTabs.OfType<CollectionTab>().Where(t => t.Collection == col).ToList()) RemoveTab(t);
         Collections.Remove(col);
         Storage.DeleteCollection(col);
@@ -680,8 +715,57 @@ public partial class MainWindow : Window
 
     // ----- Workspace / git -----
 
+    void RefreshWorkspaceCombo()
+    {
+        _wsComboGuard = true;
+        var workspaces = Storage.ListWorkspaces();
+        var items = new List<object>(workspaces) { ManageWorkspacesItem };
+        WorkspaceCombo.ItemsSource = items;
+        var activePath = Storage.HasCustomWorkspace ? Storage.WorkspaceRoot : "";
+        var active = workspaces.FirstOrDefault(w =>
+            string.Equals(w.Path, activePath, StringComparison.OrdinalIgnoreCase));
+        WorkspaceCombo.SelectedItem = (object?)active ?? items[0];
+        _wsComboGuard = false;
+    }
+
+    async void WorkspaceCombo_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded || _wsComboGuard) return;
+
+        if (WorkspaceCombo.SelectedItem is string s && s == ManageWorkspacesItem)
+        {
+            RefreshWorkspaceCombo(); // revertir la selección al workspace activo
+            await new WorkspaceWindow(this).ShowDialog(this);
+            RefreshWorkspaceCombo();
+            RefreshGitStatus();
+            return;
+        }
+
+        if (WorkspaceCombo.SelectedItem is not WorkspaceRef ws) return;
+        // ¿ya activo? no hacer nada
+        if (string.Equals(Storage.WorkspaceRoot, ws.Path, StringComparison.OrdinalIgnoreCase) ||
+            (string.IsNullOrEmpty(ws.Path) && !Storage.HasCustomWorkspace)) return;
+
+        var targetPath = string.IsNullOrEmpty(ws.Path) ? null : ws.Path;
+        if (!await SwitchWorkspace(targetPath)) RefreshWorkspaceCombo(); // cancelado: volver a la real
+    }
+
+    void ShowBusy(string text) { BusyText.Text = text; BusyOverlay.IsVisible = true; }
+    void HideBusy() => BusyOverlay.IsVisible = false;
+
+    /// <summary>Selecciona en el combo el ambiente activo del workspace actual, sin re-persistir.</summary>
+    void SelectActiveEnv()
+    {
+        _envComboGuard = true;
+        var activeEnv = Environments.FirstOrDefault(e => e.Id == Storage.GetActiveEnvironmentId());
+        EnvCombo.SelectedItem = (object?)activeEnv ?? NoEnvironment;
+        _lastRealEnvItem = EnvCombo.SelectedItem;
+        _envComboGuard = false;
+        UpdateStatusEnv();
+    }
+
     /// <summary>Activa un workspace (null = Personal). Cada workspace es independiente: se cargan
-    /// SUS colecciones (o queda vacío). Las colecciones de los otros workspaces no se tocan.</summary>
+    /// SUS colecciones y SUS ambientes (locales). Las colecciones de los otros workspaces no se tocan.</summary>
     public async Task<bool> SwitchWorkspace(string? path)
     {
         var dirty = OpenTabs.OfType<RequestTab>().Where(t => t.IsDirty).ToList();
@@ -695,14 +779,32 @@ public partial class MainWindow : Window
         }
         SaveAll();
 
-        Storage.SetWorkspacePath(path);
-        foreach (var tab in OpenTabs.ToList()) RemoveTab(tab);
+        ShowBusy("Cambiando workspace…");
+        try
+        {
+            Storage.SetWorkspacePath(path);
+            foreach (var tab in OpenTabs.ToList()) RemoveTab(tab);
 
-        Collections.Clear();
-        foreach (var col in Storage.LoadCollections()) Collections.Add(col);
-        ApplyFilter(FilterBox.Text?.Trim() ?? "");
-        UpdateStatusEnv();
-        RefreshGitStatus();
+            // la carga pesada (leer y deserializar las colecciones del disco) va a segundo plano
+            var loaded = await Task.Run(Storage.LoadCollections);
+
+            Collections.Clear();
+            foreach (var col in loaded) Collections.Add(col);
+
+            // ambientes: locales por workspace
+            Environments.Clear();
+            foreach (var env in Storage.LoadEnvironments()) Environments.Add(env);
+            RefreshEnvCombo();
+            SelectActiveEnv();
+
+            ApplyFilter(FilterBox.Text?.Trim() ?? "");
+            RefreshWorkspaceCombo();
+            RefreshGitStatus();
+        }
+        finally
+        {
+            HideBusy();
+        }
         return true;
     }
 
@@ -735,9 +837,9 @@ public partial class MainWindow : Window
         });
     }
 
-    async void Workspace_Click(object? sender, RoutedEventArgs e)
+    async void OpenSync_Click(object? sender, RoutedEventArgs e)
     {
-        await new WorkspaceWindow(this).ShowDialog(this);
+        await new SyncWindow(this).ShowDialog(this);
         RefreshGitStatus();
     }
 

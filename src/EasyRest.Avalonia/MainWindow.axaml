@@ -18,9 +18,11 @@
     <Window.DataTemplates>
         <DataTemplate DataType="core:RequestTab"><views:RequestEditor/></DataTemplate>
         <DataTemplate DataType="core:CollectionTab"><views:CollectionEditor/></DataTemplate>
+        <DataTemplate DataType="core:FolderTab"><views:FolderEditor/></DataTemplate>
         <DataTemplate DataType="core:RunnerTab"><views:RunnerEditor/></DataTemplate>
     </Window.DataTemplates>
 
+    <Panel>
     <DockPanel>
         <!-- Toolbar -->
         <Border DockPanel.Dock="Top" Background="#181825" Padding="12,9" BorderBrush="#313244" BorderThickness="0,0,0,1">
@@ -30,10 +32,13 @@
                     <ComboBox x:Name="EnvCombo" Width="190" SelectionChanged="EnvCombo_SelectionChanged"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                    <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center" Margin="2,0,18,0">
+                    <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center" Margin="2,0,14,0">
                         <Path Data="{StaticResource IconBolt}" Fill="#89B4FA" Width="17" Height="17" Stretch="Uniform"/>
                         <TextBlock Text="EasyRest" Foreground="#89B4FA" FontSize="17" FontWeight="Bold" VerticalAlignment="Center"/>
                     </StackPanel>
+                    <ComboBox x:Name="WorkspaceCombo" MinWidth="180" MaxWidth="240" VerticalAlignment="Center"
+                              Margin="0,0,12,0" ToolTip.Tip="Workspace activo"
+                              SelectionChanged="WorkspaceCombo_SelectionChanged"/>
                     <Button Click="Runner_Click">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <Path Data="{StaticResource IconPlay}" Fill="{DynamicResource TextBrush}" Width="10" Height="10" Stretch="Uniform"/>
@@ -48,7 +53,8 @@
         <Border DockPanel.Dock="Bottom" Background="#11111B" Padding="8,2" BorderBrush="#313244" BorderThickness="0,1,0,0">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
-                    <Button x:Name="GitStatusBtn" Classes="ghost" FontSize="11" Content="⎇ workspace" Click="Workspace_Click"/>
+                    <Button x:Name="GitStatusBtn" Classes="ghost" FontSize="11" Content="⎇ workspace"
+                            ToolTip.Tip="Ver cambios y sincronizar" Click="OpenSync_Click"/>
                     <TextBlock x:Name="StatusEnvText" FontSize="11" Foreground="#6C7086" VerticalAlignment="Center" Margin="8,0,4,0"/>
                     <ToggleButton x:Name="VarsToggle" Classes="ghost" FontSize="11" Content="{}{{x}} Variables" IsCheckedChanged="VarsToggle_Changed"/>
                 </StackPanel>
@@ -178,6 +184,14 @@
                                             <Button Content="✕" Classes="ghost" FontSize="10" Tag="{Binding}" Click="CloseTab_Click"/>
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal" Spacing="6"
+                                                    IsVisible="{Binding Converter={StaticResource IsType}, ConverterParameter=FolderTab}">
+                                            <Path Data="{StaticResource IconFolder}" Stroke="#F9E2AF" StrokeThickness="1.4"
+                                                  Width="13" Height="13" Stretch="Uniform" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Folder.Name}" VerticalAlignment="Center" MaxWidth="150"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <Button Content="✕" Classes="ghost" FontSize="10" Tag="{Binding}" Click="CloseTab_Click"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="6"
                                                     IsVisible="{Binding Converter={StaticResource IsType}, ConverterParameter=RunnerTab}">
                                             <TextBlock Text="▶" Foreground="#A6E3A1" FontSize="10.5" VerticalAlignment="Center"/>
                                             <TextBlock Text="Runner" VerticalAlignment="Center"/>
@@ -285,6 +299,23 @@
             </Border>
         </Grid>
     </DockPanel>
+
+    <!-- Overlay «cambiando workspace» -->
+    <Border x:Name="BusyOverlay" IsVisible="False" Background="#CC11111B">
+        <Border Background="#181825" CornerRadius="10" Padding="34,26" BorderBrush="#313244" BorderThickness="1"
+                HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel Spacing="18" MinWidth="240">
+                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                    <Path Data="{StaticResource IconFolder}" Stroke="#89B4FA" StrokeThickness="1.5"
+                          Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="BusyText" Text="Cambiando workspace…" FontSize="14" FontWeight="SemiBold"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                <ProgressBar IsIndeterminate="True" Width="240"/>
+            </StackPanel>
+        </Border>
+    </Border>
+    </Panel>
 </Window>
 
 

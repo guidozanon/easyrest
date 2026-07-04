@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:EasyRest.Avalonia"
+             xmlns:core="clr-namespace:EasyRest;assembly=EasyRest.Core"
+             x:Class="EasyRest.Avalonia.Views.FolderEditor"
+             x:DataType="core:FolderTab">
+    <UserControl.Resources>
+        <conv:AuthTypeToLabelConverter x:Key="AuthLabel"/>
+    </UserControl.Resources>
+    <Grid RowDefinitions="Auto,Auto,*" Margin="0,8,0,0">
+        <DockPanel Grid.Row="0">
+            <Button DockPanel.Dock="Right" Click="Save_Click">
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Path Data="{StaticResource IconSave}" Stroke="{DynamicResource TextBrush}" StrokeThickness="1.4"
+                          Width="14" Height="14" Stretch="Uniform" VerticalAlignment="Center"/>
+                    <TextBlock Text="Guardar" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Path Data="{StaticResource IconFolder}" Stroke="{DynamicResource SubtextBrush}" StrokeThickness="1.4"
+                      Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center"/>
+                <TextBox Text="{Binding Folder.Name}" FontSize="14" FontWeight="SemiBold" MinWidth="220"/>
+            </StackPanel>
+        </DockPanel>
+        <TextBlock Grid.Row="1" Margin="2,8,0,0" FontSize="11" Foreground="{DynamicResource OverlayBrush}"
+                   Text="Configuración de la carpeta: la autenticación se aplica a las requests (y subcarpetas) que heredan, salvo que un nivel más interno defina la suya."/>
+        <TabControl Grid.Row="2" Margin="0,10,0,0" Background="{DynamicResource PanelBrush}">
+            <TabItem Header="Auth">
+                <StackPanel Margin="10" Spacing="8">
+                    <TextBlock Text="Las requests y subcarpetas con auth «Heredar» usan esta (o la que definan más arriba)."
+                               Foreground="{DynamicResource OverlayBrush}" FontSize="11"/>
+                    <ComboBox x:Name="AuthTypeCombo" Width="260" HorizontalAlignment="Left"
+                              SelectedItem="{Binding Folder.Auth.Type}" SelectionChanged="AuthType_Changed">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={StaticResource AuthLabel}}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <StackPanel x:Name="BearerPanel" IsVisible="False" Spacing="4">
+                        <TextBlock Text="Token" Foreground="{DynamicResource SubtextBrush}"/>
+                        <TextBox Text="{Binding Folder.Auth.BearerToken}" FontFamily="Consolas,Menlo,monospace"/>
+                    </StackPanel>
+                    <StackPanel x:Name="BasicPanel" IsVisible="False" Spacing="4">
+                        <TextBlock Text="Usuario" Foreground="{DynamicResource SubtextBrush}"/>
+                        <TextBox Text="{Binding Folder.Auth.Username}"/>
+                        <TextBlock Text="Contraseña" Foreground="{DynamicResource SubtextBrush}"/>
+                        <TextBox Text="{Binding Folder.Auth.Password}" FontFamily="Consolas,Menlo,monospace"/>
+                    </StackPanel>
+                    <StackPanel x:Name="ApiKeyPanel" IsVisible="False" Spacing="4">
+                        <TextBlock Text="Nombre de la key" Foreground="{DynamicResource SubtextBrush}"/>
+                        <TextBox Text="{Binding Folder.Auth.ApiKeyName}"/>
+                        <TextBlock Text="Valor" Foreground="{DynamicResource SubtextBrush}"/>
+                        <TextBox Text="{Binding Folder.Auth.ApiKeyValue}" FontFamily="Consolas,Menlo,monospace"/>
+                        <TextBlock Text="Enviar en" Foreground="{DynamicResource SubtextBrush}"/>
+                        <ComboBox x:Name="ApiKeyInCombo" Width="160" HorizontalAlignment="Left"
+                                  SelectedItem="{Binding Folder.Auth.ApiKeyIn}"/>
+                    </StackPanel>
+                    <TextBlock x:Name="InheritHint" FontSize="11" Foreground="{DynamicResource OverlayBrush}"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

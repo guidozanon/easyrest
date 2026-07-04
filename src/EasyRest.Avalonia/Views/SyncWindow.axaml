@@ -1,0 +1,57 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="EasyRest.Avalonia.Views.SyncWindow"
+        Title="Cambios y sincronización" Width="580" Height="560"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="#1E1E2E">
+    <DockPanel Margin="18">
+        <!-- Encabezado: workspace + rama -->
+        <StackPanel DockPanel.Dock="Top" Spacing="3">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Path Data="{StaticResource IconFolder}" Stroke="#89B4FA" StrokeThickness="1.5"
+                      Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center"/>
+                <TextBlock x:Name="WsName" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock x:Name="BranchInfo" FontSize="12" Foreground="#A6ADC8"
+                       FontFamily="Consolas,Menlo,monospace" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <!-- Pie: resultado + acciones -->
+        <StackPanel DockPanel.Dock="Bottom" Spacing="10" Margin="0,12,0,0">
+            <TextBlock x:Name="ResultText" TextWrapping="Wrap" FontSize="12" IsVisible="False"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Content="Cerrar" MinWidth="90" Click="Close_Click"/>
+                <Button x:Name="SyncBtn" Content="⇅ Sincronizar ahora" Classes="accent" Click="Sync_Click"/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Cambios locales -->
+        <Border Margin="0,14,0,0" Background="#181825" BorderBrush="#313244" BorderThickness="1" CornerRadius="8">
+            <DockPanel Margin="12,10">
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                    <TextBlock DockPanel.Dock="Right" x:Name="ChangesCount" FontSize="11" Foreground="#6C7086"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="CAMBIOS LOCALES" FontSize="11" FontWeight="Bold" Foreground="#6C7086"/>
+                </DockPanel>
+                <TextBlock x:Name="EmptyHint" Foreground="#6C7086" FontSize="12" IsVisible="False"
+                           TextWrapping="Wrap"/>
+                <ListBox x:Name="ChangesList" Background="Transparent">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <DockPanel>
+                                <Border DockPanel.Dock="Left" Background="#313244" CornerRadius="4" Padding="6,1"
+                                        Margin="0,0,8,0" MinWidth="86">
+                                    <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="SemiBold"
+                                               Foreground="#89B4FA" HorizontalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="{Binding Path}" VerticalAlignment="Center"
+                                           FontFamily="Consolas,Menlo,monospace" FontSize="12"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </DockPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+    </DockPanel>
+</Window>

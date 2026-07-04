@@ -1,4 +1,6 @@
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using EasyRest.Models;
 
@@ -13,10 +15,14 @@ public static class Storage
 
     static string? _activePath;
     static List<WorkspaceRef> _workspaces = new();
+    static Dictionary<string, string?> _activeEnvByWorkspace = new();
     static bool _settingsLoaded;
 
     /// <summary>Nombre del workspace "Personal" (AppData), siempre disponible.</summary>
     public const string PersonalName = "Personal (local)";
+
+    /// <summary>Clave del workspace "Personal" en los mapas por workspace.</summary>
+    public const string PersonalKey = "personal";
 
     /// <summary>Carpeta personal (ambientes, settings). Nunca va al repo: acá viven los tokens.</summary>
     public static string AppDataRoot =>
@@ -55,8 +61,20 @@ public static class Storage
     }
 
     static string CollectionsDir => Path.Combine(WorkspaceRoot, "collections");
-    static string EnvironmentsFile => Path.Combine(AppDataRoot, "environments.json");
     static string SettingsFile => Path.Combine(AppDataRoot, "settings.json");
+
+    /// <summary>Los ambientes son locales por workspace: nunca van al repo (ahí viven los tokens).
+    /// El Personal usa AppData/environments.json (compat); los custom, AppData/workspaces/&lt;key&gt;/.</summary>
+    static string EnvironmentsFile
+    {
+        get
+        {
+            EnsureSettingsLoaded();
+            return string.IsNullOrWhiteSpace(_activePath)
+                ? Path.Combine(AppDataRoot, "environments.json")
+                : Path.Combine(AppDataRoot, "workspaces", WorkspaceKey, "environments.json");
+        }
+    }
 
     static void EnsureSettingsLoaded()
     {
@@ -65,12 +83,32 @@ public static class Storage
         var s = LoadSettings();
         _workspaces = s.Workspaces ?? new();
         _activePath = s.ActiveWorkspacePath;
+        _activeEnvByWorkspace = s.ActiveEnvByWorkspace ?? new();
 
         // Migración desde el esquema viejo de workspace único
         if (!string.IsNullOrWhiteSpace(s.WorkspacePath))
         {
             RegisterInternal(s.WorkspacePath!);
             _activePath ??= s.WorkspacePath;
+        }
+
+        // Migración del ambiente activo global → ambiente activo del workspace Personal
+        if (!string.IsNullOrEmpty(s.ActiveEnvironmentId) && !_activeEnvByWorkspace.ContainsKey(PersonalKey))
+            _activeEnvByWorkspace[PersonalKey] = s.ActiveEnvironmentId;
+    }
+
+    /// <summary>Clave estable del workspace activo (para archivos y settings por-workspace).
+    /// "personal" para el local; hash de la ruta para los custom.</summary>
+    public static string WorkspaceKey
+    {
+        get
+        {
+            EnsureSettingsLoaded();
+            if (string.IsNullOrWhiteSpace(_activePath)) return PersonalKey;
+            var norm = _activePath!.Trim()
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .ToLowerInvariant();
+            return Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(norm)))[..16].ToLowerInvariant();
         }
     }
 
@@ -222,15 +260,15 @@ public static class Storage
         return name.Length == 0 ? "coleccion" : name;
     }
 
-    // ----- Ambientes y settings (siempre en AppData: son personales) -----
+    // ----- Ambientes (locales por workspace: siempre en AppData, nunca en el repo) -----
 
     public static List<EnvironmentModel> LoadEnvironments()
     {
-        EnsureDirs();
-        if (!File.Exists(EnvironmentsFile)) return new();
+        var file = EnvironmentsFile;
+        if (!File.Exists(file)) return new();
         try
         {
-            return JsonSerializer.Deserialize<List<EnvironmentModel>>(File.ReadAllText(EnvironmentsFile)) ?? new();
+            return JsonSerializer.Deserialize<List<EnvironmentModel>>(File.ReadAllText(file)) ?? new();
         }
         catch
         {
@@ -240,9 +278,28 @@ public static class Storage
 
     public static void SaveEnvironments(IEnumerable<EnvironmentModel> environments)
     {
-        EnsureDirs();
-        File.WriteAllText(EnvironmentsFile, JsonSerializer.Serialize(environments.ToList(), Options));
+        var file = EnvironmentsFile;
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        File.WriteAllText(file, JsonSerializer.Serialize(environments.ToList(), Options));
     }
+
+    /// <summary>Id del ambiente activo del workspace actual (null si ninguno).</summary>
+    public static string? GetActiveEnvironmentId()
+    {
+        EnsureSettingsLoaded();
+        return _activeEnvByWorkspace.TryGetValue(WorkspaceKey, out var id) ? id : null;
+    }
+
+    /// <summary>Guarda el ambiente activo del workspace actual.</summary>
+    public static void SetActiveEnvironmentId(string? id)
+    {
+        EnsureSettingsLoaded();
+        if (string.IsNullOrEmpty(id)) _activeEnvByWorkspace.Remove(WorkspaceKey);
+        else _activeEnvByWorkspace[WorkspaceKey] = id;
+        Persist();
+    }
+
+    // ----- Settings -----
 
     public static AppSettings LoadSettings()
     {
@@ -265,7 +322,9 @@ public static class Storage
         // Storage es dueño de estos campos
         settings.Workspaces = _workspaces;
         settings.ActiveWorkspacePath = _activePath;
-        settings.WorkspacePath = null; // ya migrado al esquema nuevo
+        settings.ActiveEnvByWorkspace = _activeEnvByWorkspace;
+        settings.WorkspacePath = null;      // ya migrado al esquema nuevo
+        settings.ActiveEnvironmentId = null; // ya migrado a ActiveEnvByWorkspace
         File.WriteAllText(SettingsFile, JsonSerializer.Serialize(settings, Options));
     }
 }

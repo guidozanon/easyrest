@@ -56,9 +56,43 @@ public static class HttpExecutor
         return headers;
     }
 
-    /// <summary>Auth efectiva: Inherit usa la de la colección; None no envía nada; el resto es propia.</summary>
+    /// <summary>Auth efectiva. Si la request no hereda, usa la suya. Si hereda (Inherit), resuelve hacia
+    /// arriba por la cadena de carpetas (de la más interna a la más externa): gana la primera carpeta con
+    /// auth propia; si ninguna define auth, usa la de la colección. None no envía nada.</summary>
     public static AuthConfig EffectiveAuth(RequestItem req, RequestCollection? collection) =>
-        req.Auth.Type == AuthType.Inherit ? collection?.Auth ?? req.Auth : req.Auth;
+        req.Auth.Type != AuthType.Inherit ? req.Auth : InheritedAuth(req, collection);
+
+    /// <summary>Auth que heredaría la request (recorriendo carpetas → colección), ignorando la suya propia.
+    /// Sirve para mostrar qué se enviaría con «Heredar».</summary>
+    public static AuthConfig InheritedAuth(RequestItem req, RequestCollection? collection)
+    {
+        if (collection == null) return new AuthConfig(); // None
+
+        var chain = FolderChainTo(collection, req);
+        for (var i = chain.Count - 1; i >= 0; i--)
+            if (chain[i].Auth.Type != AuthType.Inherit) return chain[i].Auth;
+
+        return collection.Auth;
+    }
+
+    /// <summary>Carpetas que llevan hasta la request, de la más externa a la que la contiene.
+    /// Vacía si la request cuelga directo de la colección (o no se encuentra).</summary>
+    static List<Folder> FolderChainTo(RequestCollection collection, RequestItem req)
+    {
+        var chain = new List<Folder>();
+        bool Walk(IEnumerable<Folder> folders)
+        {
+            foreach (var f in folders)
+            {
+                chain.Add(f);
+                if (f.Requests.Contains(req) || Walk(f.Folders)) return true;
+                chain.RemoveAt(chain.Count - 1);
+            }
+            return false;
+        }
+        Walk(collection.Folders);
+        return chain;
+    }
 
     public static async Task<ResponseResult> ExecuteAsync(RequestItem req, RequestCollection? collection,
         EnvironmentModel? env, CancellationToken ct = default)
