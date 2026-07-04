@@ -241,6 +241,7 @@
                     <!-- siempre visible (también con el placeholder), para abrir una request nueva -->
                     <Button Content="+" Classes="ghost" Width="30" Height="30" FontSize="19" Padding="0"
                             HorizontalAlignment="Right" VerticalAlignment="Top" CornerRadius="6"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                             Foreground="{DynamicResource SubtextBrush}"
                             ToolTip.Tip="Nueva request" Click="NewTab_Click"/>
                 </Panel>
