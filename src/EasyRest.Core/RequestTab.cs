@@ -68,6 +68,9 @@ public class RequestTab : Observable
     /// <summary>Colección dueña de la request (para heredar auth/headers).</summary>
     public RequestCollection? Owner => _ownerProvider();
 
+    /// <summary>Tipo de auth que se heredaría con «Heredar» (recorre carpetas → colección).</summary>
+    public AuthType InheritedAuthType => HttpExecutor.InheritedAuth(Original, Owner).Type;
+
     /// <summary>Colección › carpeta › … › nombre de la request.</summary>
     public string Breadcrumb
     {
@@ -170,8 +173,9 @@ public class RequestTab : Observable
 
     public bool IsNotSending => !_isSending;
 
-    /// <summary>Aplica el borrador sobre la request real y persiste la colección.</summary>
-    public void Save()
+    /// <summary>Vuelca el borrador sobre la request real, SIN persistir ni tocar el estado dirty.
+    /// Útil para guardados masivos (sync/cierre/cambio de workspace) que persisten aparte.</summary>
+    public void ApplyDraft()
     {
         Original.Name = Request.Name;
         Original.Method = Request.Method;
@@ -194,10 +198,18 @@ public class RequestTab : Observable
         CopyItems(Request.Headers, Original.Headers);
         CopyItems(Request.QueryParams, Original.QueryParams);
         CopyItems(Request.Body.FormItems, Original.Body.FormItems);
+    }
 
+    /// <summary>Aplica el borrador sobre la request real y persiste la colección.</summary>
+    public void Save()
+    {
+        ApplyDraft();
         // el guardado puede cancelarse (p. ej. una request nueva sin colección destino)
         if (_save()) IsDirty = false;
     }
+
+    /// <summary>Marca la pestaña como guardada (el borrador ya fue volcado y persistido por afuera).</summary>
+    public void MarkSaved() => IsDirty = false;
 
     /// <summary>Marca la pestaña como sucia desde el arranque (requests nuevas sin guardar).</summary>
     public void MarkAsNew() => IsDirty = true;

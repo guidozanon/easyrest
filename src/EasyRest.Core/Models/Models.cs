@@ -127,6 +127,10 @@ public class Folder : TreeDisplayable
     public ObservableCollection<Folder> Folders { get; set; } = new();
     public ObservableCollection<RequestItem> Requests { get; set; } = new();
 
+    /// <summary>Autenticación de la carpeta. Inherit = usa la de la carpeta padre (o la colección).
+    /// Las requests con Type = Inherit resuelven hacia arriba por esta cadena.</summary>
+    public AuthConfig Auth { get; set; } = new() { Type = AuthType.Inherit };
+
     [JsonIgnore]
     public IEnumerable<RequestItem> AllRequests =>
         Folders.SelectMany(f => f.AllRequests).Concat(Requests);
@@ -181,6 +185,8 @@ public class WorkspaceRef
 {
     public string Name { get; set; } = "";
     public string Path { get; set; } = "";
+
+    public override string ToString() => Name;
 }
 
 /// <summary>Referencia a una pestaña abierta, para restaurarla al reabrir la app.</summary>
@@ -195,7 +201,11 @@ public class OpenTabRef
 
 public class AppSettings
 {
+    /// <summary>Legacy: ambiente activo único (global). Se migra a ActiveEnvByWorkspace["personal"].</summary>
     public string? ActiveEnvironmentId { get; set; }
+
+    /// <summary>Ambiente activo por workspace (clave = key del workspace; "personal" para el local).</summary>
+    public Dictionary<string, string?> ActiveEnvByWorkspace { get; set; } = new();
 
     /// <summary>Legacy: workspace único. Se migra a la lista Workspaces al cargar.</summary>
     public string? WorkspacePath { get; set; }

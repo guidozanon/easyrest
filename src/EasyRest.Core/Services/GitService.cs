@@ -6,6 +6,9 @@ namespace EasyRest.Services;
 
 public record GitStatusInfo(string Branch, int Pending, int Ahead, int Behind, string? Remote);
 
+/// <summary>Un archivo con cambios locales, con un estado ya traducido para mostrar.</summary>
+public record GitChange(string Status, string Path);
+
 /// <summary>Wrapper del git CLI. La autenticación la resuelve el credential manager del sistema
 /// (GIT_TERMINAL_PROMPT=0 evita que git se cuelgue pidiendo credenciales por consola).</summary>
 public static class GitService
@@ -85,6 +88,35 @@ public static class GitService
 
         return new GitStatusInfo(branchName, pending, ahead, behind, GetRemote(dir));
     }
+
+    /// <summary>Lista de archivos con cambios locales (staged o no), con el estado traducido.</summary>
+    public static List<GitChange> Changes(string dir)
+    {
+        var list = new List<GitChange>();
+        if (!IsRepo(dir)) return list;
+        var r = Run("status --porcelain", dir);
+        if (r.Code != 0) return list;
+        foreach (var line in r.Out.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (line.Length < 4) continue;
+            var code = line[..2].Trim();
+            var path = line[3..].Trim();
+            list.Add(new GitChange(FriendlyStatus(code), path));
+        }
+        return list;
+    }
+
+    static string FriendlyStatus(string code) => code switch
+    {
+        "??" => "Nuevo",
+        "A" or "AM" => "Agregado",
+        "M" or "MM" or "RM" => "Modificado",
+        "D" => "Eliminado",
+        "R" => "Renombrado",
+        "C" => "Copiado",
+        "U" or "UU" => "Conflicto",
+        _ => code
+    };
 
     /// <summary>add -A → commit si hay cambios → pull --rebase → push. Si el rebase da conflictos,
     /// lo aborta y avisa (la resolución de conflictos queda para tu cliente git).</summary>
