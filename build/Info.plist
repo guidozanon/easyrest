@@ -6,6 +6,7 @@
   <key>CFBundleDisplayName</key><string>EasyRest</string>
   <key>CFBundleIdentifier</key><string>com.rentlysoft.easyrest</string>
   <key>CFBundleExecutable</key><string>EasyRest</string>
+  <key>CFBundleIconFile</key><string>EasyRest</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleVersion</key><string>__VERSION__</string>
   <key>CFBundleShortVersionString</key><string>__VERSION__</string>
