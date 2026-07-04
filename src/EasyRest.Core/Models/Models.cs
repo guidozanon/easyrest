@@ -183,6 +183,16 @@ public class WorkspaceRef
     public string Path { get; set; } = "";
 }
 
+/// <summary>Referencia a una pestaña abierta, para restaurarla al reabrir la app.</summary>
+public class OpenTabRef
+{
+    /// <summary>"request" | "collection" | "runner".</summary>
+    public string Kind { get; set; } = "";
+
+    /// <summary>Id de la request o de la colección (vacío para el runner).</summary>
+    public string? Id { get; set; }
+}
+
 public class AppSettings
 {
     public string? ActiveEnvironmentId { get; set; }
@@ -195,4 +205,10 @@ public class AppSettings
 
     /// <summary>Carpeta del workspace activo. Vacío/null = el "Personal" (AppData).</summary>
     public string? ActiveWorkspacePath { get; set; }
+
+    /// <summary>Pestañas abiertas al cerrar, para restaurarlas al iniciar.</summary>
+    public List<OpenTabRef> OpenTabs { get; set; } = new();
+
+    /// <summary>Índice de la pestaña seleccionada al cerrar.</summary>
+    public int SelectedTabIndex { get; set; }
 }

@@ -32,7 +32,7 @@ public partial class MainWindow : Window
         Tree.ItemsSource = Collections;
         RequestTabs.ItemsSource = OpenTabs;
         LogsItems.ItemsSource = ExecutionLog.Entries;
-        OpenTabs.CollectionChanged += (_, _) => UpdateTabsVisibility();
+        OpenTabs.CollectionChanged += (_, _) => { UpdateTabsVisibility(); PersistUiState(); };
 
         Tree.AddHandler(DragDrop.DragOverEvent, Tree_DragOver);
         Tree.AddHandler(DragDrop.DropEvent, Tree_Drop);
@@ -46,6 +46,9 @@ public partial class MainWindow : Window
         var settings = Storage.LoadSettings();
         var activeEnv = Environments.FirstOrDefault(e => e.Id == settings.ActiveEnvironmentId);
         if (activeEnv != null) EnvCombo.SelectedItem = activeEnv;
+
+        RestoreOpenTabs(settings);
+        RequestTabs.SelectionChanged += (_, _) => PersistUiState();
 
         UpdateStatusEnv();
         Opened += (_, _) => RefreshGitStatus();
@@ -80,10 +83,78 @@ public partial class MainWindow : Window
     {
         foreach (var c in Collections) Storage.SaveCollection(c);
         Storage.SaveEnvironments(Environments);
-        Storage.SaveSettings(new AppSettings { ActiveEnvironmentId = ActiveEnv?.Id });
+        Storage.SaveSettings(BuildSettings());
     }
 
     public void SaveAllForSync() => SaveAll();
+
+    // ----- Estado de UI persistido (ambiente + pestañas abiertas) -----
+
+    bool _restoring;
+
+    AppSettings BuildSettings() => new()
+    {
+        ActiveEnvironmentId = ActiveEnv?.Id,
+        OpenTabs = CaptureOpenTabs(),
+        SelectedTabIndex = Math.Max(0, RequestTabs.SelectedIndex)
+    };
+
+    /// <summary>Guarda ambiente + pestañas sin reescribir todas las colecciones (para cambios de tab).</summary>
+    void PersistUiState()
+    {
+        if (_restoring) return;
+        Storage.SaveSettings(BuildSettings());
+    }
+
+    List<OpenTabRef> CaptureOpenTabs()
+    {
+        var refs = new List<OpenTabRef>();
+        foreach (var tab in OpenTabs)
+        {
+            switch (tab)
+            {
+                // sólo requests ya guardadas (con dueño): las nuevas sin guardar no se pueden restaurar
+                case RequestTab rt when FindOwner(rt.Original) != null:
+                    refs.Add(new OpenTabRef { Kind = "request", Id = rt.Original.Id }); break;
+                case CollectionTab ct:
+                    refs.Add(new OpenTabRef { Kind = "collection", Id = ct.Collection.Id }); break;
+                case RunnerTab:
+                    refs.Add(new OpenTabRef { Kind = "runner" }); break;
+            }
+        }
+        return refs;
+    }
+
+    void RestoreOpenTabs(AppSettings settings)
+    {
+        if (settings.OpenTabs.Count == 0) return;
+        _restoring = true;
+        try
+        {
+            foreach (var r in settings.OpenTabs)
+            {
+                switch (r.Kind)
+                {
+                    case "request" when FindRequestById(r.Id) is { } req:
+                        OpenTab(req); break;
+                    case "collection" when FindCollectionById(r.Id) is { } col:
+                        OpenCollectionTab(col); break;
+                    case "runner" when Collections.Count > 0 && !OpenTabs.OfType<RunnerTab>().Any():
+                        OpenTabs.Add(new RunnerTab(Collections, Environments, ActiveEnv)); break;
+                }
+            }
+            var idx = settings.SelectedTabIndex;
+            if (OpenTabs.Count > 0)
+                RequestTabs.SelectedItem = OpenTabs[idx >= 0 && idx < OpenTabs.Count ? idx : 0];
+        }
+        finally { _restoring = false; }
+    }
+
+    RequestItem? FindRequestById(string? id) =>
+        id == null ? null : Collections.SelectMany(c => c.AllRequests).FirstOrDefault(r => r.Id == id);
+
+    RequestCollection? FindCollectionById(string? id) =>
+        id == null ? null : Collections.FirstOrDefault(c => c.Id == id);
 
     void UpdateStatusEnv()
     {
