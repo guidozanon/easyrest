@@ -93,6 +93,7 @@
                                 <Style Selector="TreeViewItem" x:DataType="m:TreeDisplayable">
                                     <Setter Property="IsVisible" Value="{Binding IsVisibleInTree}"/>
                                     <Setter Property="IsExpanded" Value="{Binding IsExpandedInTree, Mode=TwoWay}"/>
+                                    <Setter Property="(DragDrop.AllowDrop)" Value="True"/>
                                 </Style>
                                 <!-- la selección/hover del TreeViewItem no debe pintar toda la fila:
                                      apagamos el fondo del template (en todos los estados) y lo pintamos
@@ -203,7 +204,7 @@
                                    Foreground="#6C7086" FontSize="14"/>
                     </StackPanel>
                     <Grid x:Name="TabsHost" IsVisible="False">
-                        <TabControl x:Name="RequestTabs" Margin="0,0,34,0">
+                        <TabControl x:Name="RequestTabs" Margin="0,0,38,0">
                             <TabControl.ItemTemplate>
                                 <DataTemplate>
                                     <Panel>
@@ -236,10 +237,11 @@
                                 </DataTemplate>
                             </TabControl.ItemTemplate>
                         </TabControl>
-                        <Button Content="+" Width="28" Height="26" FontSize="14" Padding="0"
-                                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,0,0"
-                                ToolTip.Tip="Nueva request" Click="NewTab_Click"/>
                     </Grid>
+                    <!-- siempre visible (también con el placeholder), para abrir una request nueva -->
+                    <Button Content="+" Width="30" Height="30" FontSize="15" Padding="0"
+                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                            ToolTip.Tip="Nueva request" Click="NewTab_Click"/>
                 </Panel>
 
                 <GridSplitter x:Name="VarsSplitter" Grid.Column="3" Width="4" Background="#313244" IsVisible="False"/>
@@ -255,8 +257,8 @@
                         <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0">
                             <Button x:Name="SaveVarsBtn" HorizontalAlignment="Stretch" Click="SaveVars_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <Path Data="{StaticResource IconSave}" Stroke="{DynamicResource TextBrush}" StrokeThickness="1.4"
-                                          Width="14" Height="14" Stretch="Uniform" VerticalAlignment="Center"/>
+                                    <Path Data="{StaticResource IconSave}" Stroke="{DynamicResource TextBrush}" StrokeThickness="1.2"
+                                          Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center"/>
                                     <TextBlock Text="Guardar variables" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
@@ -295,7 +297,7 @@
                                                 <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" FontWeight="Bold" FontSize="11"
                                                            VerticalAlignment="Center" Margin="10,0,0,0"
                                                            Foreground="{Binding Kind, Converter={StaticResource LogKindBrush}}"/>
-                                                <TextBlock Text="{Binding Url}" FontFamily="Consolas,Menlo,monospace" FontSize="12"
+                                                <TextBlock Text="{Binding Url}" FontSize="12"
                                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                             </DockPanel>
                                         </Expander.Header>

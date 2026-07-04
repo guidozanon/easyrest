@@ -1,5 +1,8 @@
 using System.Collections;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
 using EasyRest.Models;
@@ -128,22 +131,40 @@ public class NotEmptyConverter : IValueConverter
 /// <summary>Hijos de colección/carpeta para el TreeView (carpetas primero, después requests).</summary>
 public class TreeChildrenConverter : IValueConverter
 {
-    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-    {
-        var list = new List<object>();
-        switch (value)
-        {
-            case RequestCollection col:
-                list.AddRange(col.Folders);
-                list.AddRange(col.Requests);
-                break;
-            case Folder folder:
-                list.AddRange(folder.Folders);
-                list.AddRange(folder.Requests);
-                break;
-        }
-        return list;
-    }
+    // una vista por nodo, reutilizada: así el árbol mantiene el binding y se refresca
+    // cuando cambian las colecciones (drag&drop, alta, baja, importación).
+    static readonly ConditionalWeakTable<object, ChildrenView> _cache = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is RequestCollection or Folder ? _cache.GetValue(value, k => new ChildrenView(k)) : null;
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => null;
+}
+
+/// <summary>Hijos de un nodo del árbol: [carpetas…, requests…] como colección observable.
+/// Se re-arma cuando cambian las colecciones de origen para que el árbol se actualice solo.</summary>
+public class ChildrenView : ObservableCollection<object>
+{
+    readonly IEnumerable _folders;
+    readonly IEnumerable _requests;
+
+    public ChildrenView(object node)
+    {
+        (_folders, _requests) = node switch
+        {
+            RequestCollection col => ((IEnumerable)col.Folders, (IEnumerable)col.Requests),
+            Folder f => (f.Folders, f.Requests),
+            _ => (Array.Empty<object>(), Array.Empty<object>())
+        };
+        if (_folders is INotifyCollectionChanged nf) nf.CollectionChanged += (_, _) => Rebuild();
+        if (_requests is INotifyCollectionChanged nr) nr.CollectionChanged += (_, _) => Rebuild();
+        Rebuild();
+    }
+
+    void Rebuild()
+    {
+        Clear();
+        foreach (var f in _folders) Add(f!);
+        foreach (var r in _requests) Add(r!);
+    }
 }
