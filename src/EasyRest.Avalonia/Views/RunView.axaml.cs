@@ -80,7 +80,12 @@ public partial class RunView : UserControl
         var samples = Vm?.Samples;
         var hasData = samples is { Count: >= 2 };
         ChartHint.IsVisible = !hasData;
-        if (!hasData) return;
+        if (!hasData)
+        {
+            // mientras no haya puntos, mostrar el estado en vivo (p. ej. "esperando la primera respuesta…")
+            ChartHint.Text = Vm is { IsRunning: true, Summary.Length: > 0 } vm ? vm.Summary : "Esperando resultados…";
+            return;
+        }
 
         var w = ChartCanvas.Bounds.Width;
         var h = ChartCanvas.Bounds.Height;

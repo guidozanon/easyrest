@@ -97,8 +97,9 @@ public class RunTab : Observable
         var perSecond = new Dictionary<long, int>();
         var pendingResults = new List<RunResult>();
         var pendingSamples = new List<SamplePoint>();
-        int ok = 0, failed = 0, peakRps = 0;
+        int ok = 0, failed = 0, peakRps = 0, started = 0;
         long lastPost = -10000;
+        var finished = false;
         var runWatch = Stopwatch.StartNew();
 
         _cts = new CancellationTokenSource();
@@ -171,6 +172,7 @@ public class RunTab : Observable
                     _cts.Token.ThrowIfCancellationRequested();
                     if (useDuration && runWatch.ElapsedMilliseconds >= durationMs) break;
 
+                    lock (gate) started++;
                     // la red corre en background; el resultado NO vuelve al hilo de UI
                     var r = await HttpExecutor.ExecuteAsync(req, col, env, _cts.Token).ConfigureAwait(false);
                     var testsTotal = r.ScriptTests?.Count ?? 0;
@@ -209,7 +211,32 @@ public class RunTab : Observable
             }
         }
 
+        // "latido": mientras corre y todavía no completó ninguna request, muestra que está vivo
+        // (progreso + cuántas van en vuelo + segundos), así no parece congelado si la 1ª tarda mucho
+        async Task HeartbeatLoop()
+        {
+            while (!finished)
+            {
+                try { await Task.Delay(400).ConfigureAwait(false); } catch { }
+                if (finished) break;
+                var elapsed = runWatch.ElapsedMilliseconds;
+                PostToUi(() =>
+                {
+                    if (finished) return;
+                    int total, flight;
+                    lock (gate) { total = ok + failed; flight = Math.Max(0, started - total); }
+                    if (useDuration) ProgressValue = Math.Min(durationMs, elapsed);
+                    if (total == 0)
+                    {
+                        Summary = $"Esperando la primera respuesta · {flight} en vuelo · {elapsed / 1000.0:0}s";
+                        Updated?.Invoke();
+                    }
+                });
+            }
+        }
+
         var completed = false;
+        _ = HeartbeatLoop();
         try
         {
             await Task.WhenAll(Enumerable.Range(1, users).Select(RunUser)).ConfigureAwait(false);
@@ -218,6 +245,7 @@ public class RunTab : Observable
         catch (OperationCanceledException) { /* detenido o frenado por error */ }
         finally
         {
+            finished = true;   // frena el latido
             // refresco final + banderas de fin, todo en el hilo de UI
             PostToUi(() =>
             {

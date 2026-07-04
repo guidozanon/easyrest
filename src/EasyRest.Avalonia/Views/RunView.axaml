@@ -109,8 +109,8 @@
         <Border Background="{DynamicResource PanelBrush}" CornerRadius="8" Padding="6">
             <DataGrid x:Name="ResultsGrid" ItemsSource="{Binding Results}" IsReadOnly="True" AutoGenerateColumns="False">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="#" Binding="{Binding Iteration}" Width="46"/>
-                    <DataGridTextColumn Header="VU" Binding="{Binding User}" Width="46"/>
+                    <DataGridTextColumn Header="ITER" Binding="{Binding Iteration}" Width="52"/>
+                    <DataGridTextColumn Header="VU" Binding="{Binding User}" Width="50"/>
                     <DataGridTextColumn Header="REQUEST" Binding="{Binding Name}" Width="2*"/>
                     <DataGridTextColumn Header="MÉTODO" Binding="{Binding Method}" Width="80"/>
                     <DataGridTextColumn Header="STATUS" Binding="{Binding Status}" Width="150"/>
