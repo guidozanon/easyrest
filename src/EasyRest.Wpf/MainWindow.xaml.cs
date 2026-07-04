@@ -237,8 +237,8 @@ public partial class MainWindow : Window
 
     // ----- Workspace y git -----
 
-    /// <summary>Cambia la carpeta del workspace. Si la nueva carpeta está vacía exporta las
-    /// colecciones actuales; si ya tiene colecciones, las carga. Devuelve false si se cancela.</summary>
+    /// <summary>Activa un workspace (null = Personal). Cada workspace es independiente: se cargan
+    /// SUS colecciones (o queda vacío). Devuelve false si se cancela.</summary>
     public bool SwitchWorkspace(string? path)
     {
         var dirtyTabs = OpenTabs.OfType<RequestTab>().Where(t => t.IsDirty).ToList();
@@ -253,28 +253,13 @@ public partial class MainWindow : Window
         }
         SaveAll(); // persiste bajo el workspace actual antes de cambiar
 
-        var exporting = false;
-        if (path != null)
-        {
-            var dir = System.IO.Path.Combine(path, "collections");
-            exporting = !System.IO.Directory.Exists(dir) ||
-                        System.IO.Directory.GetFiles(dir, "*.json").Length == 0;
-        }
-
         Storage.SetWorkspacePath(path);
 
         // las pestañas apuntan a objetos del árbol viejo: cerrarlas
         foreach (var tab in OpenTabs.ToList()) RemoveTab(tab);
 
-        if (exporting)
-        {
-            foreach (var col in Collections) Storage.SaveCollection(col);
-        }
-        else
-        {
-            Collections.Clear();
-            foreach (var col in Storage.LoadCollections()) Collections.Add(col);
-        }
+        Collections.Clear();
+        foreach (var col in Storage.LoadCollections()) Collections.Add(col);
         ApplyFilter(FilterBox.Text.Trim());
         RefreshGitStatus();
         return true;
@@ -292,16 +277,16 @@ public partial class MainWindow : Window
             var status = t.IsCompletedSuccessfully ? t.Result : null;
             Dispatcher.Invoke(() =>
             {
+                var ws = Storage.ActiveWorkspaceName;
                 if (status == null)
                 {
-                    GitStatusBtn.Content = "⎇ workspace";
-                    GitStatusBtn.ToolTip = "Configurar el workspace y git";
+                    GitStatusBtn.Content = $"◆ {ws}";
+                    GitStatusBtn.ToolTip = $"Workspace: {root}\n(sin repo git)";
                 }
                 else
                 {
-                    var text = status.Pending > 0
-                        ? $"⎇ {status.Branch} · {status.Pending} cambio(s)"
-                        : $"⎇ {status.Branch} ✓";
+                    var text = $"◆ {ws}  ⎇ {status.Branch}";
+                    text += status.Pending > 0 ? $" · {status.Pending} cambio(s)" : " ✓";
                     if (status.Ahead > 0) text += $" ↑{status.Ahead}";
                     if (status.Behind > 0) text += $" ↓{status.Behind}";
                     GitStatusBtn.Content = text;

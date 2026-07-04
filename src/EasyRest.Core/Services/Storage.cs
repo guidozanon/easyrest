@@ -11,20 +11,24 @@ public static class Storage
     /// <summary>Mapa colección-id → archivo actual, para manejar renombres y colisiones.</summary>
     static readonly Dictionary<string, string> FileById = new(StringComparer.OrdinalIgnoreCase);
 
-    static string? _workspacePath;
+    static string? _activePath;
+    static List<WorkspaceRef> _workspaces = new();
     static bool _settingsLoaded;
+
+    /// <summary>Nombre del workspace "Personal" (AppData), siempre disponible.</summary>
+    public const string PersonalName = "Personal (local)";
 
     /// <summary>Carpeta personal (ambientes, settings). Nunca va al repo: acá viven los tokens.</summary>
     public static string AppDataRoot =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "EasyRest");
 
-    /// <summary>Raíz del workspace: la carpeta configurada, o AppData por defecto.</summary>
+    /// <summary>Raíz del workspace activo: la carpeta configurada, o AppData por defecto.</summary>
     public static string WorkspaceRoot
     {
         get
         {
             EnsureSettingsLoaded();
-            return string.IsNullOrWhiteSpace(_workspacePath) ? AppDataRoot : _workspacePath!;
+            return string.IsNullOrWhiteSpace(_activePath) ? AppDataRoot : _activePath!;
         }
     }
 
@@ -33,7 +37,20 @@ public static class Storage
         get
         {
             EnsureSettingsLoaded();
-            return !string.IsNullOrWhiteSpace(_workspacePath);
+            return !string.IsNullOrWhiteSpace(_activePath);
+        }
+    }
+
+    /// <summary>Nombre del workspace activo.</summary>
+    public static string ActiveWorkspaceName
+    {
+        get
+        {
+            EnsureSettingsLoaded();
+            if (string.IsNullOrWhiteSpace(_activePath)) return PersonalName;
+            var entry = _workspaces.FirstOrDefault(w =>
+                string.Equals(w.Path, _activePath, StringComparison.OrdinalIgnoreCase));
+            return entry?.Name ?? Path.GetFileName(_activePath!.TrimEnd(Path.DirectorySeparatorChar));
         }
     }
 
@@ -45,16 +62,85 @@ public static class Storage
     {
         if (_settingsLoaded) return;
         _settingsLoaded = true;
-        _workspacePath = LoadSettings().WorkspacePath;
+        var s = LoadSettings();
+        _workspaces = s.Workspaces ?? new();
+        _activePath = s.ActiveWorkspacePath;
+
+        // Migración desde el esquema viejo de workspace único
+        if (!string.IsNullOrWhiteSpace(s.WorkspacePath))
+        {
+            RegisterInternal(s.WorkspacePath!);
+            _activePath ??= s.WorkspacePath;
+        }
     }
 
-    /// <summary>Cambia la carpeta del workspace (null = volver a AppData) y lo persiste.</summary>
+    static void RegisterInternal(string path)
+    {
+        if (_workspaces.Any(w => string.Equals(w.Path, path, StringComparison.OrdinalIgnoreCase))) return;
+        _workspaces.Add(new WorkspaceRef
+        {
+            Name = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar)),
+            Path = path
+        });
+    }
+
+    /// <summary>Lista de workspaces: el "Personal" (Path vacío) primero, después los registrados.</summary>
+    public static List<WorkspaceRef> ListWorkspaces()
+    {
+        EnsureSettingsLoaded();
+        var list = new List<WorkspaceRef> { new() { Name = PersonalName, Path = "" } };
+        list.AddRange(_workspaces);
+        return list;
+    }
+
+    /// <summary>Registra un workspace (si no existe) y opcionalmente lo activa.</summary>
+    public static void AddWorkspace(string path, string? name = null, bool activate = true)
+    {
+        EnsureSettingsLoaded();
+        var existing = _workspaces.FirstOrDefault(w =>
+            string.Equals(w.Path, path, StringComparison.OrdinalIgnoreCase));
+        if (existing == null)
+        {
+            existing = new WorkspaceRef
+            {
+                Name = string.IsNullOrWhiteSpace(name)
+                    ? Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar))
+                    : name!.Trim(),
+                Path = path
+            };
+            _workspaces.Add(existing);
+        }
+        else if (!string.IsNullOrWhiteSpace(name))
+        {
+            existing.Name = name!.Trim();
+        }
+        if (activate) _activePath = path;
+        Persist();
+        FileById.Clear();
+    }
+
+    /// <summary>Quita un workspace del registro (no borra la carpeta). Si era el activo, vuelve a Personal.</summary>
+    public static void RemoveWorkspace(string path)
+    {
+        EnsureSettingsLoaded();
+        _workspaces.RemoveAll(w => string.Equals(w.Path, path, StringComparison.OrdinalIgnoreCase));
+        if (string.Equals(_activePath, path, StringComparison.OrdinalIgnoreCase)) _activePath = null;
+        Persist();
+        FileById.Clear();
+    }
+
+    /// <summary>Cambia el workspace activo (null/vacío = Personal). Lo registra si es nuevo.</summary>
     public static void SetWorkspacePath(string? path)
     {
         EnsureSettingsLoaded();
-        _workspacePath = string.IsNullOrWhiteSpace(path) ? null : path;
-        SaveSettings(LoadSettings());
-        FileById.Clear();
+        if (string.IsNullOrWhiteSpace(path)) { _activePath = null; Persist(); FileById.Clear(); return; }
+        AddWorkspace(path!);  // registra + activa + persiste
+    }
+
+    static void Persist()
+    {
+        var s = LoadSettings();
+        SaveSettings(s);
     }
 
     static void EnsureDirs()
@@ -176,7 +262,10 @@ public static class Storage
     {
         Directory.CreateDirectory(AppDataRoot);
         EnsureSettingsLoaded();
-        settings.WorkspacePath = _workspacePath; // Storage es dueño de este campo
+        // Storage es dueño de estos campos
+        settings.Workspaces = _workspaces;
+        settings.ActiveWorkspacePath = _activePath;
+        settings.WorkspacePath = null; // ya migrado al esquema nuevo
         File.WriteAllText(SettingsFile, JsonSerializer.Serialize(settings, Options));
     }
 }

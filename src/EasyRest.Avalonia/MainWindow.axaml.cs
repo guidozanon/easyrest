@@ -419,6 +419,8 @@ public partial class MainWindow : Window
 
     // ----- Workspace / git -----
 
+    /// <summary>Activa un workspace (null = Personal). Cada workspace es independiente: se cargan
+    /// SUS colecciones (o queda vacío). Las colecciones de los otros workspaces no se tocan.</summary>
     public async Task<bool> SwitchWorkspace(string? path)
     {
         var dirty = OpenTabs.OfType<RequestTab>().Where(t => t.IsDirty).ToList();
@@ -432,23 +434,13 @@ public partial class MainWindow : Window
         }
         SaveAll();
 
-        var exporting = false;
-        if (path != null)
-        {
-            var dir = System.IO.Path.Combine(path, "collections");
-            exporting = !System.IO.Directory.Exists(dir) || System.IO.Directory.GetFiles(dir, "*.json").Length == 0;
-        }
         Storage.SetWorkspacePath(path);
         foreach (var tab in OpenTabs.ToList()) RemoveTab(tab);
 
-        if (exporting)
-            foreach (var col in Collections) Storage.SaveCollection(col);
-        else
-        {
-            Collections.Clear();
-            foreach (var col in Storage.LoadCollections()) Collections.Add(col);
-        }
+        Collections.Clear();
+        foreach (var col in Storage.LoadCollections()) Collections.Add(col);
         ApplyFilter(FilterBox.Text?.Trim() ?? "");
+        UpdateStatusEnv();
         RefreshGitStatus();
         return true;
     }
@@ -465,13 +457,15 @@ public partial class MainWindow : Window
             var s = t.IsCompletedSuccessfully ? t.Result : null;
             global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
+                var ws = Storage.ActiveWorkspaceName;
                 if (s == null)
                 {
-                    GitStatusBtn.Content = "⎇ workspace";
+                    GitStatusBtn.Content = $"◆ {ws}";
                 }
                 else
                 {
-                    var text = s.Pending > 0 ? $"⎇ {s.Branch} · {s.Pending} cambio(s)" : $"⎇ {s.Branch} ✓";
+                    var text = $"◆ {ws}  ⎇ {s.Branch}";
+                    text += s.Pending > 0 ? $" · {s.Pending} cambio(s)" : " ✓";
                     if (s.Ahead > 0) text += $" ↑{s.Ahead}";
                     if (s.Behind > 0) text += $" ↓{s.Behind}";
                     GitStatusBtn.Content = text;

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Media;
+using EasyRest.Models;
 using EasyRest.Services;
 
 namespace EasyRest;
@@ -8,6 +9,7 @@ namespace EasyRest;
 public partial class WorkspaceWindow : Window
 {
     readonly MainWindow _main;
+    bool _loadingList;
 
     public WorkspaceWindow(MainWindow main)
     {
@@ -18,7 +20,13 @@ public partial class WorkspaceWindow : Window
 
     void Refresh()
     {
-        PathBox.Text = Storage.HasCustomWorkspace ? Storage.WorkspaceRoot : $"{Storage.AppDataRoot}  (por defecto)";
+        _loadingList = true;
+        var items = Storage.ListWorkspaces();
+        WorkspaceList.ItemsSource = items;
+        var activePath = Storage.HasCustomWorkspace ? Storage.WorkspaceRoot : "";
+        WorkspaceList.SelectedItem = items.FirstOrDefault(w =>
+            string.Equals(w.Path, activePath, StringComparison.OrdinalIgnoreCase));
+        _loadingList = false;
 
         if (!GitService.IsAvailable())
         {
@@ -55,39 +63,46 @@ public partial class WorkspaceWindow : Window
         ResultText.Visibility = Visibility.Visible;
     }
 
+    void WorkspaceList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_loadingList || WorkspaceList.SelectedItem is not WorkspaceRef ws) return;
+        var activePath = Storage.HasCustomWorkspace ? Storage.WorkspaceRoot : "";
+        if (string.Equals(ws.Path, activePath, StringComparison.OrdinalIgnoreCase)) return; // ya activo
+
+        if (_main.SwitchWorkspace(string.IsNullOrEmpty(ws.Path) ? null : ws.Path))
+        {
+            ShowResult(true, $"Workspace activo: {ws.Name}");
+            Refresh();
+        }
+        else Refresh(); // cancelado: revertir selección
+    }
+
     void ChooseFolder_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Elegir carpeta del workspace" };
         if (dlg.ShowDialog(this) != true) return;
-
-        var folder = dlg.FolderName;
-        var collectionsDir = Path.Combine(folder, "collections");
-        var hasCollections = Directory.Exists(collectionsDir) &&
-                             Directory.GetFiles(collectionsDir, "*.json").Length > 0;
-
-        var question = hasCollections
-            ? "La carpeta ya tiene colecciones: se van a cargar y reemplazan lo que ves ahora (tus colecciones actuales quedan en la carpeta anterior). ¿Continuar?"
-            : "La carpeta no tiene colecciones: se van a exportar las colecciones actuales ahí. ¿Continuar?";
-        if (MessageBox.Show(this, question, "Cambiar workspace", MessageBoxButton.YesNo,
-                MessageBoxImage.Question) != MessageBoxResult.Yes) return;
-
-        if (_main.SwitchWorkspace(folder))
+        if (_main.SwitchWorkspace(dlg.FolderName))
         {
-            ShowResult(true, hasCollections ? "Workspace cargado." : "Colecciones exportadas al workspace.");
+            ShowResult(true, "Workspace agregado y activado.");
             Refresh();
         }
     }
 
-    void UseDefault_Click(object sender, RoutedEventArgs e)
+    void Remove_Click(object sender, RoutedEventArgs e)
     {
-        if (!Storage.HasCustomWorkspace) return;
-        if (MessageBox.Show(this, "¿Volver a la carpeta por defecto (AppData)? Se cargan las colecciones que haya ahí.",
-                "Cambiar workspace", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
-        if (_main.SwitchWorkspace(null))
+        if (WorkspaceList.SelectedItem is not WorkspaceRef ws || string.IsNullOrEmpty(ws.Path))
         {
-            ShowResult(true, "Workspace por defecto restaurado.");
-            Refresh();
+            ShowResult(false, "El workspace Personal no se puede quitar.");
+            return;
         }
+        if (MessageBox.Show(this, $"¿Quitar «{ws.Name}» del listado? La carpeta y sus archivos NO se borran.",
+                "Quitar workspace", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+
+        var wasActive = string.Equals(Storage.WorkspaceRoot, ws.Path, StringComparison.OrdinalIgnoreCase);
+        Storage.RemoveWorkspace(ws.Path);
+        if (wasActive) _main.SwitchWorkspace(null);
+        ShowResult(true, "Workspace quitado del listado.");
+        Refresh();
     }
 
     async void Clone_Click(object sender, RoutedEventArgs e)

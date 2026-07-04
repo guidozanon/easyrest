@@ -176,8 +176,23 @@ public class EnvironmentModel : Observable
     public override string ToString() => Name;
 }
 
+/// <summary>Un workspace: una carpeta (con sus colecciones y, opcionalmente, su propio repo git).</summary>
+public class WorkspaceRef
+{
+    public string Name { get; set; } = "";
+    public string Path { get; set; } = "";
+}
+
 public class AppSettings
 {
     public string? ActiveEnvironmentId { get; set; }
+
+    /// <summary>Legacy: workspace único. Se migra a la lista Workspaces al cargar.</summary>
     public string? WorkspacePath { get; set; }
+
+    /// <summary>Workspaces registrados (además del "Personal" por defecto en AppData).</summary>
+    public List<WorkspaceRef> Workspaces { get; set; } = new();
+
+    /// <summary>Carpeta del workspace activo. Vacío/null = el "Personal" (AppData).</summary>
+    public string? ActiveWorkspacePath { get; set; }
 }

@@ -5,17 +5,25 @@
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
         Background="#1E1E2E" Foreground="#CDD6F4">
     <StackPanel Margin="18">
-        <!-- Workspace -->
-        <TextBlock Text="WORKSPACE" FontSize="11" FontWeight="Bold" Foreground="{StaticResource OverlayBrush}"/>
+        <!-- Workspaces -->
+        <TextBlock Text="WORKSPACES" FontSize="11" FontWeight="Bold" Foreground="{StaticResource OverlayBrush}"/>
         <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource OverlayBrush}" Margin="0,4,0,8"
-                   Text="Las colecciones se guardan como JSON legibles en esta carpeta (ideal para un repo git). Los ambientes y settings quedan siempre en AppData: tus tokens no van al repo."/>
-        <DockPanel>
-            <Button DockPanel.Dock="Right" Content="Elegir carpeta…" Click="ChooseFolder_Click" Margin="6,0,0,0"/>
-            <TextBox x:Name="PathBox" IsReadOnly="True" FontFamily="Consolas" FontSize="12"/>
-        </DockPanel>
+                   Text="Cada workspace es una carpeta con sus colecciones (y opcionalmente su propio repo git). El «Personal» vive en AppData. Los ambientes y settings quedan siempre en AppData: tus tokens no van al repo."/>
+        <ListBox x:Name="WorkspaceList" Height="130" SelectionChanged="WorkspaceList_SelectionChanged"
+                 BorderBrush="{StaticResource Surface1}" BorderThickness="1">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Margin="0,1">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding Path}" FontSize="11" Foreground="{StaticResource OverlayBrush}"
+                                   FontFamily="Consolas" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
         <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-            <Button Content="Volver a la carpeta por defecto" FontSize="11" Click="UseDefault_Click"
-                    Style="{StaticResource GhostButton}"/>
+            <Button Content="+ Agregar carpeta…" Click="ChooseFolder_Click" Margin="0,0,6,0"/>
+            <Button Content="Quitar del listado" Click="Remove_Click"/>
         </StackPanel>
 
         <!-- Clonar -->

@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using EasyRest.Models;
 using EasyRest.Services;
 
 namespace EasyRest.Avalonia.Views;
@@ -10,6 +11,7 @@ namespace EasyRest.Avalonia.Views;
 public partial class WorkspaceWindow : Window
 {
     MainWindow _main = null!;
+    bool _loadingList;
 
     public WorkspaceWindow() => InitializeComponent();
 
@@ -21,7 +23,13 @@ public partial class WorkspaceWindow : Window
 
     void Refresh()
     {
-        PathBox.Text = Storage.HasCustomWorkspace ? Storage.WorkspaceRoot : $"{Storage.AppDataRoot}  (por defecto)";
+        _loadingList = true;
+        var items = Storage.ListWorkspaces();
+        WorkspaceList.ItemsSource = items;
+        WorkspaceList.SelectedItem = items.FirstOrDefault(w =>
+            string.Equals(w.Path, Storage.HasCustomWorkspace ? Storage.WorkspaceRoot : "",
+                StringComparison.OrdinalIgnoreCase));
+        _loadingList = false;
 
         if (!GitService.IsAvailable())
         {
@@ -58,6 +66,17 @@ public partial class WorkspaceWindow : Window
         ResultText.IsVisible = true;
     }
 
+    async void WorkspaceList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingList || WorkspaceList.SelectedItem is not WorkspaceRef ws) return;
+        var targetPath = string.IsNullOrEmpty(ws.Path) ? null : ws.Path;
+        if (string.Equals(Storage.WorkspaceRoot, ws.Path, StringComparison.OrdinalIgnoreCase) ||
+            (string.IsNullOrEmpty(ws.Path) && !Storage.HasCustomWorkspace)) return; // ya activo
+
+        if (await _main.SwitchWorkspace(targetPath)) { ShowResult(true, $"Workspace activo: {ws.Name}"); Refresh(); }
+        else Refresh(); // cancelado: revertir selección
+    }
+
     async void ChooseFolder_Click(object? sender, RoutedEventArgs e)
     {
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
@@ -66,26 +85,24 @@ public partial class WorkspaceWindow : Window
         });
         var folder = folders.FirstOrDefault()?.TryGetLocalPath();
         if (string.IsNullOrEmpty(folder)) return;
-
-        var collectionsDir = Path.Combine(folder, "collections");
-        var hasCollections = Directory.Exists(collectionsDir) && Directory.GetFiles(collectionsDir, "*.json").Length > 0;
-        var question = hasCollections
-            ? "La carpeta ya tiene colecciones: se van a cargar (tus colecciones actuales quedan en la carpeta anterior). ¿Continuar?"
-            : "La carpeta no tiene colecciones: se van a exportar las colecciones actuales ahí. ¿Continuar?";
-        if (await Dialogs.Confirm(this, question, "Cambiar workspace") != DialogResult.Yes) return;
-
-        if (await _main.SwitchWorkspace(folder))
-        {
-            ShowResult(true, hasCollections ? "Workspace cargado." : "Colecciones exportadas al workspace.");
-            Refresh();
-        }
+        if (await _main.SwitchWorkspace(folder)) { ShowResult(true, "Workspace agregado y activado."); Refresh(); }
     }
 
-    async void UseDefault_Click(object? sender, RoutedEventArgs e)
+    async void Remove_Click(object? sender, RoutedEventArgs e)
     {
-        if (!Storage.HasCustomWorkspace) return;
-        if (await Dialogs.Confirm(this, "¿Volver a la carpeta por defecto (AppData)?", "Cambiar workspace") != DialogResult.Yes) return;
-        if (await _main.SwitchWorkspace(null)) { ShowResult(true, "Workspace por defecto restaurado."); Refresh(); }
+        if (WorkspaceList.SelectedItem is not WorkspaceRef ws || string.IsNullOrEmpty(ws.Path))
+        {
+            ShowResult(false, "El workspace Personal no se puede quitar.");
+            return;
+        }
+        if (await Dialogs.Confirm(this,
+            $"¿Quitar «{ws.Name}» del listado? La carpeta y sus archivos NO se borran.", "Quitar workspace") != DialogResult.Yes)
+            return;
+        var wasActive = string.Equals(Storage.WorkspaceRoot, ws.Path, StringComparison.OrdinalIgnoreCase);
+        Storage.RemoveWorkspace(ws.Path);
+        if (wasActive) await _main.SwitchWorkspace(null);
+        ShowResult(true, "Workspace quitado del listado.");
+        Refresh();
     }
 
     async void Clone_Click(object? sender, RoutedEventArgs e)
