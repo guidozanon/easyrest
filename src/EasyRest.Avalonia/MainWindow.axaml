@@ -239,8 +239,9 @@
                         </TabControl>
                     </Grid>
                     <!-- siempre visible (también con el placeholder), para abrir una request nueva -->
-                    <Button Content="+" Width="30" Height="30" FontSize="15" Padding="0"
-                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                    <Button Content="+" Classes="ghost" Width="30" Height="30" FontSize="19" Padding="0"
+                            HorizontalAlignment="Right" VerticalAlignment="Top" CornerRadius="6"
+                            Foreground="{DynamicResource SubtextBrush}"
                             ToolTip.Tip="Nueva request" Click="NewTab_Click"/>
                 </Panel>
 
