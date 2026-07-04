@@ -2,28 +2,22 @@
 
 Cliente HTTP de escritorio estilo Postman/Bruno. .NET 8.
 
-## Estructura (migración multiplataforma en curso)
+## Estructura
 
 - `src/EasyRest.Core` — modelos y servicios (storage/workspace, HTTP, OpenAPI, cURL, scripts con Jint,
-  git, logs). **Sin dependencias de UI**: es la base compartida entre plataformas.
-- `src/EasyRest.Wpf` — la app completa para Windows (WPF).
-- `src/EasyRest.Avalonia` — head multiplataforma (Windows/macOS/Linux) sobre el mismo Core.
-  Hoy es una preview (listar y enviar requests); la UI completa se va portando acá.
+  git, logs, runner). **Sin dependencias de UI**: es la base compartida.
+- `src/EasyRest.Avalonia` — la app multiplataforma (Windows/macOS/Linux) sobre el Core.
 
 ## Ejecutar
 
 ```powershell
-# App Windows (completa)
-dotnet run --project src/EasyRest.Wpf
-
-# Preview multiplataforma (también corre en macOS/Linux)
 dotnet run --project src/EasyRest.Avalonia
 ```
 
 Ejecutable autocontenido para Windows:
 
 ```powershell
-dotnet publish src/EasyRest.Wpf -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
+dotnet publish src/EasyRest.Avalonia -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
 ```
 
 Para macOS (desde cualquier plataforma):
@@ -49,9 +43,13 @@ dotnet publish src/EasyRest.Avalonia -c Release -r osx-arm64 --self-contained
   de la request en el árbol con la descripción en el tooltip.
 - **Ambientes con variables**: botón "Ambientes" para definirlas; se usan en cualquier campo con la
   sintaxis `{{nombre}}` (URL, headers, auth, body). El ambiente activo se elige en la barra superior.
-- **Runner**: botón "▶ Runner", click derecho sobre una request o botón "⟳ Runner" del editor —
-  ejecuta una request puntual o toda la colección en N iteraciones, con delay opcional, opción de
-  frenar al primer error y grilla de resultados (status, tiempo, promedio).
+- **Runner (simulación de carga)**: el tab Runner es solo configuración — colección/request, ambiente,
+  **usuarios virtuales** que corren en simultáneo, **ramp-up** (arranque escalonado), modo
+  **Iteraciones** o **Duración (s)**, delay y frenar-en-error. Al tocar **Correr** se abre una pestaña
+  de corrida con progreso, métricas en vivo (avg/p50/p95/p99/min/max, exitosas/fallidas, **req/s pico**,
+  **tasa de error**), gráfico temporal de req/s + avg y grilla de resultados. Las corridas se pueden
+  **guardar** y el tab **Comparar corridas** las pone lado a lado (tabla + gráfico req/s superpuesto).
+  Las configuraciones se guardan como **presets** para reutilizarlas.
 - **Importar OpenAPI**: botón "Importar OpenAPI" — acepta JSON o YAML (OpenAPI 2/3), genera una
   request por operación agrupando en carpetas anidadas por los segmentos del path
   (`/odata/bookings/{id}` → `odata` > `bookings`), con parámetros de path como variables
@@ -73,11 +71,13 @@ dotnet publish src/EasyRest.Avalonia -c Release -r osx-arm64 --self-contained
   (`collections\*.json`, `environments.json`, `settings.json`). Se guarda al enviar una request,
   con el botón Guardar y al cerrar la app.
 
-## Estructura
+## Core (base compartida)
 
 - `Models/Models.cs` — colecciones, requests, ambientes, auth y body.
-- `Services/Storage.cs` — persistencia en `%AppData%\EasyRest`.
+- `Services/Storage.cs` — persistencia en `%AppData%\EasyRest` y workspaces.
 - `Services/VariableResolver.cs` — reemplazo de `{{variables}}`.
 - `Services/HttpExecutor.cs` — construcción y envío de las requests HTTP.
 - `Services/OpenApiImporter.cs` — importación de OpenAPI (Microsoft.OpenApi.Readers).
-- `MainWindow` / `EnvironmentsWindow` / `RunnerWindow` / `PromptWindow` — UI.
+- `RunnerTab` / `RunTab` / `RunComparisonTab` — configuración, ejecución y comparación de corridas.
+
+La UI vive en `src/EasyRest.Avalonia` (`MainWindow` + `Views/`).
