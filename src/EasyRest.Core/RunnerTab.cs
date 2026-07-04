@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using EasyRest.Models;
+using EasyRest.Services;
 
 namespace EasyRest;
 
@@ -59,11 +60,16 @@ public class RunnerTab : Observable
         SelectedEnvOption = activeEnv != null && _environments.Contains(activeEnv)
             ? activeEnv
             : NoEnvironment;
+
+        LoadPresets();
     }
 
     public ObservableCollection<RequestCollection> Collections { get; }
     public ObservableCollection<object> RequestOptions { get; } = new();
     public ObservableCollection<object> EnvOptions { get; } = new();
+
+    /// <summary>Presets de configuración guardados.</summary>
+    public ObservableCollection<RunnerPreset> Presets { get; } = new();
 
     public RequestCollection? SelectedCollection
     {
@@ -187,5 +193,69 @@ public class RunnerTab : Observable
             Delay = Math.Max(0, delay),
             StopOnError = StopOnError
         };
+    }
+
+    // ----- Presets -----
+
+    void LoadPresets()
+    {
+        Presets.Clear();
+        foreach (var p in Storage.LoadRunnerPresets()) Presets.Add(p);
+    }
+
+    /// <summary>Carga la config de un preset en los campos (resolviendo colección/request/ambiente por Id).</summary>
+    public void ApplyPreset(RunnerPreset p)
+    {
+        var col = Collections.FirstOrDefault(c => c.Id == p.CollectionId);
+        if (col != null) SelectedCollection = col;   // esto reconstruye RequestOptions
+
+        SelectedRequestOption = string.IsNullOrEmpty(p.RequestId)
+            ? AllRequestsOption
+            : RequestOptions.OfType<RequestItem>().FirstOrDefault(r => r.Id == p.RequestId) ?? (object)AllRequestsOption;
+        SelectedEnvOption = string.IsNullOrEmpty(p.EnvId)
+            ? NoEnvironment
+            : EnvOptions.OfType<EnvironmentModel>().FirstOrDefault(e => e.Id == p.EnvId) ?? (object)NoEnvironment;
+
+        SelectedMode = p.Mode;
+        IterationsText = p.Iterations;
+        DurationText = p.Duration;
+        VirtualUsersText = p.Users;
+        RampUpText = p.RampUp;
+        DelayText = p.Delay;
+        StopOnError = p.StopOnError;
+    }
+
+    RunnerPreset BuildPreset(string name) => new()
+    {
+        Name = name.Trim(),
+        CollectionId = SelectedCollection?.Id ?? "",
+        RequestId = (SelectedRequestOption as RequestItem)?.Id ?? "",
+        EnvId = (SelectedEnvOption as EnvironmentModel)?.Id ?? "",
+        Mode = SelectedMode,
+        Iterations = IterationsText,
+        Duration = DurationText,
+        Users = VirtualUsersText,
+        RampUp = RampUpText,
+        Delay = DelayText,
+        StopOnError = StopOnError
+    };
+
+    /// <summary>Guarda la config actual como preset (pisa uno con el mismo nombre). Devuelve el preset.</summary>
+    public RunnerPreset? SavePreset(string name)
+    {
+        var trimmed = name.Trim();
+        if (trimmed.Length == 0) return null;
+        var preset = BuildPreset(trimmed);
+        var existing = Presets.FirstOrDefault(p => string.Equals(p.Name, trimmed, StringComparison.OrdinalIgnoreCase));
+        if (existing != null) { preset.Id = existing.Id; Presets.Remove(existing); }
+        Presets.Add(preset);
+        Storage.SaveRunnerPresets(Presets);
+        return preset;
+    }
+
+    public void DeletePreset(RunnerPreset p)
+    {
+        Presets.Remove(p);
+        Storage.SaveRunnerPresets(Presets);
     }
 }

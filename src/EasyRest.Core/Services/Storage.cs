@@ -361,4 +361,24 @@ public static class Storage
         var path = Path.Combine(RunsDir, id + ".json");
         if (File.Exists(path)) File.Delete(path);
     }
+
+    // ----- Presets de configuración del runner (en AppData) -----
+
+    static string RunnerPresetsFile => Path.Combine(AppDataRoot, "runner-presets.json");
+
+    public static List<RunnerPreset> LoadRunnerPresets()
+    {
+        if (!File.Exists(RunnerPresetsFile)) return new();
+        try
+        {
+            return JsonSerializer.Deserialize<List<RunnerPreset>>(File.ReadAllText(RunnerPresetsFile)) ?? new();
+        }
+        catch { return new(); }
+    }
+
+    public static void SaveRunnerPresets(IEnumerable<RunnerPreset> presets)
+    {
+        Directory.CreateDirectory(AppDataRoot);
+        File.WriteAllText(RunnerPresetsFile, JsonSerializer.Serialize(presets.ToList(), Options));
+    }
 }

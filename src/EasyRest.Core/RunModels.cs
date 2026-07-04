@@ -27,6 +27,25 @@ public class RunConfig
         + (RampSec > 0 ? $" · ramp {RampSec}s" : "");
 }
 
+/// <summary>Configuración de runner guardada, para volver a correrla rápido.</summary>
+public class RunnerPreset
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Name { get; set; } = "";
+    public string CollectionId { get; set; } = "";
+    public string RequestId { get; set; } = "";   // vacío = todas las requests
+    public string EnvId { get; set; } = "";        // vacío = sin ambiente
+    public string Mode { get; set; } = "Iteraciones";
+    public string Iterations { get; set; } = "1";
+    public string Duration { get; set; } = "30";
+    public string Users { get; set; } = "1";
+    public string RampUp { get; set; } = "0";
+    public string Delay { get; set; } = "0";
+    public bool StopOnError { get; set; }
+
+    public override string ToString() => Name;
+}
+
 /// <summary>Corrida guardada: config + métricas + muestras del gráfico + detalle por request.</summary>
 public class RunRecord
 {

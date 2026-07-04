@@ -9,6 +9,29 @@
         <conv:NotEmptyConverter x:Key="NotEmpty"/>
     </UserControl.Resources>
     <DockPanel Margin="0,8,0,0">
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+            <TextBlock Text="Preset" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <Button DockPanel.Dock="Right" Click="SavePreset_Click" Margin="6,0,0,0"
+                    ToolTip.Tip="Guardar la configuración actual como preset">
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Path Data="{StaticResource IconSave}" Stroke="{DynamicResource TextBrush}" StrokeThickness="1.2"
+                          Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center"/>
+                    <TextBlock Text="Guardar config" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <Button DockPanel.Dock="Right" Classes="ghost" Click="DeletePreset_Click" ToolTip.Tip="Borrar el preset seleccionado">
+                <Path Data="{StaticResource IconTrash}" Stroke="{DynamicResource RedBrush}" StrokeThickness="1.4"
+                      Width="14" Height="14" Stretch="Uniform"/>
+            </Button>
+            <ComboBox x:Name="PresetCombo" Width="260" ItemsSource="{Binding Presets}"
+                      SelectionChanged="Preset_Changed" PlaceholderText="(elegí un preset guardado)">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="core:RunnerPreset">
+                        <TextBlock Text="{Binding Name}"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </DockPanel>
         <WrapPanel DockPanel.Dock="Top">
             <TextBlock Text="Colección" Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" Margin="0,0,6,6"/>
             <ComboBox Width="190" Margin="0,0,14,6" ItemsSource="{Binding Collections}"
