@@ -110,18 +110,22 @@
                 </DockPanel>
             </TabItem>
             <TabItem Header="Scripts">
-                <DockPanel>
-                    <ComboBox x:Name="ScriptViewCombo" DockPanel.Dock="Top" Width="240" HorizontalAlignment="Left"
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <ComboBox x:Name="ScriptViewCombo" Grid.Row="0" Width="240" HorizontalAlignment="Left"
                               Margin="8" SelectionChanged="ScriptView_Changed"/>
-                    <TextBlock x:Name="ScriptHint" DockPanel.Dock="Bottom" FontSize="11" Margin="10,0,8,8"
+                    <TextBox x:Name="PreScriptBox" Grid.Row="1" Text="{Binding Request.PreRequestScript}"
+                             AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas,Menlo,monospace"
+                             FontSize="12" Margin="8,0,8,4" MinHeight="60"
+                             HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                             VerticalContentAlignment="Top"/>
+                    <TextBox x:Name="TestScriptBox" Grid.Row="1" Text="{Binding Request.TestScript}" IsVisible="False"
+                             AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas,Menlo,monospace"
+                             FontSize="12" Margin="8,0,8,4" MinHeight="60"
+                             HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                             VerticalContentAlignment="Top"/>
+                    <TextBlock x:Name="ScriptHint" Grid.Row="2" FontSize="11" Margin="10,0,8,8"
                                TextWrapping="Wrap" Foreground="{DynamicResource OverlayBrush}"/>
-                    <TextBox x:Name="PreScriptBox" Text="{Binding Request.PreRequestScript}"
-                             AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas,Menlo,monospace"
-                             FontSize="12" Margin="8,0,8,4"/>
-                    <TextBox x:Name="TestScriptBox" Text="{Binding Request.TestScript}" IsVisible="False"
-                             AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas,Menlo,monospace"
-                             FontSize="12" Margin="8,0,8,4"/>
-                </DockPanel>
+                </Grid>
             </TabItem>
         </TabControl>
 

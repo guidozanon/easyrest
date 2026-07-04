@@ -85,6 +85,7 @@
                                    FontWeight="Bold" Margin="14,10,0,6"/>
                         <TreeView x:Name="Tree" Background="Transparent"
                                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                  DragDrop.AllowDrop="True"
                                   DoubleTapped="Tree_DoubleTapped"
                                   ContextRequested="Tree_ContextRequested"
                                   PointerPressed="Tree_PointerPressed"
@@ -222,17 +223,17 @@
                         <Button DockPanel.Dock="Right" Content="Limpiar" Classes="ghost" FontSize="11" Click="ClearLogs_Click"/>
                         <TextBlock Text="LOGS" FontSize="11" FontWeight="Bold" Foreground="#6C7086" VerticalAlignment="Center"/>
                     </DockPanel>
-                    <ScrollViewer Padding="10,0,10,6">
-                        <ItemsControl x:Name="LogsItems">
+                    <ScrollViewer Padding="10,0,10,6" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl x:Name="LogsItems" HorizontalAlignment="Stretch">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Expander Margin="0,1">
+                                    <Expander Margin="0,1" HorizontalAlignment="Stretch">
                                         <Expander.Header>
-                                            <DockPanel>
+                                            <DockPanel LastChildFill="True">
                                                 <TextBlock DockPanel.Dock="Left" Text="{Binding Time}" FontSize="11"
                                                            Foreground="#6C7086" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                                 <TextBlock DockPanel.Dock="Left" Text="{Binding Method}" FontWeight="Bold" FontSize="11"
-                                                           VerticalAlignment="Center" Margin="0,0,8,0"
+                                                           Width="40" VerticalAlignment="Center" Margin="0,0,8,0"
                                                            Foreground="{Binding Method, Converter={StaticResource MethodBrush}}"/>
                                                 <TextBlock DockPanel.Dock="Right" Text="{Binding Meta}" FontSize="11"
                                                            Foreground="#6C7086" VerticalAlignment="Center" Margin="10,0,0,0"/>
