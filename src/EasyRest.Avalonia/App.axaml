@@ -3,6 +3,12 @@
              x:Class="EasyRest.Avalonia.App"
              Name="EasyRest"
              RequestedThemeVariant="Dark">
+    <!-- Menú de aplicación en macOS: reemplaza el "About Avalonia" default por uno propio -->
+    <NativeMenu.Menu>
+        <NativeMenu>
+            <NativeMenuItem Header="Acerca de EasyRest" Click="AboutClicked"/>
+        </NativeMenu>
+    </NativeMenu.Menu>
     <Application.Resources>
         <!-- Acento Catppuccin (#89B4FA) para botones, focus, checkboxes, selección, etc. -->
         <Color x:Key="SystemAccentColor">#89B4FA</Color>

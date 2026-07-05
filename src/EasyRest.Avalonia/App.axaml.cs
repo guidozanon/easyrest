@@ -1,7 +1,9 @@
+using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using EasyRest.Avalonia.Views;
 using EasyRest.Services;
 
 namespace EasyRest.Avalonia;
@@ -18,5 +20,14 @@ public class App : Application
             desktop.MainWindow = new MainWindow();
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    void AboutClicked(object? sender, EventArgs e)
+    {
+        var about = new AboutWindow();
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } main })
+            about.ShowDialog(main);
+        else
+            about.Show();
     }
 }
