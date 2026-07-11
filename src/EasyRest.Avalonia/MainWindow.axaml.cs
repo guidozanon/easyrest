@@ -44,6 +44,9 @@ public partial class MainWindow : Window
         Tree.AddHandler(PointerPressedEvent, Tree_PointerPressed, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
         Tree.AddHandler(PointerMovedEvent, Tree_PointerMoved, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
 
+        // Ctrl+S / Cmd+S: guardar todo. Tunnel para que llegue aunque el foco esté en un TextBox.
+        AddHandler(KeyDownEvent, Window_KeyDown, RoutingStrategies.Tunnel);
+
         RefreshEnvCombo();
         var settings = Storage.LoadSettings();
         var activeEnv = Environments.FirstOrDefault(e => e.Id == Storage.GetActiveEnvironmentId());
@@ -103,6 +106,29 @@ public partial class MainWindow : Window
     }
 
     public void SaveAllForSync() => SaveAll();
+
+    void Window_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.S &&
+            (e.KeyModifiers == KeyModifiers.Control || e.KeyModifiers == KeyModifiers.Meta))
+        {
+            SaveAll();
+            RefreshGitStatus();
+            FlashSavedStatus();
+            e.Handled = true;
+        }
+    }
+
+    int _flashToken;
+
+    /// <summary>Muestra "Guardado ✓" un instante en la barra de estado y restaura el texto del ambiente.</summary>
+    async void FlashSavedStatus()
+    {
+        var token = ++_flashToken;
+        StatusEnvText.Text = "Guardado ✓";
+        await Task.Delay(1500);
+        if (token == _flashToken) UpdateStatusEnv();
+    }
 
     // ----- Estado de UI persistido (ambiente + pestañas abiertas) -----
 
