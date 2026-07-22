@@ -70,6 +70,11 @@ Elegí el zip según tu Mac: `macos-arm64` (Apple Silicon M1/M2/M3…) o `macos-
   de la request en el árbol con la descripción en el tooltip.
 - **Ambientes con variables**: botón "Ambientes" para definirlas; se usan en cualquier campo con la
   sintaxis `{{nombre}}` (URL, headers, auth, body). El ambiente activo se elige en la barra superior.
+  Desde la misma ventana se pueden **compartir**: *Compartir…* copia el ambiente como JSON al
+  portapapeles (con valores, o solo claves para no filtrar tokens) o lo guarda en un archivo;
+  *Importar…* lo trae desde el portapapeles o un archivo (acepta el formato propio y el export de
+  environment de Postman). Si ya existe uno con el mismo nombre, ofrece reemplazar sus variables o
+  crear una copia.
 - **Runner (simulación de carga)**: el tab Runner es solo configuración — colección/request, ambiente,
   **usuarios virtuales** que corren en simultáneo, **ramp-up** (arranque escalonado), modo
   **Iteraciones** o **Duración (s)**, delay y frenar-en-error. Al tocar **Correr** se abre una pestaña
@@ -99,8 +104,9 @@ Elegí el zip según tu Mac: `macos-arm64` (Apple Silicon M1/M2/M3…) o `macos-
   colección es una carpeta (`collections/{Nombre}/`) con un `collection.json` de metadata, un
   archivo `{Request}.req.json` por request y un subdirectorio (con `folder.json`) por carpeta —
   diffs por request y menos conflictos de git. El formato viejo (un `.json` por colección) se
-  migra automáticamente al abrir. Se guarda al enviar una request, con el botón Guardar y al
-  cerrar la app.
+  migra automáticamente al abrir. Se guarda al enviar una request, con el botón Guardar, con
+  **Ctrl+S / Cmd+S** (guarda todo lo pendiente: pestañas con cambios, colecciones, ambientes y
+  settings) y al cerrar la app.
 
 ## Core (base compartida)
 

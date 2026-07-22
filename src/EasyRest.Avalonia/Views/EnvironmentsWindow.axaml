@@ -16,6 +16,10 @@
                     <Button Content="Renombrar" Click="Rename_Click"/>
                     <Button Content="Eliminar" Click="Delete_Click"/>
                 </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Content="Compartir…" Click="Share_Click"/>
+                    <Button Content="Importar…" Click="Import_Click"/>
+                </StackPanel>
             </StackPanel>
             <ListBox x:Name="EnvList" SelectionChanged="EnvList_SelectionChanged">
                 <ListBox.ItemTemplate>

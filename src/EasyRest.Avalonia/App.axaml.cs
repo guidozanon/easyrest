@@ -1,6 +1,7 @@
 using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using EasyRest.Avalonia.Views;
@@ -10,7 +11,12 @@ namespace EasyRest.Avalonia;
 
 public class App : Application
 {
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+    {
+        // nombre de la app en el menú de macOS ("EasyRest", "Ocultar EasyRest", etc.)
+        Name = "EasyRest";
+        AvaloniaXamlLoader.Load(this);
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {
