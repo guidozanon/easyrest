@@ -19,6 +19,10 @@ public static class Storage
     static Dictionary<string, string?> _activeEnvByWorkspace = new();
     static bool _settingsLoaded;
 
+    /// <summary>Se dispara después de guardar o borrar una colección — lo único que vive en la
+    /// carpeta del workspace. El shell lo usa para auto-sincronizar el repo git si hay uno.</summary>
+    public static event Action? WorkspaceDataChanged;
+
     /// <summary>Nombre del workspace "Personal" (AppData), siempre disponible.</summary>
     public const string PersonalName = "Personal (local)";
 
@@ -225,6 +229,7 @@ public static class Storage
 
         File.WriteAllText(path, JsonSerializer.Serialize(collection, Options));
         FileById[collection.Id] = path;
+        WorkspaceDataChanged?.Invoke();
     }
 
     public static void DeleteCollection(RequestCollection collection)
@@ -232,6 +237,7 @@ public static class Storage
         if (FileById.TryGetValue(collection.Id, out var path) && File.Exists(path))
             File.Delete(path);
         FileById.Remove(collection.Id);
+        WorkspaceDataChanged?.Invoke();
     }
 
     static string ResolvePathFor(RequestCollection collection)

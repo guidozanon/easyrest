@@ -56,6 +56,9 @@ public partial class MainWindow : Window
         UpdateStatusEnv();
         Opened += (_, _) => RefreshGitStatus();
         Closing += OnClosing;
+
+        Storage.WorkspaceDataChanged += () =>
+            global::Avalonia.Threading.Dispatcher.UIThread.Post(ScheduleAutoSync);
     }
 
     public EnvironmentModel? ActiveEnv => EnvCombo.SelectedItem as EnvironmentModel;
@@ -921,20 +924,77 @@ public partial class MainWindow : Window
             global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
                 var ws = Storage.ActiveWorkspaceName;
+                string text;
                 if (s == null)
                 {
-                    GitStatusBtn.Content = $"◆ {ws}";
+                    text = $"◆ {ws}";
                 }
                 else
                 {
-                    var text = $"◆ {ws}  ⎇ {s.Branch}";
+                    text = $"◆ {ws}  ⎇ {s.Branch}";
                     text += s.Pending > 0 ? $" · {s.Pending} cambio(s)" : " ✓";
                     if (s.Ahead > 0) text += $" ↑{s.Ahead}";
                     if (s.Behind > 0) text += $" ↓{s.Behind}";
-                    GitStatusBtn.Content = text;
                 }
+                if (_autoSyncError != null) text += " ⚠";
+                GitStatusBtn.Content = text;
+                ToolTip.SetTip(GitStatusBtn, _autoSyncError == null
+                    ? "Ver cambios y sincronizar"
+                    : "La sincronización automática falló:\n" + _autoSyncError +
+                      "\n\nClic para ver los cambios y reintentar.");
             });
         });
+    }
+
+    // ----- Auto-sync con git al guardar -----
+
+    global::Avalonia.Threading.DispatcherTimer? _autoSyncTimer;
+    string? _autoSyncRoot;
+    string? _autoSyncError;
+    bool _autoSyncBusy;
+    bool _autoSyncQueued;
+
+    /// <summary>Agenda una sincronización git del workspace tras un guardado, con debounce:
+    /// varios guardados seguidos terminan en un solo commit/push.</summary>
+    void ScheduleAutoSync()
+    {
+        _autoSyncRoot = Storage.WorkspaceRoot;
+        if (_autoSyncTimer == null)
+        {
+            _autoSyncTimer = new global::Avalonia.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(2.5)
+            };
+            _autoSyncTimer.Tick += async (_, _) => { _autoSyncTimer!.Stop(); await AutoSync(); };
+        }
+        _autoSyncTimer.Stop();
+        _autoSyncTimer.Start();
+    }
+
+    async Task AutoSync()
+    {
+        if (_autoSyncBusy) { _autoSyncQueued = true; return; }
+        var root = _autoSyncRoot ?? Storage.WorkspaceRoot;
+
+        var status = await Task.Run(() =>
+            GitService.IsAvailable() && GitService.IsRepo(root) ? GitService.Status(root) : null);
+        if (status == null) return;                      // no conectado a git: no hay nada que hacer
+        if (status.Pending == 0 && status.Ahead == 0)    // nada para commitear ni pushear
+        {
+            RefreshGitStatus();
+            return;
+        }
+
+        _autoSyncBusy = true;
+        var isActiveWs = root == Storage.WorkspaceRoot;
+        if (isActiveWs) GitStatusBtn.Content = $"◆ {Storage.ActiveWorkspaceName}  ⟳ sincronizando…";
+
+        var r = await Task.Run(() => GitService.Sync(root));
+
+        _autoSyncBusy = false;
+        if (isActiveWs) _autoSyncError = r.Ok ? null : r.Message;
+        RefreshGitStatus();
+        if (_autoSyncQueued) { _autoSyncQueued = false; ScheduleAutoSync(); }
     }
 
     async void OpenSync_Click(object? sender, RoutedEventArgs e)
