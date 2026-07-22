@@ -79,6 +79,34 @@ public partial class RequestEditor : UserControl
         BodyRawBox.IsVisible = type is BodyType.Json or BodyType.Text;
         FormGrid.IsVisible = type == BodyType.FormUrlEncoded;
         BeautifyBtn.IsVisible = type == BodyType.Json;
+        CopyBodyBtn.IsVisible = BodyRawBox.IsVisible;
+    }
+
+    async void CopyBody_Click(object? sender, RoutedEventArgs e) =>
+        await CopyToClipboard(sender as Button, BodyRawBox.Text ?? "");
+
+    async void CopyResponse_Click(object? sender, RoutedEventArgs e) =>
+        await CopyToClipboard(sender as Button, Vm?.ResponseBody ?? "");
+
+    async Task CopyToClipboard(Button? btn, string text)
+    {
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard == null) return;
+        await clipboard.SetTextAsync(text);
+
+        // feedback: el ícono se vuelve un tilde un instante
+        if (btn == null || btn.Tag is true) return;
+        btn.Tag = true;
+        var original = btn.Content;
+        btn.Content = new TextBlock
+        {
+            Text = "✓",
+            Foreground = global::Avalonia.Media.Brush.Parse("#A6E3A1"),
+            FontWeight = global::Avalonia.Media.FontWeight.Bold
+        };
+        await Task.Delay(1200);
+        btn.Content = original;
+        btn.Tag = null;
     }
 
     void Beautify_Click(object? sender, RoutedEventArgs e) => Vm?.BeautifyBody();

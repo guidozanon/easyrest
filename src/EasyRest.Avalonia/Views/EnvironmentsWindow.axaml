@@ -10,6 +10,9 @@
             <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                     <Button Content="+ Agregar" Click="Add_Click"/>
+                    <Button Content="⧉ Clonar" Click="Clone_Click"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6">
                     <Button Content="Renombrar" Click="Rename_Click"/>
                     <Button Content="Eliminar" Click="Delete_Click"/>
                 </StackPanel>

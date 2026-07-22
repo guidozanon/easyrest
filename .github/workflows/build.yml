@@ -47,6 +47,10 @@ jobs:
           if [ "${{ runner.os }}" = "Windows" ]; then
             EXTRA="-p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true"
           fi
+          # en tags v* usamos la version del tag (la muestra la pantalla "Acerca de")
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            EXTRA="$EXTRA -p:Version=${GITHUB_REF_NAME#v}"
+          fi
           dotnet publish src/EasyRest.Avalonia/EasyRest.Avalonia.csproj \
             -c Release -r ${{ matrix.rid }} --self-contained true \
             -p:DebugType=none -p:DebugSymbols=false $EXTRA \

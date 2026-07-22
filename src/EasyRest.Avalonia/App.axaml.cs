@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Interactivity;
@@ -27,13 +28,12 @@ public class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    // "Acerca de EasyRest" del menú de macOS (reemplaza el About de Avalonia)
-    async void About_Click(object? sender, EventArgs e)
+    void AboutClicked(object? sender, EventArgs e)
     {
-        if ((ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow is not { } owner) return;
-        var version = GetType().Assembly.GetName().Version?.ToString(3) ?? "";
-        await Dialogs.Info(owner,
-            $"EasyRest{(version.Length > 0 ? $" {version}" : "")}\n\nCliente HTTP de escritorio.\nHecho con Avalonia.",
-            "Acerca de EasyRest");
+        var about = new AboutWindow();
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } main })
+            about.ShowDialog(main);
+        else
+            about.Show();
     }
 }

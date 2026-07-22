@@ -59,6 +59,9 @@ public partial class MainWindow : Window
         UpdateStatusEnv();
         Opened += (_, _) => RefreshGitStatus();
         Closing += OnClosing;
+
+        Storage.WorkspaceDataChanged += () =>
+            global::Avalonia.Threading.Dispatcher.UIThread.Post(ScheduleAutoSync);
     }
 
     public EnvironmentModel? ActiveEnv => EnvCombo.SelectedItem as EnvironmentModel;
@@ -947,20 +950,154 @@ public partial class MainWindow : Window
             global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
                 var ws = Storage.ActiveWorkspaceName;
+                string text;
                 if (s == null)
                 {
-                    GitStatusBtn.Content = $"◆ {ws}";
+                    text = $"◆ {ws}";
                 }
                 else
                 {
-                    var text = $"◆ {ws}  ⎇ {s.Branch}";
+                    text = $"◆ {ws}  ⎇ {s.Branch}";
                     text += s.Pending > 0 ? $" · {s.Pending} cambio(s)" : " ✓";
                     if (s.Ahead > 0) text += $" ↑{s.Ahead}";
                     if (s.Behind > 0) text += $" ↓{s.Behind}";
-                    GitStatusBtn.Content = text;
                 }
+                if (_autoSyncError != null) text += " ⚠";
+                GitStatusBtn.Content = text;
+                ToolTip.SetTip(GitStatusBtn, _autoSyncError == null
+                    ? "Ver cambios y sincronizar"
+                    : "La sincronización automática falló:\n" + _autoSyncError +
+                      "\n\nClic para ver los cambios y reintentar.");
             });
         });
+    }
+
+    // ----- Auto-sync con git al guardar -----
+
+    global::Avalonia.Threading.DispatcherTimer? _autoSyncTimer;
+    string? _autoSyncRoot;
+    string? _autoSyncError;
+    bool _autoSyncBusy;
+    bool _autoSyncQueued;
+
+    /// <summary>Agenda una sincronización git del workspace tras un guardado, con debounce:
+    /// varios guardados seguidos terminan en un solo commit/push.</summary>
+    void ScheduleAutoSync()
+    {
+        _autoSyncRoot = Storage.WorkspaceRoot;
+        if (_autoSyncTimer == null)
+        {
+            _autoSyncTimer = new global::Avalonia.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(2.5)
+            };
+            _autoSyncTimer.Tick += async (_, _) => { _autoSyncTimer!.Stop(); await AutoSync(); };
+        }
+        _autoSyncTimer.Stop();
+        _autoSyncTimer.Start();
+    }
+
+    async Task AutoSync()
+    {
+        if (_autoSyncBusy) { _autoSyncQueued = true; return; }
+        var root = _autoSyncRoot ?? Storage.WorkspaceRoot;
+
+        var status = await Task.Run(() =>
+            GitService.IsAvailable() && GitService.IsRepo(root) ? GitService.Status(root) : null);
+        if (status == null) return;                      // no conectado a git: no hay nada que hacer
+        if (status.Pending == 0 && status.Ahead == 0)    // nada para commitear ni pushear
+        {
+            RefreshGitStatus();
+            return;
+        }
+
+        _autoSyncBusy = true;
+        var isActiveWs = root == Storage.WorkspaceRoot;
+        if (isActiveWs) GitStatusBtn.Content = $"◆ {Storage.ActiveWorkspaceName}  ⟳ sincronizando…";
+
+        var r = await SyncWorkspaceInteractive(this, root);
+
+        _autoSyncBusy = false;
+        if (isActiveWs) _autoSyncError = r.Ok ? null : r.Message;
+        RefreshGitStatus();
+        if (_autoSyncQueued) { _autoSyncQueued = false; ScheduleAutoSync(); }
+    }
+
+    /// <summary>Sincroniza el workspace con git. Si el pull da conflictos, pregunta con un popup
+    /// si quedarse con la versión del remoto o pisar con la local; y si el pull trajo cambios
+    /// del remoto, recarga las colecciones desde el disco para reflejarlos en la UI.</summary>
+    public async Task<(bool Ok, string Message)> SyncWorkspaceInteractive(Window owner, string? rootOverride = null)
+    {
+        var root = rootOverride ?? Storage.WorkspaceRoot;
+        var r = await Task.Run(() => GitService.Sync(root));
+
+        if (r.HasConflicts)
+        {
+            var choice = await Dialogs.Choice(owner, "Conflicto al sincronizar",
+                "El repositorio remoto tiene cambios que chocan con los tuyos.\n\n" +
+                "• «Traer lo remoto»: en lo que está en conflicto, gana la versión del repo " +
+                "(tus cambios en esos archivos se descartan).\n" +
+                "• «Mantener lo mío»: en lo que está en conflicto, gana tu versión " +
+                "(pisás los cambios remotos en esos archivos).\n\n" +
+                "Lo que no está en conflicto se combina normalmente en ambos casos.",
+                "Traer lo remoto", "Mantener lo mío");
+            if (choice == null)
+                return (false, "Sincronización cancelada: tus cambios quedaron locales, sin subir.");
+            var resolution = choice == 0 ? ConflictResolution.KeepRemote : ConflictResolution.KeepLocal;
+            r = await Task.Run(() => GitService.Sync(root, resolution));
+        }
+
+        if (r.PulledRemote &&
+            string.Equals(root, Storage.WorkspaceRoot, StringComparison.OrdinalIgnoreCase))
+            await ReloadCollectionsFromDisk();
+
+        return (r.Ok, r.Message);
+    }
+
+    /// <summary>Recarga las colecciones del workspace activo desde el disco (después de que un
+    /// pull trajo cambios del remoto) y reabre por id las pestañas que apuntaban al modelo viejo.
+    /// Las pestañas con cambios sin guardar no se tocan, para no perder ediciones.</summary>
+    public async Task ReloadCollectionsFromDisk()
+    {
+        var refs = CaptureOpenTabs();
+        var selected = RequestTabs.SelectedIndex;
+        var loaded = await Task.Run(Storage.LoadCollections);
+
+        _restoring = true;
+        try
+        {
+            foreach (var tab in OpenTabs.ToList())
+            {
+                var stale = tab switch
+                {
+                    RequestTab rt => !rt.IsDirty && FindOwner(rt.Original) != null,
+                    CollectionTab or FolderTab => true,
+                    _ => false
+                };
+                if (stale) RemoveTab(tab);
+            }
+
+            Collections.Clear();
+            foreach (var col in loaded) Collections.Add(col);
+
+            foreach (var r in refs)
+            {
+                switch (r.Kind)
+                {
+                    case "request" when FindRequestById(r.Id) is { } req &&
+                                        !OpenTabs.OfType<RequestTab>().Any(t => t.Original.Id == req.Id):
+                        OpenTab(req); break;
+                    case "collection" when FindCollectionById(r.Id) is { } col:
+                        OpenCollectionTab(col); break;
+                }
+            }
+            if (OpenTabs.Count > 0)
+                RequestTabs.SelectedItem = OpenTabs[Math.Clamp(selected, 0, OpenTabs.Count - 1)];
+        }
+        finally { _restoring = false; }
+
+        ApplyFilter(FilterBox.Text?.Trim() ?? "");
+        PersistUiState();
     }
 
     async void OpenSync_Click(object? sender, RoutedEventArgs e)

@@ -88,8 +88,7 @@ public partial class SyncWindow : Window
         _main.SaveAllForSync();
         SyncBtn.IsEnabled = false;
         ShowResult(true, "Sincronizando…");
-        var root = Storage.WorkspaceRoot;
-        var r = await System.Threading.Tasks.Task.Run(() => GitService.Sync(root));
+        var r = await _main.SyncWorkspaceInteractive(this);
         ShowResult(r.Ok, r.Message);
         await Refresh();
         _main.RefreshGitStatus();

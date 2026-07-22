@@ -144,7 +144,7 @@ public partial class WorkspaceWindow : Window
         _main.SaveAllForSync();
         SyncBtn.IsEnabled = false;
         ShowResult(true, "Sincronizando…");
-        var r = await Task.Run(() => GitService.Sync(Storage.WorkspaceRoot));
+        var r = await _main.SyncWorkspaceInteractive(this);
         ShowResult(r.Ok, r.Message);
         SyncBtn.IsEnabled = true;
         Refresh();

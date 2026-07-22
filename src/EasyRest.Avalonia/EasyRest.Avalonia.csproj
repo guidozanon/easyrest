@@ -8,6 +8,8 @@
     <RootNamespace>EasyRest.Avalonia</RootNamespace>
     <!-- el ejecutable/assembly se llama "EasyRest"; las URIs avares:// usan este nombre -->
     <AssemblyName>EasyRest</AssemblyName>
+    <!-- version por defecto en dev; el CI la pisa con -p:Version=<tag> al publicar -->
+    <Version>0.1.6</Version>
     <ApplicationManifest></ApplicationManifest>
     <ApplicationIcon>Assets\easyrest.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>

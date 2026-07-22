@@ -95,14 +95,18 @@ Elegí el zip según tu Mac: `macos-arm64` (Apple Silicon M1/M2/M3…) o `macos-
   `console.log` se captura y se ve junto a los resultados en la solapa Tests de la respuesta; el Runner
   también corre los scripts y cuenta los tests fallidos como fallas.
 - **Workspace + Git**: desde el menú ⋯ del sidebar ("Workspace y Git…") podés apuntar las colecciones
-  a una carpeta propia (se guardan como `collections/{Nombre legible}.json`, difeables en un repo),
-  clonar un repo existente, inicializar git, conectar un remote y sincronizar (add → commit →
-  pull --rebase → push; la auth la resuelve tu credential manager). Los ambientes y settings quedan
-  siempre en AppData: los tokens no van al repo. La barra de estado muestra `⎇ rama · N cambios`.
-- **Persistencia local**: por defecto todo se guarda como JSON en `%AppData%\EasyRest`
-  (`collections\*.json`, `environments.json`, `settings.json`). Se guarda al enviar una request,
-  con el botón Guardar, con **Ctrl+S / Cmd+S** (guarda todo lo pendiente: pestañas con cambios,
-  colecciones, ambientes y settings) y al cerrar la app.
+  a una carpeta propia, clonar un repo existente, inicializar git, conectar un remote y sincronizar
+  (add → commit → pull --rebase → push; la auth la resuelve tu credential manager). Si el pull trae
+  conflictos, un popup pregunta si querés quedarte con la versión del remoto o pisar con la tuya.
+  Los ambientes y settings quedan siempre en AppData: los tokens no van al repo. La barra de estado
+  muestra `⎇ rama · N cambios`.
+- **Persistencia local**: por defecto todo se guarda como JSON en `%AppData%\EasyRest`. Cada
+  colección es una carpeta (`collections/{Nombre}/`) con un `collection.json` de metadata, un
+  archivo `{Request}.req.json` por request y un subdirectorio (con `folder.json`) por carpeta —
+  diffs por request y menos conflictos de git. El formato viejo (un `.json` por colección) se
+  migra automáticamente al abrir. Se guarda al enviar una request, con el botón Guardar, con
+  **Ctrl+S / Cmd+S** (guarda todo lo pendiente: pestañas con cambios, colecciones, ambientes y
+  settings) y al cerrar la app.
 
 ## Core (base compartida)
 

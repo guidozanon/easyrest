@@ -37,6 +37,18 @@ public partial class EnvironmentsWindow : Window
         EnvList.SelectedItem = env;
     }
 
+    async void Clone_Click(object? sender, RoutedEventArgs e)
+    {
+        if (EnvList.SelectedItem is not EnvironmentModel env) return;
+        var name = await Dialogs.Prompt(this, "Clonar ambiente", "Nombre del nuevo ambiente:", $"{env.Name} (copia)");
+        if (string.IsNullOrWhiteSpace(name)) return;
+        var clone = new EnvironmentModel { Name = name.Trim() };
+        foreach (var v in env.Variables)
+            clone.Variables.Add(new KeyValueItem { Enabled = v.Enabled, Key = v.Key, Value = v.Value });
+        _environments.Add(clone);
+        EnvList.SelectedItem = clone;
+    }
+
     async void Rename_Click(object? sender, RoutedEventArgs e)
     {
         if (EnvList.SelectedItem is not EnvironmentModel env) return;

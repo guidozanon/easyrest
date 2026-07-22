@@ -11,13 +11,17 @@ public static class Storage
 {
     static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
 
-    /// <summary>Mapa colección-id → archivo actual, para manejar renombres y colisiones.</summary>
-    static readonly Dictionary<string, string> FileById = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Mapa colección-id → carpeta actual, para manejar renombres y colisiones.</summary>
+    static readonly Dictionary<string, string> DirById = new(StringComparer.OrdinalIgnoreCase);
 
     static string? _activePath;
     static List<WorkspaceRef> _workspaces = new();
     static Dictionary<string, string?> _activeEnvByWorkspace = new();
     static bool _settingsLoaded;
+
+    /// <summary>Se dispara después de guardar o borrar una colección — lo único que vive en la
+    /// carpeta del workspace. El shell lo usa para auto-sincronizar el repo git si hay uno.</summary>
+    public static event Action? WorkspaceDataChanged;
 
     /// <summary>Nombre del workspace "Personal" (AppData), siempre disponible.</summary>
     public const string PersonalName = "Personal (local)";
@@ -155,7 +159,7 @@ public static class Storage
         }
         if (activate) _activePath = path;
         Persist();
-        FileById.Clear();
+        DirById.Clear();
     }
 
     /// <summary>Quita un workspace del registro (no borra la carpeta). Si era el activo, vuelve a Personal.</summary>
@@ -165,14 +169,14 @@ public static class Storage
         _workspaces.RemoveAll(w => string.Equals(w.Path, path, StringComparison.OrdinalIgnoreCase));
         if (string.Equals(_activePath, path, StringComparison.OrdinalIgnoreCase)) _activePath = null;
         Persist();
-        FileById.Clear();
+        DirById.Clear();
     }
 
     /// <summary>Cambia el workspace activo (null/vacío = Personal). Lo registra si es nuevo.</summary>
     public static void SetWorkspacePath(string? path)
     {
         EnsureSettingsLoaded();
-        if (string.IsNullOrWhiteSpace(path)) { _activePath = null; Persist(); FileById.Clear(); return; }
+        if (string.IsNullOrWhiteSpace(path)) { _activePath = null; Persist(); DirById.Clear(); return; }
         AddWorkspace(path!);  // registra + activa + persiste
     }
 
@@ -188,69 +192,95 @@ public static class Storage
         Directory.CreateDirectory(CollectionsDir);
     }
 
-    // ----- Colecciones (viven en el workspace, con nombre de archivo legible) -----
+    // ----- Colecciones (viven en el workspace: una carpeta por colección, un archivo por request) -----
 
     public static List<RequestCollection> LoadCollections()
     {
         EnsureDirs();
-        FileById.Clear();
+        DirById.Clear();
         var list = new List<RequestCollection>();
+
+        foreach (var dir in Directory.GetDirectories(CollectionsDir))
+        {
+            try
+            {
+                var col = CollectionFileStore.Load(dir);
+                if (col == null) continue;
+                list.Add(col);
+                DirById[col.Id] = dir;
+            }
+            catch
+            {
+                // carpeta corrupta: se ignora para no bloquear el inicio
+            }
+        }
+
+        // formato viejo (toda la colección en un solo .json): se migra a carpeta y se borra
         foreach (var file in Directory.GetFiles(CollectionsDir, "*.json"))
         {
             try
             {
                 var col = JsonSerializer.Deserialize<RequestCollection>(File.ReadAllText(file));
                 if (col == null) continue;
+                if (list.Any(c => c.Id == col.Id))
+                {
+                    File.Delete(file); // ya migrada antes: la carpeta es la versión vigente
+                    continue;
+                }
+                SaveCollection(col);
+                File.Delete(file);
                 list.Add(col);
-                FileById[col.Id] = file;
             }
             catch
             {
                 // archivo corrupto: se ignora para no bloquear el inicio
             }
         }
+
         return list.OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 
     public static void SaveCollection(RequestCollection collection)
     {
         EnsureDirs();
-        var path = ResolvePathFor(collection);
+        var dir = ResolveDirFor(collection);
 
-        // renombre: borrar el archivo anterior si cambió
-        if (FileById.TryGetValue(collection.Id, out var current) &&
-            !string.Equals(current, path, StringComparison.OrdinalIgnoreCase) &&
-            File.Exists(current))
-            File.Delete(current);
+        // renombre: mover la carpeta anterior si cambió (git lo detecta como rename)
+        if (DirById.TryGetValue(collection.Id, out var current) &&
+            !string.Equals(current, dir, StringComparison.OrdinalIgnoreCase) &&
+            Directory.Exists(current) && !Directory.Exists(dir))
+            Directory.Move(current, dir);
 
-        File.WriteAllText(path, JsonSerializer.Serialize(collection, Options));
-        FileById[collection.Id] = path;
+        CollectionFileStore.Save(collection, dir);
+        DirById[collection.Id] = dir;
+        WorkspaceDataChanged?.Invoke();
     }
 
     public static void DeleteCollection(RequestCollection collection)
     {
-        if (FileById.TryGetValue(collection.Id, out var path) && File.Exists(path))
-            File.Delete(path);
-        FileById.Remove(collection.Id);
+        if (DirById.TryGetValue(collection.Id, out var dir) && Directory.Exists(dir))
+            Directory.Delete(dir, recursive: true);
+        DirById.Remove(collection.Id);
+        WorkspaceDataChanged?.Invoke();
     }
 
-    static string ResolvePathFor(RequestCollection collection)
+    static string ResolveDirFor(RequestCollection collection)
     {
         var name = SanitizeFileName(collection.Name);
-        var path = Path.Combine(CollectionsDir, name + ".json");
+        var dir = Path.Combine(CollectionsDir, name);
 
-        // colisión: otro id ya usa (o el disco ya tiene) ese archivo → sufijo con id corto
-        var takenByOther = FileById.Any(kv =>
-            kv.Key != collection.Id && string.Equals(kv.Value, path, StringComparison.OrdinalIgnoreCase));
-        var existsUnknown = !takenByOther && File.Exists(path) &&
-            (!FileById.TryGetValue(collection.Id, out var own) ||
-             !string.Equals(own, path, StringComparison.OrdinalIgnoreCase));
+        // colisión: otro id ya usa (o el disco ya tiene) esa carpeta → sufijo con id corto
+        var takenByOther = DirById.Any(kv =>
+            kv.Key != collection.Id && string.Equals(kv.Value, dir, StringComparison.OrdinalIgnoreCase));
+        var existsUnknown = !takenByOther && Directory.Exists(dir) &&
+            (!DirById.TryGetValue(collection.Id, out var own) ||
+             !string.Equals(own, dir, StringComparison.OrdinalIgnoreCase));
         if (takenByOther || existsUnknown)
         {
             var shortId = collection.Id.Length >= 8 ? collection.Id[..8] : collection.Id;
-            path = Path.Combine(CollectionsDir, $"{name} ({shortId}).json");
+            dir = Path.Combine(CollectionsDir, $"{name} ({shortId})");
         }
-        return path;
+        return dir;
     }
 
     static string SanitizeFileName(string name)
