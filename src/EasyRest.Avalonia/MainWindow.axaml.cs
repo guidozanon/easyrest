@@ -989,12 +989,89 @@ public partial class MainWindow : Window
         var isActiveWs = root == Storage.WorkspaceRoot;
         if (isActiveWs) GitStatusBtn.Content = $"◆ {Storage.ActiveWorkspaceName}  ⟳ sincronizando…";
 
-        var r = await Task.Run(() => GitService.Sync(root));
+        var r = await SyncWorkspaceInteractive(this, root);
 
         _autoSyncBusy = false;
         if (isActiveWs) _autoSyncError = r.Ok ? null : r.Message;
         RefreshGitStatus();
         if (_autoSyncQueued) { _autoSyncQueued = false; ScheduleAutoSync(); }
+    }
+
+    /// <summary>Sincroniza el workspace con git. Si el pull da conflictos, pregunta con un popup
+    /// si quedarse con la versión del remoto o pisar con la local; y si el pull trajo cambios
+    /// del remoto, recarga las colecciones desde el disco para reflejarlos en la UI.</summary>
+    public async Task<(bool Ok, string Message)> SyncWorkspaceInteractive(Window owner, string? rootOverride = null)
+    {
+        var root = rootOverride ?? Storage.WorkspaceRoot;
+        var r = await Task.Run(() => GitService.Sync(root));
+
+        if (r.HasConflicts)
+        {
+            var choice = await Dialogs.Choice(owner, "Conflicto al sincronizar",
+                "El repositorio remoto tiene cambios que chocan con los tuyos.\n\n" +
+                "• «Traer lo remoto»: en lo que está en conflicto, gana la versión del repo " +
+                "(tus cambios en esos archivos se descartan).\n" +
+                "• «Mantener lo mío»: en lo que está en conflicto, gana tu versión " +
+                "(pisás los cambios remotos en esos archivos).\n\n" +
+                "Lo que no está en conflicto se combina normalmente en ambos casos.",
+                "Traer lo remoto", "Mantener lo mío");
+            if (choice == null)
+                return (false, "Sincronización cancelada: tus cambios quedaron locales, sin subir.");
+            var resolution = choice == 0 ? ConflictResolution.KeepRemote : ConflictResolution.KeepLocal;
+            r = await Task.Run(() => GitService.Sync(root, resolution));
+        }
+
+        if (r.PulledRemote &&
+            string.Equals(root, Storage.WorkspaceRoot, StringComparison.OrdinalIgnoreCase))
+            await ReloadCollectionsFromDisk();
+
+        return (r.Ok, r.Message);
+    }
+
+    /// <summary>Recarga las colecciones del workspace activo desde el disco (después de que un
+    /// pull trajo cambios del remoto) y reabre por id las pestañas que apuntaban al modelo viejo.
+    /// Las pestañas con cambios sin guardar no se tocan, para no perder ediciones.</summary>
+    public async Task ReloadCollectionsFromDisk()
+    {
+        var refs = CaptureOpenTabs();
+        var selected = RequestTabs.SelectedIndex;
+        var loaded = await Task.Run(Storage.LoadCollections);
+
+        _restoring = true;
+        try
+        {
+            foreach (var tab in OpenTabs.ToList())
+            {
+                var stale = tab switch
+                {
+                    RequestTab rt => !rt.IsDirty && FindOwner(rt.Original) != null,
+                    CollectionTab or FolderTab => true,
+                    _ => false
+                };
+                if (stale) RemoveTab(tab);
+            }
+
+            Collections.Clear();
+            foreach (var col in loaded) Collections.Add(col);
+
+            foreach (var r in refs)
+            {
+                switch (r.Kind)
+                {
+                    case "request" when FindRequestById(r.Id) is { } req &&
+                                        !OpenTabs.OfType<RequestTab>().Any(t => t.Original.Id == req.Id):
+                        OpenTab(req); break;
+                    case "collection" when FindCollectionById(r.Id) is { } col:
+                        OpenCollectionTab(col); break;
+                }
+            }
+            if (OpenTabs.Count > 0)
+                RequestTabs.SelectedItem = OpenTabs[Math.Clamp(selected, 0, OpenTabs.Count - 1)];
+        }
+        finally { _restoring = false; }
+
+        ApplyFilter(FilterBox.Text?.Trim() ?? "");
+        PersistUiState();
     }
 
     async void OpenSync_Click(object? sender, RoutedEventArgs e)
