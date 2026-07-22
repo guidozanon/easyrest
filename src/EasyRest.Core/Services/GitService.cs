@@ -6,6 +6,15 @@ namespace EasyRest.Services;
 
 public record GitStatusInfo(string Branch, int Pending, int Ahead, int Behind, string? Remote);
 
+/// <summary>Resultado de una sincronización. HasConflicts: el pull encontró conflictos y se abortó
+/// (la UI debe preguntar cómo resolverlos). PulledRemote: el pull integró cambios del remoto,
+/// así que conviene recargar las colecciones desde el disco.</summary>
+public record SyncResult(bool Ok, string Message, bool HasConflicts = false, bool PulledRemote = false);
+
+/// <summary>Cómo resolver los conflictos de un sync: quedarse con la versión local (pisar lo
+/// remoto) o con la versión del remoto (descartar lo local en conflicto).</summary>
+public enum ConflictResolution { KeepLocal, KeepRemote }
+
 /// <summary>Un archivo con cambios locales, con un estado ya traducido para mostrar.</summary>
 public record GitChange(string Status, string Path);
 
@@ -119,15 +128,22 @@ public static class GitService
     };
 
     /// <summary>add -A → commit si hay cambios → pull --rebase → push. Si el rebase da conflictos,
-    /// lo aborta y avisa (la resolución de conflictos queda para tu cliente git).</summary>
-    public static (bool Ok, string Message) Sync(string dir)
+    /// lo aborta y devuelve HasConflicts=true para que la UI pregunte cómo resolverlos
+    /// (con <see cref="Sync(string, ConflictResolution)"/>).</summary>
+    public static SyncResult Sync(string dir) => SyncCore(dir, null);
+
+    /// <summary>Reintenta la sincronización resolviendo los conflictos automáticamente:
+    /// KeepLocal pisa lo remoto con la versión local; KeepRemote descarta lo local en conflicto.</summary>
+    public static SyncResult Sync(string dir, ConflictResolution resolution) => SyncCore(dir, resolution);
+
+    static SyncResult SyncCore(string dir, ConflictResolution? resolution)
     {
-        if (!IsRepo(dir)) return (false, "La carpeta del workspace no es un repositorio git.");
+        if (!IsRepo(dir)) return new(false, "La carpeta del workspace no es un repositorio git.");
 
         var log = new StringBuilder();
 
         var add = Run("add -A", dir);
-        if (add.Code != 0) return (false, ErrorOf(add));
+        if (add.Code != 0) return new(false, ErrorOf(add));
 
         var porcelain = Run("status --porcelain", dir);
         var hasChanges = porcelain.Code == 0 && porcelain.Out.Trim().Length > 0;
@@ -138,8 +154,8 @@ public static class GitService
             {
                 var (name, email) = Identity(dir);
                 if (name == null || email == null)
-                    return (false, "No se pudo commitear: falta configurar user.name / user.email de git.");
-                return (false, ErrorOf(commit));
+                    return new(false, "No se pudo commitear: falta configurar user.name / user.email de git.");
+                return new(false, ErrorOf(commit));
             }
             log.AppendLine("✔ Cambios commiteados.");
         }
@@ -151,20 +167,41 @@ public static class GitService
         if (GetRemote(dir) == null)
         {
             log.AppendLine("Sin remote configurado: el commit quedó local.");
-            return (true, log.ToString().Trim());
+            return new(true, log.ToString().Trim());
         }
+
+        var pulledRemote = false;
 
         // sin upstream (primer push, o remote recién configurado) no hay de dónde pullear
         var hasUpstream = Run("rev-parse --abbrev-ref @{upstream}", dir).Code == 0;
         if (hasUpstream)
         {
-            var pull = Run("pull --rebase", dir, timeoutMs: 120_000);
+            // durante un rebase, "theirs" es el commit local que se reaplica y "ours" la rama remota
+            var strategy = resolution switch
+            {
+                ConflictResolution.KeepLocal => " -X theirs",
+                ConflictResolution.KeepRemote => " -X ours",
+                _ => ""
+            };
+            var upstreamBefore = Run("rev-parse @{upstream}", dir).Out.Trim();
+            int.TryParse(Run("rev-list --count HEAD..@{upstream}", dir).Out.Trim(), out var behindBefore);
+            var pull = Run($"pull --rebase{strategy}", dir, timeoutMs: 120_000);
             if (pull.Code != 0)
             {
+                var conflicted = Run("diff --name-only --diff-filter=U", dir).Out.Trim().Length > 0 ||
+                                 pull.Out.Contains("CONFLICT") || pull.Err.Contains("CONFLICT");
                 Run("rebase --abort", dir);
-                return (false, "El pull --rebase falló (posibles conflictos). Se abortó el rebase: " +
-                               "resolvé los conflictos con tu cliente git y volvé a sincronizar.\n" + ErrorOf(pull));
+                if (conflicted && resolution == null)
+                    return new(false, "Hay conflictos entre tus cambios y los del remoto.",
+                        HasConflicts: true);
+                if (conflicted)
+                    return new(false, "Quedaron conflictos que git no pudo resolver automáticamente " +
+                                      "(por ejemplo, un archivo borrado y modificado a la vez). " +
+                                      "Resolvelos con tu cliente git y volvé a sincronizar.\n" + ErrorOf(pull));
+                return new(false, "El pull --rebase falló:\n" + ErrorOf(pull));
             }
+            var upstreamAfter = Run("rev-parse @{upstream}", dir).Out.Trim();
+            pulledRemote = behindBefore > 0 || upstreamBefore != upstreamAfter;
             log.AppendLine("✔ Pull (rebase) OK.");
         }
         else
@@ -173,10 +210,10 @@ public static class GitService
         }
 
         var push = Run("push -u origin HEAD", dir, timeoutMs: 120_000);
-        if (push.Code != 0) return (false, "El push falló:\n" + ErrorOf(push));
+        if (push.Code != 0) return new(false, "El push falló:\n" + ErrorOf(push), PulledRemote: pulledRemote);
         log.AppendLine("✔ Push OK.");
 
-        return (true, log.ToString().Trim());
+        return new(true, log.ToString().Trim(), PulledRemote: pulledRemote);
     }
 
     // ----- Infraestructura -----
