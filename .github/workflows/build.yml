@@ -7,6 +7,11 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versión a publicar (sin la v, ej. 0.1.8). Si se indica, crea el tag y el release.'
+        required: false
+        default: ''
 
 permissions:
   contents: write   # necesario para crear releases en tags
@@ -47,9 +52,12 @@ jobs:
           if [ "${{ runner.os }}" = "Windows" ]; then
             EXTRA="-p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true"
           fi
-          # en tags v* usamos la version del tag (la muestra la pantalla "Acerca de")
+          # en tags v* usamos la version del tag (la muestra la pantalla "Acerca de");
+          # en dispatch manual, la version indicada como input
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             EXTRA="$EXTRA -p:Version=${GITHUB_REF_NAME#v}"
+          elif [ -n "${{ inputs.version }}" ]; then
+            EXTRA="$EXTRA -p:Version=${{ inputs.version }}"
           fi
           dotnet publish src/EasyRest.Avalonia/EasyRest.Avalonia.csproj \
             -c Release -r ${{ matrix.rid }} --self-contained true \
@@ -65,7 +73,8 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"; [ "$VERSION" = "${GITHUB_REF_NAME}" ] && VERSION="0.0.0"
+          VERSION="${GITHUB_REF_NAME#v}"; [ "$VERSION" = "${GITHUB_REF_NAME}" ] && VERSION="${{ inputs.version }}"
+          [ -z "$VERSION" ] && VERSION="0.0.0"
           APP="EasyRest.app"
           mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
           cp -R "publish/${{ matrix.name }}/." "$APP/Contents/MacOS/"
@@ -89,8 +98,11 @@ jobs:
           name: EasyRest-${{ matrix.name }}
           path: EasyRest-${{ matrix.name }}.zip
 
-      - name: Adjuntar al release (solo en tags)
-        if: startsWith(github.ref, 'refs/tags/v')
+      # En tags adjunta al release del tag. En dispatch manual con version, crea el tag
+      # v<version> (sobre el head de la rama default) y el release, y adjunta ahí.
+      - name: Adjuntar al release (tags, o dispatch con versión)
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != '')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', inputs.version) }}
           files: EasyRest-${{ matrix.name }}.zip
