@@ -109,10 +109,12 @@
                     <TextBlock DockPanel.Dock="Bottom" FontSize="11" Margin="10,0,8,8" TextWrapping="Wrap"
                                Foreground="{DynamicResource RedBrush}" Text="{Binding BodyJsonError}"
                                IsVisible="{Binding BodyJsonError, Converter={StaticResource NotEmpty}}"/>
-                    <TextBox x:Name="BodyRawBox" Text="{Binding Request.Body.Raw}" IsVisible="False"
-                             AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas,Menlo,monospace"
-                             Margin="8,0,8,8"/>
-                    <views:KvEditor x:Name="FormGrid" IsVisible="False" Margin="8,0,8,8"/>
+                    <Panel Margin="8,0,8,8">
+                        <TextBox x:Name="BodyRawBox" Text="{Binding Request.Body.Raw}" IsVisible="False"
+                                 AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas,Menlo,monospace"
+                                 VerticalContentAlignment="Top"/>
+                        <views:KvEditor x:Name="FormGrid" IsVisible="False"/>
+                    </Panel>
                 </DockPanel>
             </TabItem>
             <TabItem Header="Scripts">
