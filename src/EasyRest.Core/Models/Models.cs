@@ -221,4 +221,13 @@ public class AppSettings
 
     /// <summary>Índice de la pestaña seleccionada al cerrar.</summary>
     public int SelectedTabIndex { get; set; }
+
+    /// <summary>Buscar actualizaciones al iniciar (chequeo silencioso contra los Releases de GitHub).</summary>
+    public bool CheckUpdatesOnStartup { get; set; } = true;
+
+    /// <summary>Versión que el usuario eligió omitir: no se avisa más de ella.</summary>
+    public string? SkippedUpdateVersion { get; set; }
+
+    /// <summary>Último chequeo automático (UTC), para no pegarle a GitHub en cada arranque.</summary>
+    public DateTime? LastUpdateCheckUtc { get; set; }
 }

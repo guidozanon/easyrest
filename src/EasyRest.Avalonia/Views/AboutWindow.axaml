@@ -13,8 +13,10 @@
         <TextBlock Text="Cliente HTTP de escritorio estilo Postman/Bruno."
                    FontSize="13" Foreground="#A6ADC8" TextWrapping="Wrap"
                    TextAlignment="Center" MaxWidth="300" Margin="0,4,0,0"/>
-        <Button Content="Ver en GitHub" Click="GitHub_Click"
-                HorizontalAlignment="Center" Margin="0,8,0,0"/>
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,8,0,0">
+            <Button Content="Buscar actualizaciones" Classes="accent" Click="Updates_Click"/>
+            <Button Content="Ver en GitHub" Click="GitHub_Click"/>
+        </StackPanel>
         <TextBlock Text="© 2026 Rentlysoft" FontSize="11" Foreground="#6C7086"
                    HorizontalAlignment="Center" Margin="0,6,0,0"/>
     </StackPanel>

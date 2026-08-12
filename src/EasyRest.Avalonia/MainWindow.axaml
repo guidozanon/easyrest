@@ -56,6 +56,9 @@
         <Border DockPanel.Dock="Bottom" Background="#11111B" Padding="8,2" BorderBrush="#313244" BorderThickness="0,1,0,0">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+                    <Button x:Name="UpdateBtn" Classes="ghost" FontSize="11" Foreground="#A6E3A1"
+                            IsVisible="False" ToolTip.Tip="Hay una versión nueva de EasyRest"
+                            Click="Update_Click"/>
                     <Button x:Name="GitStatusBtn" Classes="ghost" FontSize="11" Content="⎇ workspace"
                             ToolTip.Tip="Ver cambios y sincronizar" Click="OpenSync_Click"/>
                     <TextBlock x:Name="StatusEnvText" FontSize="11" Foreground="#6C7086" VerticalAlignment="Center" Margin="8,0,4,0"/>
