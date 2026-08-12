@@ -113,8 +113,9 @@ public partial class UpdateWindow : Window
         }
         else
         {
-            // Linux (el CI no publica binarios) o `dotnet run`: se descarga a mano
-            SetButtons(action: "Descargar desde GitHub", skip: true);
+            // Linux (el CI no publica binarios) o `dotnet run`: se descarga a mano.
+            // El botón de acción ya lleva a GitHub, así que el otro sobra.
+            SetButtons(action: "Descargar desde GitHub", skip: true, github: false);
             _mode = Mode.OpenGitHub;
             ShowStatus(UpdateService.AssetSuffix == null
                 ? "No hay binarios publicados para esta plataforma: actualizá desde el código o el release."
@@ -258,12 +259,13 @@ public partial class UpdateWindow : Window
 
     // ----- Helpers de UI -----
 
-    void SetButtons(string? action, bool skip)
+    void SetButtons(string? action, bool skip, bool github = true)
     {
         ActionBtn.IsVisible = action != null;
         ActionBtn.IsEnabled = true;
         if (action != null) ActionBtn.Content = action;
         SkipBtn.IsVisible = skip;
+        GitHubBtn.IsVisible = github;
     }
 
     void ShowStatus(string message, string color)
