@@ -17,6 +17,9 @@ public static class Storage
     static string? _activePath;
     static List<WorkspaceRef> _workspaces = new();
     static Dictionary<string, string?> _activeEnvByWorkspace = new();
+    static bool _checkUpdatesOnStartup = true;
+    static string? _skippedUpdateVersion;
+    static DateTime? _lastUpdateCheckUtc;
     static bool _settingsLoaded;
 
     /// <summary>Se dispara después de guardar o borrar una colección — lo único que vive en la
@@ -89,6 +92,9 @@ public static class Storage
         _workspaces = s.Workspaces ?? new();
         _activePath = s.ActiveWorkspacePath;
         _activeEnvByWorkspace = s.ActiveEnvByWorkspace ?? new();
+        _checkUpdatesOnStartup = s.CheckUpdatesOnStartup;
+        _skippedUpdateVersion = s.SkippedUpdateVersion;
+        _lastUpdateCheckUtc = s.LastUpdateCheckUtc;
 
         // Migración desde el esquema viejo de workspace único
         if (!string.IsNullOrWhiteSpace(s.WorkspacePath))
@@ -330,6 +336,30 @@ public static class Storage
         Persist();
     }
 
+    // ----- Preferencias de actualización (las administra Storage: las pantallas guardan settings
+    // armados de cero y se perderían si vivieran sólo en AppSettings) -----
+
+    /// <summary>Chequeo silencioso de actualizaciones al iniciar.</summary>
+    public static bool CheckUpdatesOnStartup
+    {
+        get { EnsureSettingsLoaded(); return _checkUpdatesOnStartup; }
+        set { EnsureSettingsLoaded(); _checkUpdatesOnStartup = value; Persist(); }
+    }
+
+    /// <summary>Versión omitida por el usuario (no se vuelve a avisar de ella).</summary>
+    public static string? SkippedUpdateVersion
+    {
+        get { EnsureSettingsLoaded(); return _skippedUpdateVersion; }
+        set { EnsureSettingsLoaded(); _skippedUpdateVersion = value; Persist(); }
+    }
+
+    /// <summary>Momento del último chequeo automático (UTC).</summary>
+    public static DateTime? LastUpdateCheckUtc
+    {
+        get { EnsureSettingsLoaded(); return _lastUpdateCheckUtc; }
+        set { EnsureSettingsLoaded(); _lastUpdateCheckUtc = value; Persist(); }
+    }
+
     // ----- Settings -----
 
     public static AppSettings LoadSettings()
@@ -356,6 +386,9 @@ public static class Storage
         settings.ActiveEnvByWorkspace = _activeEnvByWorkspace;
         settings.WorkspacePath = null;      // ya migrado al esquema nuevo
         settings.ActiveEnvironmentId = null; // ya migrado a ActiveEnvByWorkspace
+        settings.CheckUpdatesOnStartup = _checkUpdatesOnStartup;
+        settings.SkippedUpdateVersion = _skippedUpdateVersion;
+        settings.LastUpdateCheckUtc = _lastUpdateCheckUtc;
         File.WriteAllText(SettingsFile, JsonSerializer.Serialize(settings, Options));
     }
 

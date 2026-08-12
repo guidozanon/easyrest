@@ -1,0 +1,47 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="EasyRest.Avalonia.Views.UpdateWindow"
+        Title="Actualizaciones" Width="660" Height="520"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Icon="avares://EasyRest/Assets/easyrest.ico"
+        Background="#1E1E2E">
+    <DockPanel Margin="18">
+        <!-- Encabezado: estado + versiones -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12">
+            <Image Source="avares://EasyRest/Assets/easyrest.png" Width="40" Height="40"
+                   VerticalAlignment="Top"/>
+            <StackPanel Spacing="3">
+                <TextBlock x:Name="TitleText" Text="Buscando actualizaciones…" FontSize="15"
+                           FontWeight="Bold" Foreground="#CDD6F4"/>
+                <TextBlock x:Name="SubText" FontSize="12" Foreground="#A6ADC8" TextWrapping="Wrap"/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Pie: progreso + acciones -->
+        <StackPanel DockPanel.Dock="Bottom" Spacing="10" Margin="0,12,0,0">
+            <ProgressBar x:Name="Progress" IsVisible="False" Minimum="0" Maximum="1"/>
+            <TextBlock x:Name="StatusText" IsVisible="False" FontSize="12" TextWrapping="Wrap"/>
+            <CheckBox x:Name="AutoCheck" FontSize="12" Content="Buscar actualizaciones al iniciar"
+                      IsCheckedChanged="AutoCheck_Changed"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button x:Name="GitHubBtn" Content="Ver en GitHub" Click="GitHub_Click"/>
+                <Button x:Name="SkipBtn" Content="Omitir esta versión" IsVisible="False" Click="Skip_Click"/>
+                <Button x:Name="CloseBtn" Content="Cerrar" MinWidth="90" Click="Close_Click"/>
+                <Button x:Name="ActionBtn" Content="Descargar e instalar" Classes="accent"
+                        IsVisible="False" Click="Action_Click"/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Notas de la release -->
+        <Border x:Name="NotesBox" Margin="0,14,0,0" Background="#181825" BorderBrush="#313244"
+                BorderThickness="1" CornerRadius="8" IsVisible="False">
+            <DockPanel Margin="12,10">
+                <TextBlock DockPanel.Dock="Top" Text="NOVEDADES" FontSize="11" FontWeight="Bold"
+                           Foreground="#6C7086" Margin="0,0,0,8"/>
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                    <TextBlock x:Name="NotesText" FontSize="12" TextWrapping="Wrap" Foreground="#CDD6F4"/>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </DockPanel>
+</Window>

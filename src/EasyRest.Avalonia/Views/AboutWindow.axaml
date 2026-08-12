@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="EasyRest.Avalonia.Views.AboutWindow"
-        Title="Acerca de EasyRest" Width="380" Height="380"
+        Title="Acerca de EasyRest" Width="420" Height="390"
         CanResize="False" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Icon="avares://EasyRest/Assets/easyrest.ico" Background="#1E1E2E">
     <StackPanel Margin="28" Spacing="10" HorizontalAlignment="Center">
@@ -13,8 +13,10 @@
         <TextBlock Text="Cliente HTTP de escritorio estilo Postman/Bruno."
                    FontSize="13" Foreground="#A6ADC8" TextWrapping="Wrap"
                    TextAlignment="Center" MaxWidth="300" Margin="0,4,0,0"/>
-        <Button Content="Ver en GitHub" Click="GitHub_Click"
-                HorizontalAlignment="Center" Margin="0,8,0,0"/>
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,8,0,0">
+            <Button Content="Buscar actualizaciones" Classes="accent" Click="Updates_Click"/>
+            <Button Content="Ver en GitHub" Click="GitHub_Click"/>
+        </StackPanel>
         <TextBlock Text="© 2026 Rentlysoft" FontSize="11" Foreground="#6C7086"
                    HorizontalAlignment="Center" Margin="0,6,0,0"/>
     </StackPanel>

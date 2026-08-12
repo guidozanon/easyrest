@@ -57,7 +57,7 @@ public partial class MainWindow : Window
         RequestTabs.SelectionChanged += (_, _) => PersistUiState();
 
         UpdateStatusEnv();
-        Opened += (_, _) => RefreshGitStatus();
+        Opened += (_, _) => { RefreshGitStatus(); CheckUpdatesSilently(); };
         Closing += OnClosing;
 
         Storage.WorkspaceDataChanged += () =>
@@ -514,9 +514,65 @@ public partial class MainWindow : Window
         import.Click += ImportOpenApi_Click;
         var newCol = new MenuItem { Header = "Nueva colección" };
         newCol.Click += NewCollection_Click;
+        var updates = new MenuItem { Header = "Buscar actualizaciones…" };
+        updates.Click += Updates_Click;
         menu.Items.Add(import);
         menu.Items.Add(newCol);
+        menu.Items.Add(new Separator());
+        menu.Items.Add(updates);
         menu.Open(sender as Control);
+    }
+
+    // ----- Actualizaciones -----
+
+    UpdateInfo? _pendingUpdate;
+
+    /// <summary>Chequeo silencioso al arrancar (best-effort: sin red o con rate limit no molesta).
+    /// Si hay versión nueva aparece un botón en la barra de estado.</summary>
+    async void CheckUpdatesSilently()
+    {
+        if (!Storage.CheckUpdatesOnStartup) return;
+        var last = Storage.LastUpdateCheckUtc;
+        if (last != null && DateTime.UtcNow - last.Value < TimeSpan.FromHours(20)) return;
+
+        try
+        {
+            var info = await UpdateService.CheckAsync();
+            Storage.LastUpdateCheckUtc = DateTime.UtcNow;
+            if (!info.IsNewer) return;
+            if (string.Equals(info.Version, Storage.SkippedUpdateVersion, StringComparison.OrdinalIgnoreCase))
+                return;
+            _pendingUpdate = info;
+            ShowUpdateBadge();
+        }
+        catch
+        {
+            // sin conexión, rate limit de GitHub o repo sin releases: se reintenta en otro arranque
+        }
+    }
+
+    void ShowUpdateBadge()
+    {
+        if (_pendingUpdate == null) { UpdateBtn.IsVisible = false; return; }
+        UpdateBtn.Content = $"⬆ v{_pendingUpdate.Version} disponible";
+        UpdateBtn.IsVisible = true;
+    }
+
+    async void Update_Click(object? sender, RoutedEventArgs e) => await OpenUpdates(_pendingUpdate);
+
+    async void Updates_Click(object? sender, RoutedEventArgs e) => await OpenUpdates(null);
+
+    async Task OpenUpdates(UpdateInfo? preloaded)
+    {
+        var win = new UpdateWindow(preloaded);
+        await win.ShowDialog(this);
+
+        // el aviso refleja lo último que se sepa, salvo que se haya omitido esa versión
+        var info = win.LastCheck ?? _pendingUpdate;
+        var skipped = info != null && string.Equals(info.Version, Storage.SkippedUpdateVersion,
+            StringComparison.OrdinalIgnoreCase);
+        _pendingUpdate = info != null && info.IsNewer && !skipped ? info : null;
+        ShowUpdateBadge();
     }
 
     // ----- Árbol -----

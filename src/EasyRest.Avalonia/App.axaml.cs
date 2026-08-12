@@ -36,4 +36,13 @@ public class App : Application
         else
             about.Show();
     }
+
+    void UpdatesClicked(object? sender, EventArgs e)
+    {
+        var updates = new UpdateWindow();
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } main })
+            updates.ShowDialog(main);
+        else
+            updates.Show();
+    }
 }

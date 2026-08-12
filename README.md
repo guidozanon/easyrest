@@ -35,6 +35,21 @@ Windows (x64) y macOS (arm64/x64):
 - **Manual**: se puede correr el workflow a mano (*Actions → build → Run workflow*); los binarios
   quedan como artefactos de esa corrida.
 
+### Auto update
+
+La app se actualiza sola contra los Releases de GitHub. Al iniciar hace un chequeo silencioso
+(como máximo una vez cada 20 h) y, si hay una versión nueva, aparece **⬆ vX.Y.Z disponible** en la
+barra de estado. Desde ahí (o desde el menú ⋯ del sidebar → *Buscar actualizaciones…*, o *Acerca de
+EasyRest*) se abre el panel de actualizaciones con las notas de la release y tres opciones:
+descargar e instalar, omitir esa versión o cerrar. También se puede apagar el chequeo automático
+con el check *Buscar actualizaciones al iniciar*.
+
+Al instalar, EasyRest baja el zip de la plataforma, guarda todo lo pendiente y se cierra; un script
+externo espera a que el proceso termine, reemplaza el binario (el `.exe` autocontenido en Windows,
+el bundle `EasyRest.app` en macOS) y vuelve a abrir la app en la versión nueva. Si la carpeta de
+instalación no tiene permisos de escritura, avisa antes de cerrar nada. En Linux (el CI no publica
+binarios) y corriendo desde el código (`dotnet run`) el panel sólo ofrece abrir la release en GitHub.
+
 ### macOS
 
 El zip de Mac trae `EasyRest.app`. Como **no está firmado** (haría falta cuenta de Apple Developer),
@@ -100,6 +115,9 @@ Elegí el zip según tu Mac: `macos-arm64` (Apple Silicon M1/M2/M3…) o `macos-
   conflictos, un popup pregunta si querés quedarte con la versión del remoto o pisar con la tuya.
   Los ambientes y settings quedan siempre en AppData: los tokens no van al repo. La barra de estado
   muestra `⎇ rama · N cambios`.
+- **Auto update**: chequeo silencioso al iniciar contra los Releases de GitHub y panel de
+  actualizaciones (barra de estado, menú ⋯ del sidebar o *Acerca de EasyRest*) que baja el zip de la
+  plataforma, reemplaza el binario y reinicia la app. Ver [Auto update](#auto-update).
 - **Persistencia local**: por defecto todo se guarda como JSON en `%AppData%\EasyRest`. Cada
   colección es una carpeta (`collections/{Nombre}/`) con un `collection.json` de metadata, un
   archivo `{Request}.req.json` por request y un subdirectorio (con `folder.json`) por carpeta —
@@ -115,6 +133,8 @@ Elegí el zip según tu Mac: `macos-arm64` (Apple Silicon M1/M2/M3…) o `macos-
 - `Services/VariableResolver.cs` — reemplazo de `{{variables}}`.
 - `Services/HttpExecutor.cs` — construcción y envío de las requests HTTP.
 - `Services/OpenApiImporter.cs` — importación de OpenAPI (Microsoft.OpenApi.Readers).
+- `Services/UpdateService.cs` — auto update: consulta de la última release, descarga del zip de la
+  plataforma y script de reemplazo + reinicio.
 - `RunnerTab` / `RunTab` / `RunComparisonTab` — configuración, ejecución y comparación de corridas.
 
 La UI vive en `src/EasyRest.Avalonia` (`MainWindow` + `Views/`).
