@@ -1,6 +1,10 @@
 # Build
 bin/
 obj/
+publish/
+dist/
+stage/
+EasyRest.app/
 
 # Visual Studio / Rider
 .vs/
