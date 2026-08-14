@@ -2,5 +2,9 @@
   <Folder Name="/src/">
     <Project Path="src/EasyRest.Avalonia/EasyRest.Avalonia.csproj" />
     <Project Path="src/EasyRest.Core/EasyRest.Core.csproj" />
+    <Project Path="src/EasyRest.Sync.Server/EasyRest.Sync.Server.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/EasyRest.Sync.Server.Tests/EasyRest.Sync.Server.Tests.csproj" />
   </Folder>
 </Solution>

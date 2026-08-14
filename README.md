@@ -5,8 +5,10 @@ Cliente HTTP de escritorio estilo Postman/Bruno. .NET 8.
 ## Estructura
 
 - `src/EasyRest.Core` — modelos y servicios (storage/workspace, HTTP, OpenAPI, cURL, scripts con Jint,
-  git, logs, runner). **Sin dependencias de UI**: es la base compartida.
+  git, sync, logs, runner). **Sin dependencias de UI**: es la base compartida.
 - `src/EasyRest.Avalonia` — la app multiplataforma (Windows/macOS/Linux) sobre el Core.
+- `src/EasyRest.Sync.Server` — servidor de sync self-hosted, opcional. Ver
+  [docs/SYNC.md](docs/SYNC.md).
 
 ## Ejecutar
 
@@ -147,6 +149,10 @@ open /Applications/EasyRest.app
   conflictos, un popup pregunta si querés quedarte con la versión del remoto o pisar con la tuya.
   Los ambientes y settings quedan siempre en AppData: los tokens no van al repo. La barra de estado
   muestra `⎇ rama · N cambios`.
+- **Servidor de sync (opcional)**: como alternativa a git, cada organización puede correr su propio
+  servidor y sincronizar colecciones y ambientes **con secretos**, invitando gente a workspaces con
+  roles y permisos. Login contra el IdP de la empresa (OIDC — Google, Entra, Okta, Keycloak… — o
+  GitHub). Ver [docs/SYNC.md](docs/SYNC.md).
 - **Auto update**: chequeo silencioso al iniciar contra los Releases de GitHub y panel de
   actualizaciones (barra de estado, menú ⋯ del sidebar o *Acerca de EasyRest*) que baja el binario de
   la plataforma, reemplaza la instalación y reinicia la app. Ver [Auto update](#auto-update).
