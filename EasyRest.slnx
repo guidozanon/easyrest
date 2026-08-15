@@ -9,5 +9,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/EasyRest.Sync.Server.Tests/EasyRest.Sync.Server.Tests.csproj" />
+    <Project Path="tests/aot-probe/AotProbe.csproj" />
   </Folder>
 </Solution>

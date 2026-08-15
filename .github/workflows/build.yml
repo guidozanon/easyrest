@@ -31,6 +31,32 @@ jobs:
       # el instalador se prueba contra un prefijo temporal: no necesita systemd ni root
       - run: bash tests/install/test-install.sh
 
+  # Spike de Android. Va en su propio job porque necesita el workload, que tarda en instalarse.
+  # Es lo que dice si el head compila: no se puede armar sin el SDK de Android.
+  android-spike:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet workload install android
+      - run: dotnet build src/EasyRest.Android/EasyRest.Android.csproj -c Release
+
+  # El Core compilado sin JIT ni Reflection.Emit, que es la restricción de iOS. Verifica que el
+  # motor de scripts y el resto del Core sigan funcionando ahí: si esto se rompe, el móvil deja
+  # de ser viable y conviene enterarse en el PR y no en el teléfono.
+  aot-probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+      - run: dotnet publish tests/aot-probe/AotProbe.csproj -c Release -r linux-x64 -o aot
+      - run: ./aot/AotProbe
+
   # Tarballs del servidor de sync para instalar sin Docker. Los consume install.sh, que baja el
   # .tar.gz y verifica el .sha256 antes de tocar nada.
   publish-server:

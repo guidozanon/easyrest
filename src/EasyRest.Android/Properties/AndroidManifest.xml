@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Sin este permiso HttpClient falla en silencio, que para un cliente HTTP sería gracioso -->
+  <uses-permission android:name="android.permission.INTERNET" />
+
+  <application android:label="EasyRest"
+               android:theme="@android:style/Theme.Material.Light.NoActionBar"
+               android:usesCleartextTraffic="true" />
+</manifest>

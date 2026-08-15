@@ -8,22 +8,43 @@ namespace EasyRest.Services;
 /// Acepta el formato propio y el export de environment de Postman.</summary>
 public static class EnvironmentShare
 {
-    static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
+    // camelCase para que el formato compartido siga siendo exactamente el mismo de antes
+    static readonly JsonSerializerOptions Options = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
+    /// <summary>El JSON que se comparte. Son clases y no tipos anónimos a propósito: un tipo
+    /// anónimo no se puede serializar en un runtime AOT (System.Text.Json no puede construirle
+    /// el converter), y eso rompería la app en móvil. Verificado con tests/aot-probe.</summary>
+    sealed class SharedEnvironment
+    {
+        public string Easyrest { get; init; } = "environment";
+        public string Name { get; init; } = "";
+        public List<SharedVariable> Variables { get; init; } = new();
+    }
+
+    sealed class SharedVariable
+    {
+        public string Key { get; init; } = "";
+        public string Value { get; init; } = "";
+        public bool Enabled { get; init; }
+    }
 
     /// <summary>Serializa el ambiente a un JSON compartible. Con includeValues=false van
     /// solo las claves, para pasar la estructura sin filtrar tokens ni secretos.</summary>
     public static string ToJson(EnvironmentModel env, bool includeValues = true)
     {
-        var payload = new
+        var payload = new SharedEnvironment
         {
-            easyrest = "environment",
-            name = env.Name,
-            variables = env.Variables.Select(v => new
+            Name = env.Name,
+            Variables = env.Variables.Select(v => new SharedVariable
             {
-                key = v.Key,
-                value = includeValues ? v.Value : "",
-                enabled = v.Enabled
-            })
+                Key = v.Key,
+                Value = includeValues ? v.Value : "",
+                Enabled = v.Enabled
+            }).ToList()
         };
         return JsonSerializer.Serialize(payload, Options);
     }

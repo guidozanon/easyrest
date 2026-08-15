@@ -1,0 +1,42 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="EasyRest.Android.SpikeView">
+
+  <!-- Pantalla de diagnóstico, no de producto: la pregunta del spike es si el Core funciona en
+       un teléfono, así que lo que se ve son las respuestas a esa pregunta. -->
+
+  <ScrollViewer Background="#1E1E2E">
+    <StackPanel Margin="16" Spacing="14">
+
+      <TextBlock Text="EasyRest · spike Android" FontSize="20" FontWeight="SemiBold"
+                 Foreground="#89B4FA" />
+
+      <Border Background="#272739" CornerRadius="8" Padding="12">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Entorno" Foreground="#9399B2" FontSize="13" />
+          <TextBlock x:Name="EntornoTexto" TextWrapping="Wrap" FontSize="13" Foreground="#CDD6F4" />
+        </StackPanel>
+      </Border>
+
+      <TextBlock Text="URL" Foreground="#9399B2" FontSize="13" />
+      <TextBox x:Name="UrlBox" Text="https://api.github.com/zen" FontSize="15" />
+
+      <TextBlock Text="Script post-respuesta (Jint)" Foreground="#9399B2" FontSize="13" />
+      <TextBox x:Name="ScriptBox" AcceptsReturn="True" Height="120" FontSize="13"
+               FontFamily="monospace" />
+
+      <Button x:Name="EnviarBtn" Content="Enviar" HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center" Padding="0,14" FontSize="16" />
+
+      <Border Background="#272739" CornerRadius="8" Padding="12">
+        <StackPanel Spacing="8">
+          <TextBlock x:Name="EstadoTexto" FontSize="15" FontWeight="SemiBold" Foreground="#A6E3A1" />
+          <TextBlock x:Name="TestsTexto" TextWrapping="Wrap" FontSize="13" Foreground="#F9E2AF" />
+          <TextBlock x:Name="CuerpoTexto" TextWrapping="Wrap" FontSize="12"
+                     FontFamily="monospace" Foreground="#CDD6F4" />
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
