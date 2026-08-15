@@ -21,6 +21,11 @@ public interface IIdentityProvider
 
     /// <summary>Canjea el code del IdP por la identidad de la persona.</summary>
     Task<ExternalIdentity> ExchangeAsync(string code, string callbackUrl, CancellationToken ct);
+
+    /// <summary>Chequeo de configuración para la consola: null si está bien, o el problema en
+    /// castellano. Es donde se pierde más tiempo al instalar, así que conviene poder verlo sin
+    /// leer logs.</summary>
+    Task<string?> DiagnoseAsync(CancellationToken ct) => Task.FromResult<string?>(null);
 }
 
 public class OidcIdentityProvider(ProviderOptions options, IHttpClientFactory httpFactory) : IIdentityProvider
@@ -50,6 +55,25 @@ public class OidcIdentityProvider(ProviderOptions options, IHttpClientFactory ht
             root.TryGetProperty("userinfo_endpoint", out var ui) ? ui.GetString() : null,
             root.TryGetProperty("issuer", out var iss) ? iss.GetString() ?? options.Authority : options.Authority);
         return _discovery;
+    }
+
+    public async Task<string?> DiagnoseAsync(CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(options.Authority)) return "Falta la Authority del IdP.";
+        if (string.IsNullOrWhiteSpace(options.ClientId)) return "Falta el ClientId.";
+        if (string.IsNullOrWhiteSpace(options.ClientSecret)) return "Falta el ClientSecret.";
+
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(10));
+            await DiscoverAsync(cts.Token);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return $"No se pudo leer {options.Authority.TrimEnd('/')}/.well-known/openid-configuration: {ex.Message}";
+        }
     }
 
     public async Task<string> BuildAuthorizationUrlAsync(string state, string callbackUrl, CancellationToken ct)
@@ -182,6 +206,11 @@ public class GitHubIdentityProvider(ProviderOptions options, IHttpClientFactory 
     public string Id => options.Id;
     public string DisplayName => string.IsNullOrWhiteSpace(options.DisplayName) ? "GitHub" : options.DisplayName;
     public string Kind => "github";
+
+    public Task<string?> DiagnoseAsync(CancellationToken ct) => Task.FromResult(
+        string.IsNullOrWhiteSpace(options.ClientId) ? "Falta el ClientId."
+        : string.IsNullOrWhiteSpace(options.ClientSecret) ? "Falta el ClientSecret."
+        : null);
 
     public Task<string> BuildAuthorizationUrlAsync(string state, string callbackUrl, CancellationToken ct)
     {

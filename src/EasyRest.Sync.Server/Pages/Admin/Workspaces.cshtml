@@ -1,0 +1,79 @@
+@page "/Admin/Workspaces"
+@model EasyRest.Sync.Server.Pages.Admin.WorkspacesModel
+@{
+    ViewData["Title"] = "Workspaces";
+    ViewData["User"] = Model.CurrentUser.Email;
+}
+
+<h1>Workspaces</h1>
+
+@if (!string.IsNullOrEmpty(Model.Aviso)) { <div class="aviso">@Model.Aviso</div> }
+@if (!string.IsNullOrEmpty(Model.ErrorMsg)) { <div class="error">@Model.ErrorMsg</div> }
+
+@if (Model.Selected == null)
+{
+    <div class="card">
+        <table>
+            <thead>
+            <tr><th>Nombre</th><th>Dueño</th><th>Miembros</th><th>Documentos</th><th>Creado</th><th></th></tr>
+            </thead>
+            <tbody>
+            @foreach (var w in Model.Workspaces)
+            {
+                <tr>
+                    <td>@w.Name</td>
+                    <td>@w.OwnerEmail</td>
+                    <td>@w.Members</td>
+                    <td>@w.Documents</td>
+                    <td class="muted">@w.CreatedAt.ToString("yyyy-MM-dd")</td>
+                    <td style="text-align:right"><a href="/Admin/Workspaces?id=@w.Id">Ver miembros</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <p class="muted">
+        Desde acá se administra el server, no el contenido: los valores de los secretos no se
+        muestran nunca. Repartir permisos sobre ambientes se hace desde la app, que es donde está
+        el contexto de qué ambiente es cuál.
+    </p>
+}
+else
+{
+    <p><a href="/Admin/Workspaces">← Todos los workspaces</a></p>
+
+    <div class="card">
+        <h2 style="margin-top:0">@Model.Selected.Name</h2>
+        <table>
+            <thead>
+            <tr><th>Miembro</th><th>Rol</th><th>Secretos</th><th></th></tr>
+            </thead>
+            <tbody>
+            @foreach (var m in Model.Members)
+            {
+                <tr>
+                    <td>@m.Email</td>
+                    <td>@m.Role</td>
+                    <td>@(m.CanReadSecrets ? "sí" : "no")</td>
+                    <td style="text-align:right">
+                        @if (m.Role != WorkspaceRole.Owner)
+                        {
+                            <form class="inline" method="post" asp-page-handler="Transfer">
+                                <input type="hidden" name="workspaceId" value="@Model.Selected.Id" />
+                                <input type="hidden" name="userId" value="@m.UserId" />
+                                <button type="submit">Hacer dueño</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <p class="muted">
+        Transferir es lo que evita que un workspace quede sin quien lo administre cuando su dueño
+        se va: el rol de owner no se puede sacar ni degradar. El dueño anterior baja a Admin.
+    </p>
+}

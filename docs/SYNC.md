@@ -60,6 +60,8 @@ Auth__AllowedEmailDomains__0=tuempresa.com
 | `Auth__AllowedEmailDomains__N` | dominios de mail habilitados (vacío = todos) |
 | `Auth__AllowOpenRegistration` | si es `false`, no entra nadie nuevo después del primero |
 | `Auth__AccessTokenMinutes` / `Auth__RefreshTokenDays` | duración de la sesión |
+| `Auth__ServerAdminEmails__N` | mails que reciben admin del server al entrar (vacío = el primero) |
+| `Admin__Enabled` | `false` apaga la consola web y deja sólo la API |
 | `Database__Provider` | `sqlite` (default) o `postgres` |
 | `ConnectionStrings__Default` | cadena de conexión |
 
@@ -93,6 +95,35 @@ usarlo, el anterior muere.
 
 Para CI y uso headless hay **tokens de servicio**, atados a un workspace y con su propio rol.
 Se distinguen a simple vista por el prefijo `ert_`.
+
+### La consola de administración
+
+En `/Admin` hay una consola web para el operador del server: resumen, usuarios y workspaces. Pide
+`IsServerAdmin` y entra con el mismo login que la app.
+
+Está hecha con Razor Pages dentro del mismo proyecto y el mismo contenedor: son unas pocas
+pantallas de ABM y no justifican una cadena de build de node, un bundle ni CORS. El CSS va inline,
+así que no hay ningún recurso externo que cargar.
+
+Tres decisiones que vale la pena conocer:
+
+- **La configuración de auth no se edita desde acá**, se muestra. Los providers cambian una vez
+  por instalación, traen client secrets, y configurar el login desde una pantalla que exige estar
+  logueado es un problema de huevo y gallina. Lo que sí hace la consola es **diagnosticar**: si el
+  discovery del IdP responde, qué redirect hay que registrar allá, y si `Auth:PublicUrl` no coincide
+  con el host por el que estás entrando o no es https — que es donde se pierden las tardes al
+  instalar.
+- **Nunca muestra el valor de un secreto.** Administra permisos, no contenidos. Un admin que
+  necesite ver un token puede darse permiso y leerlo desde la app, y eso queda registrado; una
+  consola que descifra inline convertiría la exfiltración silenciosa en dos clics.
+- **Se puede apagar entera** con `Admin__Enabled=false`, para quien quiera exponer sólo la API.
+
+La sesión es el mismo access token opaco de la API, guardado en una cookie `HttpOnly` (`Secure`
+cuando la request es https, `SameSite=Lax`). No hay un segundo sistema de sesiones: revocar el
+token o desactivar a la persona corta también la consola. Los formularios llevan antiforgery.
+
+Repartir permisos sobre ambientes **no** está acá a propósito: eso se hace desde la app, que es
+donde estás mirando el ambiente cuando decidís quién ve sus tokens.
 
 ### Documentos y revisiones
 
@@ -218,8 +249,11 @@ Vale tenerlos a la vista antes de ponerlo en producción:
   hasta que un miembro que ya tiene la clave esté online para envolverla para el nuevo.
 - **En el dispositivo los secretos quedan en JSON plano**, como hasta ahora. El siguiente paso de
   endurecimiento es guardarlos en el keychain del sistema (DPAPI, Keychain, Keystore).
-- **No hay UI todavía.** El server y el cliente están completos y testeados; falta la pantalla de
-  login, el selector de workspace y la administración de miembros en la app.
+- **Falta la UI en la app.** El server, la consola de administración y el cliente de sync están
+  completos y testeados; lo que falta es la pantalla de login, el selector de workspace y la
+  administración de miembros dentro de EasyRest.
+- **La sesión de la consola dura lo que el access token** (una hora por defecto). Cuando vence hay
+  que volver a entrar, que con la sesión del IdP viva es un ida y vuelta silencioso.
 
 ## Cambiar el esquema
 

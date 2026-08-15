@@ -255,16 +255,23 @@ public class AuthService(SyncDbContext db, IdentityProviderRegistry providers, I
             throw new AuthException($"El dominio '{domain}' no está habilitado en este server.");
     }
 
-    /// <summary>Loopback (desktop) o un esquema propio registrado (móvil). Cualquier otra cosa
-    /// se rechaza: un redirect abierto acá es entregarle el código a cualquiera.</summary>
+    /// <summary>Loopback (desktop), un esquema propio registrado (móvil), o el propio server
+    /// (la consola de administración). Cualquier otra cosa se rechaza: un redirect abierto acá
+    /// es entregarle el código a cualquiera.</summary>
     internal bool IsAllowedRedirect(string redirectUri)
     {
         if (!Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri)) return false;
 
         if (uri.Scheme is "http" or "https")
-            return uri.Scheme == "http" && uri.IsLoopback;
+            return (uri.Scheme == "http" && uri.IsLoopback) || IsOwnOrigin(uri);
 
         return _options.AllowedRedirectSchemes
             .Any(s => string.Equals(s, uri.Scheme, StringComparison.OrdinalIgnoreCase));
     }
+
+    bool IsOwnOrigin(Uri uri) =>
+        Uri.TryCreate(_options.PublicUrl, UriKind.Absolute, out var self) &&
+        string.Equals(uri.Scheme, self.Scheme, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(uri.Host, self.Host, StringComparison.OrdinalIgnoreCase) &&
+        uri.Port == self.Port;
 }

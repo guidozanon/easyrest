@@ -45,6 +45,8 @@ Qué bajar según la plataforma:
 | `EasyRest-win-x64-portable.zip` | Windows sin instalar (la misma carpeta, descomprimida donde quieras) |
 | `EasyRest-macos-arm64.zip` | Mac con Apple Silicon (M1/M2/M3…) |
 | `EasyRest-macos-x64.zip` | Mac con Intel |
+| `EasyRest-linux-x64.tar.gz` | Linux x86_64 |
+| `EasyRest-linux-arm64.tar.gz` | Linux arm64 |
 
 ### Firma
 
@@ -66,11 +68,11 @@ descargar e instalar, omitir esa versión o cerrar. También se puede apagar el 
 con el check *Buscar actualizaciones al iniciar*.
 
 Al instalar, EasyRest baja el binario de la plataforma, guarda todo lo pendiente y se cierra; un
-script externo espera a que el proceso termine, reemplaza la instalación (la carpeta en Windows, el
-bundle `EasyRest.app` en macOS) y vuelve a abrir la app en la versión nueva. Si el swap falla, deja
-la versión anterior en su lugar. Si la carpeta de instalación no tiene permisos de escritura, avisa
-antes de cerrar nada. En Linux (el CI no publica binarios) y corriendo desde el código
-(`dotnet run`) el panel sólo ofrece abrir la release en GitHub.
+script externo espera a que el proceso termine, reemplaza la instalación (la carpeta en Windows y
+Linux, el bundle `EasyRest.app` en macOS) y vuelve a abrir la app en la versión nueva. Si el swap
+falla, deja la versión anterior en su lugar. Si la carpeta de instalación no tiene permisos de
+escritura, avisa antes de cerrar nada. Corriendo desde el código (`dotnet run`) el panel sólo
+ofrece abrir la release en GitHub, para no pisar `bin/`.
 
 > **Si venís de la v0.1.10 o anterior en Windows** (la que era un único `EasyRest.exe`): esa
 > instalación no se actualiza sola a este formato. Bajá una vez el `EasyRest-Setup-<versión>.exe`
@@ -152,7 +154,8 @@ open /Applications/EasyRest.app
 - **Servidor de sync (opcional)**: como alternativa a git, cada organización puede correr su propio
   servidor y sincronizar colecciones y ambientes **con secretos**, invitando gente a workspaces con
   roles y permisos. Login contra el IdP de la empresa (OIDC — Google, Entra, Okta, Keycloak… — o
-  GitHub). Ver [docs/SYNC.md](docs/SYNC.md).
+  GitHub), y una consola web en `/Admin` para administrar usuarios y workspaces. Ver
+  [docs/SYNC.md](docs/SYNC.md).
 - **Auto update**: chequeo silencioso al iniciar contra los Releases de GitHub y panel de
   actualizaciones (barra de estado, menú ⋯ del sidebar o *Acerca de EasyRest*) que baja el binario de
   la plataforma, reemplaza la instalación y reinicia la app. Ver [Auto update](#auto-update).

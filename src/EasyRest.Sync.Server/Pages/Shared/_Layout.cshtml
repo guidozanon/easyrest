@@ -1,0 +1,83 @@
+@*
+    Layout de la consola. Todo el CSS va inline a propósito: sin CDN, sin bundle y sin toolchain
+    de node — son seis pantallas de ABM y la imagen ya pesa lo que pesa.
+*@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] · EasyRest Sync</title>
+    <style>
+        :root {
+            --bg: #1e1e2e; --panel: #272739; --border: #3b3b52; --text: #cdd6f4;
+            --muted: #9399b2; --accent: #89b4fa; --ok: #a6e3a1; --warn: #f9e2af; --bad: #f38ba8;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; background: var(--bg); color: var(--text);
+            font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        }
+        header {
+            display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+            padding: 14px 24px; background: var(--panel); border-bottom: 1px solid var(--border);
+        }
+        header .brand { font-weight: 600; color: var(--accent); }
+        header nav { display: flex; gap: 18px; }
+        header nav a { color: var(--text); text-decoration: none; }
+        header nav a:hover, header nav a.on { color: var(--accent); }
+        header .who { margin-left: auto; color: var(--muted); font-size: 13px; }
+        main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+        h1 { font-size: 22px; margin: 0 0 20px; }
+        h2 { font-size: 17px; margin: 28px 0 12px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+        th { color: var(--muted); font-weight: 500; }
+        .card {
+            background: var(--panel); border: 1px solid var(--border);
+            border-radius: 8px; padding: 16px 18px; margin-bottom: 16px;
+        }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+        .stat { font-size: 26px; font-weight: 600; color: var(--accent); }
+        .stat + div { color: var(--muted); font-size: 13px; }
+        button {
+            font: inherit; font-size: 13px; padding: 5px 11px; cursor: pointer;
+            background: transparent; color: var(--text);
+            border: 1px solid var(--border); border-radius: 6px;
+        }
+        button:hover { border-color: var(--accent); color: var(--accent); }
+        button.danger:hover { border-color: var(--bad); color: var(--bad); }
+        a { color: var(--accent); }
+        code { background: #11111b; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+        .tag { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); }
+        .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+        .muted { color: var(--muted); }
+        .aviso { border-left: 3px solid var(--ok); padding: 10px 14px; background: var(--panel); margin-bottom: 16px; }
+        .error { border-left: 3px solid var(--bad); padding: 10px 14px; background: var(--panel); margin-bottom: 16px; }
+        form.inline { display: inline; }
+    </style>
+</head>
+<body>
+@if (ViewData["HideNav"] as bool? != true)
+{
+    <header>
+        <span class="brand">EasyRest Sync</span>
+        <nav>
+            <a href="/Admin">Resumen</a>
+            <a href="/Admin/Users">Usuarios</a>
+            <a href="/Admin/Workspaces">Workspaces</a>
+        </nav>
+        <span class="who">
+            @ViewData["User"]
+            <form class="inline" method="post" action="/Admin/Login?handler=Logout">
+                @Html.AntiForgeryToken()
+                <button type="submit">Salir</button>
+            </form>
+        </span>
+    </header>
+}
+<main>
+    @RenderBody()
+</main>
+</body>
+</html>

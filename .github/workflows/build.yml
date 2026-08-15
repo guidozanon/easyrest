@@ -39,11 +39,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: windows-latest,  rid: win-x64,   name: windows-x64 }
-          - { os: macos-latest,    rid: osx-arm64, name: macos-arm64 }
+          - { os: windows-latest,  rid: win-x64,     name: windows-x64 }
+          - { os: macos-latest,    rid: osx-arm64,   name: macos-arm64 }
           # macos-13 se retiró en diciembre de 2025 (por eso la v0.1.10 salió sin binario
           # de Intel). macos-15-intel es el reemplazo x86_64, disponible hasta 2027.
-          - { os: macos-15-intel,  rid: osx-x64,   name: macos-x64 }
+          - { os: macos-15-intel,  rid: osx-x64,     name: macos-x64 }
+          # linux-arm64 se cruza desde x64 sin emular: el publish autocontenido no compila
+          # nada nativo, sólo copia el runtime del RID que se le pida
+          - { os: ubuntu-latest,   rid: linux-x64,   name: linux-x64 }
+          - { os: ubuntu-latest,   rid: linux-arm64, name: linux-arm64 }
     runs-on: ${{ matrix.os }}
     env:
       # los secrets no se pueden usar en el `if:` de un step: se pasan por env y se chequea env
@@ -260,6 +264,19 @@ jobs:
         # (un zip común los pierde)
         run: ditto -c -k --keepParent EasyRest.app "EasyRest-${{ matrix.name }}.zip"
 
+      # ---------- Linux ----------
+
+      # tar.gz y no zip: es la convención en Linux y lleva permisos y symlinks de forma portable
+      # entre cualquier herramienta que use la gente para desempaquetarlo
+      - name: Empaquetar (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p stage
+          cp -R "publish/${{ matrix.name }}" stage/EasyRest
+          chmod +x stage/EasyRest/EasyRest
+          tar -czf "EasyRest-${{ matrix.name }}.tar.gz" -C stage EasyRest
+
       # ---------- Artefactos y release ----------
 
       - name: Listar assets de esta plataforma
@@ -267,12 +284,18 @@ jobs:
         run: |
           {
             echo 'ASSETS<<EOF'
-            if [ "${{ runner.os }}" = "Windows" ]; then
-              echo "dist/EasyRest-Setup-$VERSION.exe"
-              echo "EasyRest-win-x64-portable.zip"
-            else
-              echo "EasyRest-${{ matrix.name }}.zip"
-            fi
+            case "${{ runner.os }}" in
+              Windows)
+                echo "dist/EasyRest-Setup-$VERSION.exe"
+                echo "EasyRest-win-x64-portable.zip"
+                ;;
+              Linux)
+                echo "EasyRest-${{ matrix.name }}.tar.gz"
+                ;;
+              *)
+                echo "EasyRest-${{ matrix.name }}.zip"
+                ;;
+            esac
             echo 'EOF'
           } >> "$GITHUB_ENV"
 

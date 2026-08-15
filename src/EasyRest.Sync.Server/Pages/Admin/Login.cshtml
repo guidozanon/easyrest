@@ -1,0 +1,35 @@
+@page "/Admin/Login"
+@model EasyRest.Sync.Server.Pages.Admin.LoginModel
+@{
+    ViewData["Title"] = "Entrar";
+    ViewData["HideNav"] = true;
+}
+
+<div class="card" style="max-width:460px;margin:60px auto">
+    <h1>EasyRest Sync</h1>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMsg))
+    {
+        <div class="error">@Model.ErrorMsg</div>
+    }
+
+    @if (Model.Providers.Count == 0)
+    {
+        <p class="warn">Este server no tiene ningún proveedor de identidad configurado.</p>
+        <p class="muted">
+            Configurá al menos uno con <code>Auth__Providers__0__*</code> y reiniciá.
+            El detalle está en <code>docs/SYNC.md</code>.
+        </p>
+    }
+    else
+    {
+        <p class="muted">Entrá con la cuenta de tu organización.</p>
+        @foreach (var provider in Model.Providers)
+        {
+            <form method="post" asp-page-handler="Start" style="margin-bottom:8px">
+                <input type="hidden" name="provider" value="@provider.Id" />
+                <button type="submit" style="width:100%;padding:9px">@provider.DisplayName</button>
+            </form>
+        }
+    }
+</div>

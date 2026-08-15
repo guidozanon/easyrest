@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using EasyRest.Sync.Server.Admin;
 using EasyRest.Sync.Server.Auth;
 using EasyRest.Sync.Server.Crypto;
 using EasyRest.Sync.Server.Data;
@@ -40,6 +41,13 @@ builder.Services.AddSingleton<IdentityProviderRegistry>(sp => new IdentityProvid
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<WorkspaceService>();
 builder.Services.AddScoped<DocumentService>();
+builder.Services.AddScoped<AdminService>();
+
+// La consola se puede apagar entera: es una superficie nueva sobre un servicio que guarda
+// secretos, y quien exponga sólo la API no tiene por qué cargar con ella.
+builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection("Admin"));
+var adminEnabled = builder.Configuration.GetValue("Admin:Enabled", true);
+if (adminEnabled) builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
@@ -58,6 +66,7 @@ app.MapInvitationAccept();
 app.MapDocuments();
 app.MapAdmin();
 app.MapOwnershipTransfer();
+if (adminEnabled) app.MapRazorPages();
 
 app.Run();
 
