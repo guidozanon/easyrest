@@ -12,6 +12,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Toda la config se puede pasar por env vars: Auth__Providers__0__ClientId, etc.
 builder.Configuration.AddEnvironmentVariables();
 
+// No hace nada si no está corriendo bajo systemd; si lo está, los logs salen con el formato
+// que journald entiende (niveles incluidos) en vez de con timestamps duplicados.
+builder.Host.UseSystemd();
+
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection("Auth"));
 builder.Services.ConfigureHttpJsonOptions(o =>
 {

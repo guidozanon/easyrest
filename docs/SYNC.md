@@ -19,6 +19,8 @@ funciona en móvil, donde no existe el CLI de git).
 
 ## Levantarlo
 
+Con Docker:
+
 ```bash
 cp .env.example .env
 openssl rand -base64 32          # va en EASYREST_MASTER_KEY
@@ -27,6 +29,17 @@ docker compose up -d
 
 Con eso queda andando en `:8080` sobre SQLite. Para Postgres, descomentá el servicio `db` y las
 dos variables de conexión en `docker-compose.yml`.
+
+Sin Docker, en una VM común, hay un instalador que deja el binario, la base y un servicio de
+systemd, y pregunta lo que haga falta:
+
+```bash
+curl -fsSLO https://github.com/guidozanon/easyrest/releases/latest/download/install.sh
+sudo bash install.sh
+```
+
+El detalle —TLS, modo desatendido, actualización, backup— está en
+[docs/INSTALL.md](INSTALL.md).
 
 ### Configurar el IdP
 

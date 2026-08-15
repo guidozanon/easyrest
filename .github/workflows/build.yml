@@ -27,6 +27,77 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - run: dotnet build src/EasyRest.Avalonia/EasyRest.Avalonia.csproj -c Release
+      - run: dotnet test tests/EasyRest.Sync.Server.Tests/EasyRest.Sync.Server.Tests.csproj
+      # el instalador se prueba contra un prefijo temporal: no necesita systemd ni root
+      - run: bash tests/install/test-install.sh
+
+  # Tarballs del servidor de sync para instalar sin Docker. Los consume install.sh, que baja el
+  # .tar.gz y verifica el .sha256 antes de tocar nada.
+  publish-server:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [linux-x64, linux-arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Resolver versión
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then VERSION="${GITHUB_REF_NAME#v}"
+          else VERSION="${{ inputs.version }}"; fi
+          [ -z "$VERSION" ] && VERSION="0.0.0"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Publish del server (${{ matrix.rid }})
+        shell: bash
+        run: |
+          dotnet publish src/EasyRest.Sync.Server/EasyRest.Sync.Server.csproj \
+            -c Release -r ${{ matrix.rid }} --self-contained true \
+            -p:DebugType=none -p:DebugSymbols=false -p:Version="$VERSION" \
+            -o publish/server-${{ matrix.rid }}
+
+      - name: Empaquetar y firmar con sha256
+        shell: bash
+        run: |
+          mkdir -p stage-server
+          cp -R "publish/server-${{ matrix.rid }}" stage-server/easyrest-sync
+          chmod +x stage-server/easyrest-sync/EasyRest.Sync.Server
+          tar -czf "easyrest-sync-${{ matrix.rid }}.tar.gz" -C stage-server easyrest-sync
+          sha256sum "easyrest-sync-${{ matrix.rid }}.tar.gz" \
+            | cut -d' ' -f1 > "easyrest-sync-${{ matrix.rid }}.tar.gz.sha256"
+
+      - name: Subir artefactos
+        uses: actions/upload-artifact@v4
+        with:
+          name: easyrest-sync-${{ matrix.rid }}
+          path: |
+            easyrest-sync-${{ matrix.rid }}.tar.gz
+            easyrest-sync-${{ matrix.rid }}.tar.gz.sha256
+          if-no-files-found: error
+
+      - name: Adjuntar al release
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != '')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', inputs.version) }}
+          files: |
+            easyrest-sync-${{ matrix.rid }}.tar.gz
+            easyrest-sync-${{ matrix.rid }}.tar.gz.sha256
+
+      # el instalador va una sola vez, no una por arquitectura: es el mismo script y la URL
+      # .../releases/latest/download/install.sh tiene que resolver a algo
+      - name: Adjuntar install.sh al release
+        if: matrix.rid == 'linux-x64' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != ''))
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', inputs.version) }}
+          files: install/install.sh
 
   # Binarios por plataforma. Corre en tags v* o a mano (workflow_dispatch).
   #

@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.11" />
+    <!-- corriendo bajo systemd, los logs salen con el formato que espera journald -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="8.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
