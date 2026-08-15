@@ -28,7 +28,8 @@ public record TokenResponse(
     int ExpiresIn,
     UserResponse User);
 
-public record UserResponse(Guid Id, string Email, string DisplayName, string Provider);
+public record UserResponse(Guid Id, string Email, string DisplayName, string Provider,
+    bool IsServerAdmin = false);
 
 public record WorkspaceResponse(
     Guid Id,
@@ -106,5 +107,29 @@ public record ChangesResponse(long Cursor, bool HasMore, DocumentResponse[] Docu
 public record SecretsResponse(Guid DocumentId, Dictionary<string, string> Secrets);
 
 public record SecretOverrideRequest(Guid UserId, bool? CanRead);
+
+public record AdminUserResponse(
+    Guid Id,
+    string Email,
+    string DisplayName,
+    string Provider,
+    bool IsServerAdmin,
+    bool Disabled,
+    int Workspaces,
+    DateTime CreatedAt,
+    DateTime LastSeenAt);
+
+public record UpdateUserRequest(bool? IsServerAdmin, bool? Disabled);
+
+public record AdminWorkspaceResponse(
+    Guid Id,
+    string Name,
+    string OwnerEmail,
+    int Members,
+    int Documents,
+    long Cursor,
+    DateTime CreatedAt);
+
+public record TransferOwnershipRequest(Guid UserId);
 
 public record ErrorResponse(string Error, string? Detail = null);

@@ -26,6 +26,11 @@ public class AuthOptions
     /// <summary>Dominios de mail permitidos (vacío = cualquiera). Es el control más simple para
     /// un server de empresa detrás de un IdP público como Google.</summary>
     public List<string> AllowedEmailDomains { get; set; } = new();
+
+    /// <summary>Mails que reciben permisos de administración del server al entrar. Sirve para
+    /// recuperar el acceso si el admin original se fue: se agrega el mail, se reinicia y listo.
+    /// Si está vacía, el primero que entra queda como admin.</summary>
+    public List<string> ServerAdminEmails { get; set; } = new();
 }
 
 public class ProviderOptions

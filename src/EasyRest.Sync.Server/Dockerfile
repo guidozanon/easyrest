@@ -3,9 +3,19 @@
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
+# primero sólo los csproj, para que el restore quede cacheado si no cambian las dependencias
 COPY src/EasyRest.Sync.Server/EasyRest.Sync.Server.csproj src/EasyRest.Sync.Server/
+COPY src/EasyRest.Sync.Data/EasyRest.Sync.Data.csproj src/EasyRest.Sync.Data/
+COPY src/EasyRest.Sync.Server.Migrations.Sqlite/EasyRest.Sync.Server.Migrations.Sqlite.csproj \
+     src/EasyRest.Sync.Server.Migrations.Sqlite/
+COPY src/EasyRest.Sync.Server.Migrations.Postgres/EasyRest.Sync.Server.Migrations.Postgres.csproj \
+     src/EasyRest.Sync.Server.Migrations.Postgres/
 RUN dotnet restore src/EasyRest.Sync.Server/EasyRest.Sync.Server.csproj
+
 COPY src/EasyRest.Sync.Server/ src/EasyRest.Sync.Server/
+COPY src/EasyRest.Sync.Data/ src/EasyRest.Sync.Data/
+COPY src/EasyRest.Sync.Server.Migrations.Sqlite/ src/EasyRest.Sync.Server.Migrations.Sqlite/
+COPY src/EasyRest.Sync.Server.Migrations.Postgres/ src/EasyRest.Sync.Server.Migrations.Postgres/
 RUN dotnet publish src/EasyRest.Sync.Server/EasyRest.Sync.Server.csproj \
     -c Release -o /app --no-restore
 

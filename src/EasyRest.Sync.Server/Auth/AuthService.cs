@@ -118,6 +118,7 @@ public class AuthService(SyncDbContext db, IdentityProviderRegistry providers, I
         await db.SaveChangesAsync(ct);
 
         var user = await db.Users.FirstAsync(u => u.Id == userId, ct);
+        if (user.Disabled) throw new AuthException("Tu usuario está desactivado en este server.");
         return (await IssueSessionAsync(user, ct), user);
     }
 
@@ -132,6 +133,11 @@ public class AuthService(SyncDbContext db, IdentityProviderRegistry providers, I
         // rotación: el refresh viejo muere al usarse
         session.Revoked = true;
         var user = await db.Users.FirstAsync(u => u.Id == session.UserId, ct);
+        if (user.Disabled)
+        {
+            await db.SaveChangesAsync(ct);
+            throw new AuthException("Tu usuario está desactivado en este server.");
+        }
         var tokens = await IssueSessionAsync(user, ct);
         return (tokens, user);
     }
@@ -168,7 +174,8 @@ public class AuthService(SyncDbContext db, IdentityProviderRegistry providers, I
         if (session == null || session.Revoked || session.AccessExpiresAt < DateTime.UtcNow) return null;
 
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == session.UserId, ct);
-        return user == null ? null : new Caller { User = user };
+        // desactivar a alguien tiene que cortarle el acceso ya, no cuando venza su token
+        return user is null or { Disabled: true } ? null : new Caller { User = user };
     }
 
     /// <summary>Los tokens de servicio se distinguen a simple vista: ayuda a no pegarlos donde
@@ -213,10 +220,22 @@ public class AuthService(SyncDbContext db, IdentityProviderRegistry providers, I
             {
                 Provider = providerId,
                 Subject = identity.Subject,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                // el server recién instalado no tiene a quién pedirle permiso: el primero que
+                // entra queda como admin
+                IsServerAdmin = !await db.Users.AnyAsync(ct)
             };
             db.Users.Add(user);
         }
+
+        if (user.Disabled)
+            throw new AuthException("Tu usuario está desactivado en este server.");
+
+        // la allowlist se aplica en cada login: agregar un mail y reiniciar es la forma de
+        // recuperar el acceso si el admin original ya no está
+        if (_options.ServerAdminEmails.Any(
+                e => string.Equals(e, identity.Email, StringComparison.OrdinalIgnoreCase)))
+            user.IsServerAdmin = true;
 
         // el mail y el nombre pueden cambiar en el IdP: la identidad estable es (provider, sub)
         user.Email = identity.Email;

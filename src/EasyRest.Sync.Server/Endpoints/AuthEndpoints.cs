@@ -79,7 +79,7 @@ public static class AuthEndpoints
                     tokens.RefreshToken,
                     "Bearer",
                     options.Value.AccessTokenMinutes * 60,
-                    new UserResponse(user.Id, user.Email, user.DisplayName, user.Provider)));
+                    new UserResponse(user.Id, user.Email, user.DisplayName, user.Provider, user.IsServerAdmin)));
             }
             catch (AuthException ex)
             {
@@ -98,7 +98,7 @@ public static class AuthEndpoints
         app.MapGet("/api/v1/me", (Caller? caller) =>
         {
             if (caller?.User is { } user)
-                return Results.Ok(new UserResponse(user.Id, user.Email, user.DisplayName, user.Provider));
+                return Results.Ok(new UserResponse(user.Id, user.Email, user.DisplayName, user.Provider, user.IsServerAdmin));
 
             return caller?.Service != null
                 ? Results.Ok(new UserResponse(Guid.Empty, "", $"service:{caller.Service.Name}", "service-token"))

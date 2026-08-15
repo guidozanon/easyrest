@@ -15,7 +15,8 @@ public record SyncMetaAuth(SyncProvider[] Providers, string[] AllowedRedirectSch
 public record SyncProvider(string Id, string DisplayName, string Kind);
 
 public record SyncSession(string AccessToken, string RefreshToken, string TokenType, int ExpiresIn, SyncUser User);
-public record SyncUser(Guid Id, string Email, string DisplayName, string Provider);
+public record SyncUser(Guid Id, string Email, string DisplayName, string Provider,
+    bool IsServerAdmin = false);
 
 public record SyncWorkspace(Guid Id, string Name, string Role, bool CanReadSecrets, long Cursor, DateTime CreatedAt);
 

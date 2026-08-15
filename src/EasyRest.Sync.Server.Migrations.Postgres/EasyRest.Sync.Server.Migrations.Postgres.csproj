@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Migraciones para Postgres. Cada cambio de modelo hay que agregarlo en los dos proyectos
+       de migraciones; ver docs/SYNC.md (sección "Cambiar el esquema"). -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>EasyRest.Sync.Server.Migrations.Postgres</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EasyRest.Sync.Data\EasyRest.Sync.Data.csproj" />
+  </ItemGroup>
+
+</Project>

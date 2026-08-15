@@ -20,6 +20,16 @@ public class User
     public string DisplayName { get; set; } = "";
     public DateTime CreatedAt { get; set; }
     public DateTime LastSeenAt { get; set; }
+
+    /// <summary>Administra el server, no un workspace: ve todos los usuarios y workspaces y
+    /// puede transferir ownership. Lo recibe la primera persona que entra, o cualquiera cuyo
+    /// mail esté en Auth:ServerAdminEmails.</summary>
+    public bool IsServerAdmin { get; set; }
+
+    /// <summary>Desactivado: no puede entrar y sus sesiones dejan de valer en el acto. Es lo
+    /// que se usa cuando alguien se va de la empresa; borrarlo perdería la autoría de lo que
+    /// haya escrito.</summary>
+    public bool Disabled { get; set; }
 }
 
 /// <summary>Un workspace: la unidad de compartir. SeqCounter es el cursor monotónico que

@@ -147,10 +147,31 @@ resto sin pisarle los tokens a nadie.
 |---|---|
 | `Member` | leer y escribir documentos |
 | `Admin` | además: invitar, cambiar permisos, crear tokens de servicio |
-| `Owner` | además: borrar el workspace. No se lo puede sacar ni degradar |
+| `Owner` | además: borrar el workspace y transferirlo. No se lo puede sacar ni degradar |
 
 Cuando alguien no tiene acceso a un workspace, la respuesta es `404` y no `403`: un `403` ya
 confirmaría que ese workspace existe.
+
+### Administración del server
+
+Aparte de los roles de workspace existe `IsServerAdmin`, que es otra cosa: administra el server,
+no el contenido. Ve todos los usuarios y workspaces (`/api/v1/admin/…`), puede desactivar gente y
+puede transferir el ownership de cualquier workspace.
+
+Lo recibe **la primera persona que entra** — un server recién instalado no tiene a quién pedirle
+permiso — y también cualquiera cuyo mail esté en `Auth__ServerAdminEmails__N`. Esa allowlist se
+aplica en cada login, así que es la forma de recuperar el acceso si el admin original ya no está:
+se agrega el mail, se reinicia y listo.
+
+**Desactivar** a alguien (`PATCH /api/v1/admin/users/{id}` con `disabled: true`) le revoca las
+sesiones en el acto y le impide volver a entrar. Se prefiere sobre borrar: borrarlo perdería la
+autoría de todo lo que haya escrito. Dos protecciones contra quedarse afuera del propio server:
+nadie se puede desactivar a sí mismo, y no se puede sacar al último administrador.
+
+**Transferir el ownership** (`POST /api/v1/workspaces/{id}/transfer-ownership`) lo puede hacer el
+owner o un administrador del server; el dueño anterior baja a `Admin`, no se lo saca. Sin esto un
+workspace quedaría sin quien lo administre en cuanto esa persona se fuera, porque el rol de owner
+no se puede sacar ni degradar.
 
 ---
 
@@ -191,9 +212,6 @@ Vale tenerlos a la vista antes de ponerlo en producción:
 
 - **Una sola instancia.** La asignación de secuencia se serializa en memoria por workspace. Para
   correr varias réplicas hay que mover ese lock a la base.
-- **El esquema se crea con `EnsureCreated`.** Alcanza para empezar, pero antes del primer cambio de
-  esquema hay que pasar a migraciones de EF Core, o los que ya self-hostearon no van a poder
-  actualizar.
 - **Los secretos los puede leer el operador del server.** Es el mismo límite de confianza que el
   vault interno de la empresa, y es lo que permite que invitar a alguien funcione al instante. La
   alternativa es cifrado de punta a punta, con un costo concreto: una invitación no se completa
@@ -202,6 +220,30 @@ Vale tenerlos a la vista antes de ponerlo en producción:
   endurecimiento es guardarlos en el keychain del sistema (DPAPI, Keychain, Keystore).
 - **No hay UI todavía.** El server y el cliente están completos y testeados; falta la pantalla de
   login, el selector de workspace y la administración de miembros en la app.
+
+## Cambiar el esquema
+
+El esquema se aplica con **migraciones de EF Core** al arrancar (`Database.Migrate()`), que es lo
+que hace que reinstalar el server sea actualizarlo. Como se soportan dos proveedores y cada uno
+necesita su propio SQL, hay dos assemblies de migraciones y **un cambio de modelo hay que
+agregarlo en los dos**:
+
+```bash
+Database__Provider=sqlite dotnet ef migrations add <Nombre> \
+  --project src/EasyRest.Sync.Server.Migrations.Sqlite \
+  --startup-project src/EasyRest.Sync.Server
+
+Database__Provider=postgres dotnet ef migrations add <Nombre> \
+  --project src/EasyRest.Sync.Server.Migrations.Postgres \
+  --startup-project src/EasyRest.Sync.Server
+```
+
+El modelo vive en `src/EasyRest.Sync.Data` justamente por esto: si el `DbContext` estuviera dentro
+del server, la referencia entre server y migraciones sería circular.
+
+Hay tests que fallan si alguien vuelve a `EnsureCreated` — verifican que la base tenga migraciones
+aplicadas y ninguna pendiente. No son ceremonia: sin ese camino, cualquier instalación existente
+queda sin forma de actualizarse.
 
 ## Versionado
 

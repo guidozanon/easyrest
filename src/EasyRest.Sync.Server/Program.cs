@@ -29,14 +29,9 @@ builder.Services.AddSingleton(new SecretBox(masterKey));
 var provider = (builder.Configuration["Database:Provider"] ?? "sqlite").ToLowerInvariant();
 var connectionString = builder.Configuration.GetConnectionString("Default")
                        ?? builder.Configuration["EASYREST_DB"]
-                       ?? "Data Source=easyrest-sync.db";
+                       ?? DatabaseSetup.DefaultConnectionString;
 builder.Services.AddDbContext<SyncDbContext>(options =>
-{
-    if (provider == "postgres" || provider == "postgresql")
-        options.UseNpgsql(connectionString);
-    else
-        options.UseSqlite(connectionString);
-});
+    DatabaseSetup.Configure(options, provider, connectionString));
 
 builder.Services.AddHttpClient("idp");
 builder.Services.AddSingleton<IdentityProviderRegistry>(sp => new IdentityProviderRegistry(
@@ -48,10 +43,12 @@ builder.Services.AddScoped<DocumentService>();
 
 var app = builder.Build();
 
+// Migraciones al arrancar: es lo que hace que reinstalar sea actualizar. Con EnsureCreated,
+// una instalación existente no podría recibir nunca un cambio de esquema.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<SyncDbContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate();
 }
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
@@ -59,6 +56,8 @@ app.MapAuth();
 app.MapWorkspaces();
 app.MapInvitationAccept();
 app.MapDocuments();
+app.MapAdmin();
+app.MapOwnershipTransfer();
 
 app.Run();
 
