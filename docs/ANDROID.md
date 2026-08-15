@@ -5,7 +5,18 @@ EasyRest al teléfono. **No es un producto**: es una pantalla de diagnóstico qu
 piezas que estaban en duda —el motor de scripts y el almacenamiento— además de mandar una request
 de verdad.
 
-## Correrlo
+## Bajar el APK
+
+El job `android-spike` arma el APK en cada corrida y lo deja como artefacto: *Actions → la
+corrida → Artifacts → `EasyRest-android-spike-apk`*. Viene firmado con el keystore de depuración,
+así que se instala en cualquier teléfono con "orígenes desconocidos" habilitado, sin necesidad de
+un keystore propio.
+
+```bash
+adb install com.rentlysoft.easyrest-Signed.apk
+```
+
+## Correrlo desde el código
 
 Hace falta el workload de Android una sola vez:
 

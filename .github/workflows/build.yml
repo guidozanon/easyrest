@@ -32,7 +32,8 @@ jobs:
       - run: bash tests/install/test-install.sh
 
   # Spike de Android. Va en su propio job porque necesita el workload, que tarda en instalarse.
-  # Es lo que dice si el head compila: no se puede armar sin el SDK de Android.
+  # Además de decir si el head compila, deja el APK como artefacto de la corrida: el SDK de
+  # Android sólo está acá, así que este es el lugar donde se puede armar.
   android-spike:
     runs-on: ubuntu-latest
     steps:
@@ -41,7 +42,22 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - run: dotnet workload install android
-      - run: dotnet build src/EasyRest.Android/EasyRest.Android.csproj -c Release
+
+      # Debug y firmado con el keystore de depuración: se instala en cualquier teléfono con
+      # "orígenes desconocidos" habilitado, sin necesidad de un keystore propio. Para un spike
+      # alcanza; publicar en Play es otra conversación.
+      - name: Armar el APK
+        run: |
+          dotnet build src/EasyRest.Android/EasyRest.Android.csproj \
+            -c Debug -t:SignAndroidPackage
+          find src/EasyRest.Android/bin -name "*-Signed.apk" -exec ls -la {} \;
+
+      - name: Subir el APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: EasyRest-android-spike-apk
+          path: src/EasyRest.Android/bin/**/*-Signed.apk
+          if-no-files-found: error
 
   # El Core compilado sin JIT ni Reflection.Emit, que es la restricción de iOS. Verifica que el
   # motor de scripts y el resto del Core sigan funcionando ahí: si esto se rompe, el móvil deja
