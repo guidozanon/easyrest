@@ -107,13 +107,16 @@ Esto no lo agarra el CI: el APK se arma perfecto y `aapt2` no tiene forma de sab
 actividad va a pedir otro tema. **Sólo se ve corriéndolo en un dispositivo**, que es exactamente
 para lo que existe el spike.
 
-### La pantalla de inicio es Android puro, a propósito
+### La red de seguridad: una pantalla de diagnóstico en Android puro
 
-Al abrir no aparece Avalonia sino una pantalla hecha con `TextView` y `Button` de Android. No es
-pereza: la primera versión se cerraba al instante y una pantalla de error escrita en Avalonia no
-servía para nada, porque el crash ocurría **antes** de que Avalonia llegara a dibujar. Esta
-actividad no depende de nada del stack que se está probando, así que la app siempre abre y
-siempre puede contar qué pasó en el intento anterior.
+Cuando el spike se cae, la app **no** abre en Avalonia sino en una pantalla hecha con `TextView` y
+`Button` de Android. No es pereza: la primera versión se cerraba al instante y una pantalla de
+error escrita en Avalonia no servía para nada, porque el crash ocurría **antes** de que Avalonia
+llegara a dibujar. Esta actividad no depende de nada del stack que se está probando, así que la
+app siempre abre y siempre puede contar qué pasó en el intento anterior.
+
+Si no hay nada que contar se saltea sola y va derecho al spike: la red de seguridad no tiene por
+qué cobrarle un toque de más a cada arranque.
 
 Muestra tres cosas:
 
@@ -151,6 +154,25 @@ editable y un botón: al enviar corre el `HttpExecutor` del Core y después el s
 la respuesta, con sus asserts y el `console.log`.
 
 ## Lo que ya sabemos
+
+### Corre en un teléfono de verdad — verificado
+
+Probado en un Galaxy con Android 16 (`Arm64`, .NET 8.0.30, Mono con JIT). El spike, en una sola
+pantalla:
+
+- **Los scripts corren.** Los dos `er.test` pasan, el `console.log` sale y el `er.setVar` vuelve
+  al ambiente (`ultimoEstado = 200`). O sea que **Jint funciona en Android con el trimming del
+  SDK activado**, no sólo en la sonda de NativeAOT.
+- **El almacenamiento anda.** Escribe y lee en `/data/user/0/com.rentlysoft.easyrest/files/.config`,
+  que es de donde va a leer el `Storage` del Core.
+- **La request sale.** `200 OK · 1251 ms · 39 bytes` contra `api.github.com`, con el cuerpo
+  renderizado.
+
+El APK pesa **38 MB**.
+
+Esto es lo que la sonda de AOT no podía contestar: la sonda prueba el Core sin JIT en Linux, pero
+no dice nada del runtime de Android, del sistema de archivos del teléfono ni de la red del
+dispositivo.
 
 ### El Core corre sin JIT — verificado
 
@@ -196,11 +218,13 @@ real para móvil y estaba escondido en el escritorio, donde el JIT lo tapaba.
 
 ## Lo que falta responder
 
-El spike está para contestar esto **en un teléfono**, que es lo que no se puede hacer desde acá:
+Lo técnico ya está contestado. Lo que queda es de uso, y sigue necesitando el teléfono en la mano:
 
-- [ ] ¿Cómo se siente Avalonia en móvil? Scroll, teclado en pantalla, tamaño de los toques.
-- [ ] ¿Cuánto pesa el APK y cuánto tarda en abrir?
-- [ ] ¿El teclado tapa el campo de la URL al escribir?
+- [x] ¿Corre el Core —scripts, storage, red— en un dispositivo real? **Sí.**
+- [x] ¿Cuánto pesa el APK? **38 MB.**
+- [ ] ¿Cómo se siente Avalonia en móvil? Scroll, tamaño de los toques.
+- [ ] ¿El teclado en pantalla tapa el campo de la URL al escribir?
+- [ ] ¿Cuánto tarda en abrir desde frío?
 - [ ] ¿La request sale sin problemas con datos móviles, no sólo con WiFi?
 
 ## Decisiones que tomé y conviene revisar

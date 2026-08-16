@@ -55,6 +55,11 @@ static class Diag
     public static string Trace() => Leer(RutaTrace);
     public static string Crash() => Leer(RutaCrash);
 
+    public static bool HayCrash()
+    {
+        try { return File.Exists(RutaCrash); } catch { return false; }
+    }
+
     public static void Limpiar()
     {
         try { File.Delete(RutaTrace); } catch { }

@@ -12,7 +12,10 @@ namespace EasyRest.Android;
 /// El motivo es concreto: el spike se cerraba al instante y una pantalla de error hecha con
 /// Avalonia no servía, porque el crash pasaba antes de que Avalonia llegara a dibujar. Esta
 /// actividad no depende de nada de eso, así que la app siempre abre y siempre puede contar qué
-/// pasó en el intento anterior.</summary>
+/// pasó en el intento anterior.
+///
+/// Cuando no hay nada que contar se saltea sola y va derecho al spike: la red de seguridad no
+/// tiene por qué cobrarle un toque de más a cada arranque.</summary>
 [Activity(
     Name = "com.rentlysoft.easyrest.InicioActivity",
     Label = "EasyRest",
@@ -24,6 +27,18 @@ public class InicioActivity : Activity
     protected override void OnCreate(global::Android.OS.Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
+
+        // Camino normal: si el intento anterior no se cayó, esta pantalla no aporta nada y sólo
+        // agrega un toque de más, así que se saltea derecho al spike. Aparece únicamente cuando
+        // hay algo que contar, que es cuando sirve.
+        if (!Diag.HayCrash())
+        {
+            Diag.Limpiar();
+            Diag.Marcar("inicio: lanzando MainActivity");
+            StartActivity(new Intent(this, typeof(MainActivity)));
+            Finish();
+            return;
+        }
 
         var informe = Informe();
 
