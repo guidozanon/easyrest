@@ -14,8 +14,8 @@ un keystore propio.
 
 Se compila en **Release** aunque sea un spike: en Debug, .NET Android usa fast deployment y deja
 los assemblies fuera del APK, pensando en que el IDE los va a empujar por adb — un APK Debug
-instalado a mano no arranca. Y con el linker apagado, porque rompe la interop de Jint (ver más
-abajo).
+instalado a mano no arranca. El trimming queda en el default de Release (`TrimMode=partial`, sólo
+toca los assemblies del SDK), que es la configuración que `tests/aot-probe` ya verificó con Jint.
 
 El job además corre `aapt2 dump badging` y falla si el APK no declara una actividad de lanzador
 o no trae ícono: sin esa verificación, la app instala, no aparece en el cajón de aplicaciones y
@@ -25,22 +25,55 @@ el log del build no muestra nada raro.
 adb install com.rentlysoft.easyrest-Signed.apk
 ```
 
-### Si instala pero no aparece en el cajón
+### El APK que instalaba sin aparecer en el cajón
 
-Ya pasó, y era un bug del build, no del teléfono: el APK salía **sin ninguna actividad**. Dos
-cosas lo causaban, y las dos están arregladas:
+Vale la pena dejarlo escrito porque costó encontrarlo y porque **cualquier head de Android con
+Avalonia se lo puede comer**.
 
-- **`dotnet build -t:SignAndroidPackage -c Release`**. Arma un APK, pero en Release el paso que
-  genera los stubs de Java se queda sin assemblies que mirar y el `[Activity]` de `MainActivity`
-  nunca llega al manifiesto. El camino soportado para un APK de Release es `dotnet publish`.
-- **`AndroidLinkMode=None`**. Es la propiedad de la época de Xamarin; en .NET Android deja el
-  pipeline a medias y contribuye a lo mismo. El equivalente moderno es `PublishTrimmed=false`.
+El síntoma: el APK instalaba, figuraba en Ajustes y no tenía ni ícono ni entrada en el lanzador.
+El build terminaba con cero warnings.
 
-El síntoma es engañoso porque el build termina con cero warnings y el APK instala bien. Para
-verlo hay que mirar el manifiesto mergeado
-(`obj/Release/net8.0-android34.0/android/manifest/AndroidManifest.xml`) y buscar el
-`<activity>`, o correr `aapt2 dump badging` y buscar `launchable-activity`. Eso es lo que ahora
-hace el CI.
+La causa: **el assembly de la app nunca entraba al pipeline de Android**. `GenerateJavaStubs`
+recibía 245 assemblies y `EasyRest.Android.dll` no estaba entre ellos; tampoco se copiaba a
+`android/assets/`. Sin ese assembly no se genera el wrapper de Java de `MainActivity`, y sin
+wrapper no hay `<activity>` en el manifiesto. Los tipos de `Avalonia.Android` y `Mono.Android`
+sí generaban sus wrappers, que es lo que hacía parecer que el paso funcionaba.
+
+Y la causa de la causa está en los targets de Avalonia:
+
+```xml
+<Target Name="PrepareToCompileAvaloniaXaml">
+  <IntermediateAssembly Update="*" AvaloniaCompileOutput="%(RelativeDir)Avalonia\%(Filename)%(Extension)"/>
+
+<Target Name="InjectAvaloniaXamlOutput" DependsOnTargets="PrepareToCompileAvaloniaXaml" …>
+  <IntermediateAssembly Remove="@(IntermediateAssembly)"/>
+  <IntermediateAssembly Include="@(_AvaloniaXamlCompiledAssembly)"/>
+```
+
+El compilador de XAML reescribe el assembly hacia `obj/…/Avalonia/`, calculando la ruta desde el
+`%(RelativeDir)` del propio item y después reemplazándolo. En el build de Android eso se aplica
+dos veces, y la segunda vuelta produce `obj/…/Avalonia/Avalonia/EasyRest.Android.dll`, que no
+existe. Con el trimming activado el error se ve:
+
+```
+error IL1032: Root assembly 'obj/Release/net8.0-android34.0/Avalonia/Avalonia/EasyRest.Android.dll'
+              could not be found.
+```
+
+Con el linker apagado —que era la configuración original, primero como `AndroidLinkMode=None` y
+después como `PublishTrimmed=false`— nadie se quejaba: el assembly simplemente desaparecía y el
+APK salía mudo.
+
+Por eso hoy el head **no usa XAML**: la UI está armada en C#. El guardia de esos dos targets es
+`'@(AvaloniaResource)@(AvaloniaXaml)' != ''`, así que sin archivos `.axaml` no corren y el
+assembly queda donde el SDK de Android lo espera. Es una decisión del spike, no una recomendación
+general: **si el móvil avanza a producto, esto hay que resolverlo de verdad** (arreglo aguas
+arriba en Avalonia, o fijar la ruta del assembly intermedio), porque una app de verdad va a
+querer XAML.
+
+De paso quedaron dos cosas más, que eran mejoras reales aunque no fueran la causa: se arma con
+`dotnet publish` (el camino soportado para un APK de Release) y el trimming vuelve al default de
+Release.
 
 ### Si dice "aplicación no instalada"
 
@@ -133,6 +166,8 @@ El spike está para contestar esto **en un teléfono**, que es lo que no se pued
   teclado. El head sólo usa `EasyRest.Core`, que es lo que se quiere validar.
 - **Avalonia 11.2 acá, 11.1.3 en el escritorio**: mobile recién se estabilizó en 11.2 y un spike
   no tiene por qué mover la versión de la app. Si el móvil avanza, lo primero es unificar.
+- **La UI va en C# y no en XAML**, por el bug de build de más arriba. Para dos pantallas de
+  diagnóstico no cuesta nada; para un producto sí, y ahí hay que resolver el bug.
 - El `AndroidManifest.xml` pide **permiso de INTERNET**: sin eso `HttpClient` falla en silencio,
   que en un cliente HTTP sería gracioso.
 - **Ícono propio**, generado por código (`Resources/mipmap-*`): dos flechas encontradas sobre el

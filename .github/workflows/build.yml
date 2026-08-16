@@ -53,41 +53,19 @@ jobs:
       # "orígenes desconocidos" y listo. Lo del linker y el AOT está en el csproj.
       - name: Armar el APK
         run: |
-          # -v:diag para ver con qué assemblies se invoca GenerateJavaStubs. El log es enorme,
-          # así que va a archivo y abajo se filtra. TEMPORAL, vuelve a -v:minimal.
-          dotnet publish src/EasyRest.Android/EasyRest.Android.csproj \
-            -c Release -o apk -v:diag > build.log 2>&1 || true
-          echo "--- errores, si los hubo:"
-          grep -oE "(error [A-Za-z]+[0-9]+.*|: error .*)" build.log | sort -u | head -20
-          tail -3 build.log
+          dotnet publish src/EasyRest.Android/EasyRest.Android.csproj -c Release -o apk
           ls -la apk/*-Signed.apk
 
-      # TEMPORAL — mientras el APK salga sin actividades. Corre igual si el build falla.
-      - name: Diagnóstico de los stubs de Java
-        if: always()
+      # Si el APK sale sin actividades, el culpable histórico es que EasyRest.Android.dll no
+      # llegue al pipeline: acá se ve de una, sin tener que releer el build entero.
+      - name: Diagnóstico si algo falló
+        if: failure()
         run: |
-          echo "--- .java generados que no son de androidx ni R:"
+          echo "--- wrappers de Java generados (sin androidx ni R):"
           find src/EasyRest.Android/obj -name '*.java' | sed 's|.*/android/src/||' \
-            | grep -v '^androidx/' | grep -v '/R\.java$' | sort
-
-          echo "--- dlls intermedios (hay más de una copia del assembly):"
-          ls -la src/EasyRest.Android/obj/Release/net8.0-android34.0/EasyRest.Android.dll \
-                 src/EasyRest.Android/obj/Release/net8.0-android34.0/Avalonia/EasyRest.Android.dll \
-                 2>&1 | head
-
-          awk '/Task "GenerateJavaStubs"/{f=1} f{print} /Done executing task "GenerateJavaStubs"/{exit}' \
-            build.log > stubs.log || true
-
-          echo "--- nombres de los parámetros de la tarea:"
-          grep -oE "^ +[A-Za-z_]+=$" stubs.log | tr -d ' =' | sort -u
-
-          echo "--- assemblies que efectivamente recibe (item specs, sin metadata):"
-          grep -v "=" stubs.log | sed 's/^ *//' | grep -E "\.dll$" | sort -u > asms.txt
-          wc -l asms.txt
-          echo "  nuestro assembly:"
-          grep -i easyrest asms.txt || echo "  NO ESTÁ — no recibe EasyRest.Android.dll"
-          echo "  avalonia:"
-          grep -i "Avalonia.Android.dll" asms.txt || echo "  tampoco está Avalonia.Android"
+            | grep -v '^androidx/' | grep -v '/R\.java$' | sort || true
+          echo "--- assemblies que se empaquetan:"
+          ls src/EasyRest.Android/obj/Release/net8.0-android34.0/android/assets/ 2>&1 | head -30
 
       # Sin esto la app instala, no aparece en el cajón y el log del build no muestra nada raro:
       # el chequeo tiene que fallar de verdad, no imprimir y seguir.
