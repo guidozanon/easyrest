@@ -84,6 +84,22 @@ public static class Storage
         }
     }
 
+    /// <summary>A qué workspace remoto está atado este workspace local, si lo está. Misma
+    /// convención que los ambientes: es estado local, nunca va al repo ni se sincroniza.</summary>
+    public static string SyncBindingFile => LocalWorkspaceFile("sync.json");
+
+    /// <summary>Hasta dónde leyó la última sincronización y con qué revisiones quedó. Es una
+    /// caché: si se borra, la próxima sincronización la reconstruye.</summary>
+    public static string SyncStateFile => LocalWorkspaceFile("sync-state.json");
+
+    static string LocalWorkspaceFile(string name)
+    {
+        EnsureSettingsLoaded();
+        return string.IsNullOrWhiteSpace(_activePath)
+            ? Path.Combine(AppDataRoot, name)
+            : Path.Combine(AppDataRoot, "workspaces", WorkspaceKey, name);
+    }
+
     static void EnsureSettingsLoaded()
     {
         if (_settingsLoaded) return;

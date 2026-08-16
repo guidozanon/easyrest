@@ -27,6 +27,16 @@ public record SyncChanges(long Cursor, bool HasMore, SyncDocument[] Documents);
 
 public record SyncSecrets(Guid DocumentId, Dictionary<string, string> Secrets);
 
+/// <summary>Los roles viajan como texto ("Owner", "Admin", "Member", "Viewer"): el enum vive en
+/// el server y no hay razón para copiarlo acá, donde sólo se muestra y se manda de vuelta.</summary>
+public record SyncMember(Guid UserId, string Email, string DisplayName, string Role,
+    bool CanReadSecrets, DateTime CreatedAt);
+
+/// <summary>El token en claro llega una única vez, al crear la invitación: después el server sólo
+/// guarda el hash. Si no se copia en ese momento, se pierde y hay que crear otra.</summary>
+public record SyncInvitation(Guid Id, string? Email, string Role, bool CanReadSecrets,
+    DateTime ExpiresAt, bool Accepted, string? Token);
+
 /// <summary>El server contestó 409: alguien más cambió el documento. Trae la versión del server
 /// para poder resolver sin perder nada.</summary>
 public class SyncConflictException(string message, SyncDocument? current) : Exception(message)
@@ -64,6 +74,13 @@ public class SyncApiClient : IDisposable
 
     /// <summary>Token de acceso de la sesión. La UI lo persiste y lo vuelve a poner al arrancar.</summary>
     public string? AccessToken { get; set; }
+
+    /// <summary>Cómo conseguir un access token nuevo cuando el server contesta 401. Devuelve null
+    /// si ya no se puede (refresh vencido o revocado), y ahí el 401 sube como error.
+    ///
+    /// Va acá y no en una capa de arriba porque <see cref="RemoteWorkspaceSync"/> recibe el cliente
+    /// directo: si el refresh viviera afuera, una sincronización larga se caería a la mitad.</summary>
+    public Func<CancellationToken, Task<string?>>? TokenRefresher { get; set; }
 
     public Task<SyncMeta> GetMetaAsync(CancellationToken ct = default) =>
         SendAsync<SyncMeta>(HttpMethod.Get, "api/v1/meta", null, null, ct);
@@ -127,28 +144,93 @@ public class SyncApiClient : IDisposable
         SendAsync<SyncSecrets>(HttpMethod.Get,
             $"api/v1/workspaces/{workspaceId}/documents/{documentId}/secrets", null, null, ct);
 
+    // ----- Miembros -----
+
+    public Task<SyncMember[]> GetMembersAsync(Guid workspaceId, CancellationToken ct = default) =>
+        SendAsync<SyncMember[]>(HttpMethod.Get, $"api/v1/workspaces/{workspaceId}/members", null, null, ct);
+
+    /// <summary>Cambia rol y/o acceso a secretos. Lo que va en null se deja como está.</summary>
+    public Task<SyncMember> UpdateMemberAsync(Guid workspaceId, Guid userId, string? role = null,
+        bool? canReadSecrets = null, CancellationToken ct = default) =>
+        SendAsync<SyncMember>(HttpMethod.Patch, $"api/v1/workspaces/{workspaceId}/members/{userId}",
+            new { role, canReadSecrets }, null, ct);
+
+    public Task RemoveMemberAsync(Guid workspaceId, Guid userId, CancellationToken ct = default) =>
+        SendAsync(HttpMethod.Delete, $"api/v1/workspaces/{workspaceId}/members/{userId}", null, null, ct);
+
+    /// <summary>Sólo el owner del workspace o un administrador del server. El owner anterior queda
+    /// como admin.</summary>
+    public Task<SyncMember> TransferOwnershipAsync(Guid workspaceId, Guid userId,
+        CancellationToken ct = default) =>
+        SendAsync<SyncMember>(HttpMethod.Post, $"api/v1/workspaces/{workspaceId}/transfer-ownership",
+            new { userId }, null, ct);
+
+    // ----- Invitaciones -----
+
+    public Task<SyncInvitation[]> GetInvitationsAsync(Guid workspaceId, CancellationToken ct = default) =>
+        SendAsync<SyncInvitation[]>(HttpMethod.Get, $"api/v1/workspaces/{workspaceId}/invitations",
+            null, null, ct);
+
+    /// <summary>email null = invitación abierta, la usa quien reciba el token. La respuesta trae el
+    /// token en claro y es la única vez que se puede leer.</summary>
+    public Task<SyncInvitation> CreateInvitationAsync(Guid workspaceId, string? email, string role,
+        bool canReadSecrets = false, int? expiresInHours = null, CancellationToken ct = default) =>
+        SendAsync<SyncInvitation>(HttpMethod.Post, $"api/v1/workspaces/{workspaceId}/invitations",
+            new { email, role, canReadSecrets, expiresInHours }, null, ct);
+
+    public Task RevokeInvitationAsync(Guid workspaceId, Guid invitationId, CancellationToken ct = default) =>
+        SendAsync(HttpMethod.Delete, $"api/v1/workspaces/{workspaceId}/invitations/{invitationId}",
+            null, null, ct);
+
     async Task<T> SendAsync<T>(HttpMethod method, string path, object? body, string? ifMatch,
         CancellationToken ct)
     {
-        using var request = new HttpRequestMessage(method, path);
-        if (body != null) request.Content = JsonContent.Create(body, options: Json);
-        if (AccessToken != null)
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", AccessToken);
-        if (ifMatch != null) request.Headers.TryAddWithoutValidation("If-Match", ifMatch);
+        var (text, status) = await SendRawAsync(method, path, body, ifMatch, ct);
+        return JsonSerializer.Deserialize<T>(text, Json)
+               ?? throw new SyncApiException("El server devolvió una respuesta vacía.", status);
+    }
 
-        using var response = await _http.SendAsync(request, ct);
-        var text = await response.Content.ReadAsStringAsync(ct);
+    /// <summary>Para los endpoints que contestan 204 y no traen cuerpo.</summary>
+    async Task SendAsync(HttpMethod method, string path, object? body, string? ifMatch,
+        CancellationToken ct) =>
+        await SendRawAsync(method, path, body, ifMatch, ct);
 
-        if (response.StatusCode == HttpStatusCode.Conflict)
+    async Task<(string Text, HttpStatusCode Status)> SendRawAsync(HttpMethod method, string path,
+        object? body, string? ifMatch, CancellationToken ct)
+    {
+        var (text, status) = await OnceAsync();
+
+        // Un solo reintento: si el token nuevo también da 401, el problema no es el token.
+        if (status == HttpStatusCode.Unauthorized && TokenRefresher != null)
+        {
+            var nuevo = await TokenRefresher(ct);
+            if (nuevo != null)
+            {
+                AccessToken = nuevo;
+                (text, status) = await OnceAsync();
+            }
+        }
+
+        if (status == HttpStatusCode.Conflict)
             throw new SyncConflictException(ErrorDetail(text) ?? "El documento cambió en el server.",
                 ReadCurrent(text));
 
-        if (!response.IsSuccessStatusCode)
-            throw new SyncApiException(ErrorDetail(text) ?? $"El server respondió {(int)response.StatusCode}.",
-                response.StatusCode);
+        if ((int)status is < 200 or > 299)
+            throw new SyncApiException(ErrorDetail(text) ?? $"El server respondió {(int)status}.", status);
 
-        return JsonSerializer.Deserialize<T>(text, Json)
-               ?? throw new SyncApiException("El server devolvió una respuesta vacía.", response.StatusCode);
+        return (text, status);
+
+        async Task<(string, HttpStatusCode)> OnceAsync()
+        {
+            using var request = new HttpRequestMessage(method, path);
+            if (body != null) request.Content = JsonContent.Create(body, options: Json);
+            if (AccessToken != null)
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", AccessToken);
+            if (ifMatch != null) request.Headers.TryAddWithoutValidation("If-Match", ifMatch);
+
+            using var response = await _http.SendAsync(request, ct);
+            return (await response.Content.ReadAsStringAsync(ct), response.StatusCode);
+        }
     }
 
     static string? ErrorDetail(string body)
