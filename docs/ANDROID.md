@@ -25,6 +25,19 @@ no muestra nada raro.
 adb install com.rentlysoft.easyrest-Signed.apk
 ```
 
+### Si dice "aplicación no instalada"
+
+Desinstalá la versión anterior primero:
+
+```bash
+adb uninstall com.rentlysoft.easyrest
+```
+
+No es un bug del APK: sin un keystore propio, .NET Android firma con una clave de depuración que
+**se genera por máquina**, y cada corrida del CI es una máquina nueva. Mismo `applicationId` con
+firma distinta es una actualización que Android rechaza. Pasa entre APKs de corridas distintas, y
+seguirá pasando hasta que haya un keystore fijo (ver abajo).
+
 ## Correrlo desde el código
 
 Hace falta el workload de Android una sola vez:
@@ -108,3 +121,7 @@ El spike está para contestar esto **en un teléfono**, que es lo que no se pued
 - **No está en `EasyRest.slnx`** a propósito: sin el workload instalado, tenerlo en la solución
   rompería el build para todos los demás. Se compila apuntándole al csproj, y en CI tiene su
   propio job.
+- **Sin keystore propio**: cada corrida firma con una clave de depuración distinta, así que
+  actualizar de un APK a otro obliga a desinstalar. Si el spike avanza y molesta, se arregla
+  guardando un keystore como secret del repo y firmando siempre con ese — son diez líneas de
+  workflow, pero no las agrego para un experimento.

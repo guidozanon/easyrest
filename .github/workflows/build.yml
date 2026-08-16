@@ -65,6 +65,10 @@ jobs:
           echo "--- actividades del APK:"
           "$AAPT" dump badging "$APK" | grep -E "launchable-activity|package:|application-label" \
             || { echo "::error::el APK no declara ninguna actividad de lanzador"; exit 1; }
+          # Cada corrida firma con un keystore de depuración distinto (se genera por máquina y
+          # los runners son efímeros), así que instalar encima de un APK de otra corrida falla
+          # con "aplicación no instalada".
+          echo "::notice::Si ya tenías instalada otra versión, desinstalala primero: adb uninstall com.rentlysoft.easyrest"
 
       - name: Subir el APK
         uses: actions/upload-artifact@v4
