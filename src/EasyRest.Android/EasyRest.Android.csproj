@@ -27,6 +27,15 @@
     <ApplicationVersion>1</ApplicationVersion>
     <ApplicationDisplayVersion>0.1</ApplicationDisplayVersion>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
+
+    <!-- Sin linker: rompe la interop de Jint con los objetos del host, y eso ya está medido en
+         tests/aot-probe. Y sin AOT, que en Release viene prendido por defecto y no compone con
+         AndroidLinkMode=None (su paso busca los assemblies en la salida del linker, que no
+         existe). Para el spike no hace falta ninguno de los dos: el APK pesa más y arranca un
+         poco más lento, y a cambio el motor de scripts anda. -->
+    <AndroidLinkMode>None</AndroidLinkMode>
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
   </PropertyGroup>
 
   <ItemGroup>

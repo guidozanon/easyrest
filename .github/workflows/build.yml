@@ -46,14 +46,11 @@ jobs:
       # Release y no Debug: en Debug, .NET Android usa fast deployment y deja los assemblies
       # fuera del APK, así que un APK instalado a mano no arranca. Igual va firmado con el
       # keystore de depuración —sin keystore propio se usa ese—, así que se instala con
-      # "orígenes desconocidos" y listo.
-      #
-      # AndroidLinkMode=None porque el linker rompe la interop de Jint con los objetos del host:
-      # eso ya lo verificamos con tests/aot-probe. El APK pesa más y para un spike da igual.
+      # "orígenes desconocidos" y listo. Lo del linker y el AOT está en el csproj.
       - name: Armar el APK
         run: |
           dotnet build src/EasyRest.Android/EasyRest.Android.csproj \
-            -c Release -t:SignAndroidPackage -p:AndroidLinkMode=None
+            -c Release -t:SignAndroidPackage
           find src/EasyRest.Android/bin -name "*-Signed.apk" -exec ls -la {} \;
 
       # Evidencia de que el APK trae la actividad de lanzador: sin esto la app instala y no
