@@ -1,9 +1,35 @@
-# Spike de Android
+# Android
 
-Un head de Android mínimo sobre el mismo Core, para responder con datos si vale la pena llevar
-EasyRest al teléfono. **No es un producto**: es una pantalla de diagnóstico que ejercita las dos
-piezas que estaban en duda —el motor de scripts y el almacenamiento— además de mandar una request
-de verdad.
+El head de Android sobre el mismo Core. Empezó como un spike de diagnóstico y hoy tiene
+colecciones, editor de request y sincronización con el servidor de sync.
+
+La app abre en la lista de colecciones. Tocar una request abre el editor, que manda de verdad con
+el `HttpExecutor` del Core y corre los scripts con Jint. La pantalla de diagnóstico del spike sigue
+disponible desde el botón «Diagnóstico».
+
+**El editor no guarda.** En el teléfono se corren requests que ya existen, no se arman: lo que se
+edita vale para esa corrida y no vuelve al disco ni al server. Así no hay forma de romper sin
+querer una colección compartida desde el colectivo.
+
+## Login: hace falta habilitar el esquema en el server
+
+En el escritorio el redirect de OAuth vuelve por un puerto local; en el teléfono vuelve por un
+esquema propio. Para que ande, el servidor de sync tiene que aceptarlo:
+
+```
+Auth__AllowedRedirectSchemes__0=easyrest
+```
+
+Sin eso el server rechaza el `redirect_uri` y el login falla antes de abrir el navegador. Se abre
+el navegador del sistema y no una WebView adentro de la app, así el login usa las sesiones que la
+persona ya tiene y la app nunca ve la contraseña.
+
+## Administración: desde el escritorio
+
+La pantalla de sync del teléfono hace lo mínimo: conectarse, elegir de qué workspace bajar y
+cerrar sesión. Invitar gente, cambiar roles o crear workspaces se hace desde la app de escritorio
+o la consola del server. Invitar a alguien desde el colectivo no es un caso real, y esa pantalla
+en un teléfono sería peor que abrir la computadora.
 
 ## Bajar el APK
 

@@ -36,8 +36,8 @@ public class App : Avalonia.Application
         // en móvil no hay ventanas: la app tiene una sola vista y el sistema la enmarca
         if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
         {
-            singleView.MainView = new SpikeView();
-            Diag.Marcar("App: SpikeView armada y asignada");
+            singleView.MainView = new ShellView();
+            Diag.Marcar("App: ShellView armada y asignada");
         }
         else
         {
