@@ -1,10 +1,11 @@
-using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 
 namespace EasyRest.Android;
 
-public class App : Application
+// Application va calificado: los proyectos de Android traen Android.App en los implicit usings
+// y el nombre choca con el de Avalonia.
+public class App : Avalonia.Application
 {
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
