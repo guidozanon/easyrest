@@ -88,12 +88,24 @@ No es un bug del APK: sin un keystore propio, .NET Android firma con una clave d
 firma distinta es una actualización que Android rechaza. Pasa entre APKs de corridas distintas, y
 seguirá pasando hasta que haya un keystore fijo (ver abajo).
 
-### Si se cierra al abrir
+### La pantalla de inicio es Android puro, a propósito
 
-La app guarda la última excepción no manejada en `crash.txt`, dentro de su carpeta privada, y la
-muestra arriba de todo en el próximo arranque, con el stack seleccionable para poder copiarlo. Es
-para no depender de tener el teléfono enchufado. Si el crash pasa antes de que Avalonia levante,
-eso no alcanza y hay que ir al log del sistema:
+Al abrir no aparece Avalonia sino una pantalla hecha con `TextView` y `Button` de Android. No es
+pereza: la primera versión se cerraba al instante y una pantalla de error escrita en Avalonia no
+servía para nada, porque el crash ocurría **antes** de que Avalonia llegara a dibujar. Esta
+actividad no depende de nada del stack que se está probando, así que la app siempre abre y
+siempre puede contar qué pasó en el intento anterior.
+
+Muestra tres cosas:
+
+- **La excepción** del intento anterior, si quedó registrada (`crash.txt`).
+- **El rastro** de hasta dónde llegó (`trace.txt`): cada paso del arranque escribe una miga en
+  disco apenas ocurre. Si el rastro se corta y no hay excepción, el proceso murió sin poder
+  contarlo — que es la firma de un crash nativo o de una falla del runtime.
+- **El entorno**: arquitectura, runtime, si genera código en tiempo de ejecución.
+
+Hay un botón para compartir el informe entero, así no hace falta el cable. Si aun así se quiere
+el log del sistema:
 
 ```bash
 adb logcat -c            # limpiar, abrir la app, y después:

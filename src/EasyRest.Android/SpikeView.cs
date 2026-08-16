@@ -65,6 +65,10 @@ public class SpikeView : UserControl
 
     public SpikeView()
     {
+        // los campos de arriba ya se inicializaron: si el rastro se corta antes de esta miga,
+        // el problema está en construir alguno de los controles
+        Diag.Marcar("SpikeView: controles creados");
+
         _env.Variables.Add(new KeyValueItem { Key = "host", Value = "https://api.github.com" });
 
         // Pantalla de diagnóstico, no de producto: la pregunta del spike es si el Core funciona
@@ -96,8 +100,12 @@ public class SpikeView : UserControl
             }
         };
 
+        Diag.Marcar("SpikeView: árbol visual armado");
+
         _enviar.Click += EnviarAsync;
         _entorno.Text = DescribirEntorno();
+
+        Diag.Marcar("SpikeView: lista");
     }
 
     static TextBlock Parrafo(IBrush color, double tamaño, bool mono = false) => new()
