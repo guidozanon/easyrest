@@ -43,14 +43,31 @@ jobs:
           dotnet-version: '8.0.x'
       - run: dotnet workload install android
 
-      # Debug y firmado con el keystore de depuración: se instala en cualquier teléfono con
-      # "orígenes desconocidos" habilitado, sin necesidad de un keystore propio. Para un spike
-      # alcanza; publicar en Play es otra conversación.
+      # Release y no Debug: en Debug, .NET Android usa fast deployment y deja los assemblies
+      # fuera del APK, así que un APK instalado a mano no arranca. Igual va firmado con el
+      # keystore de depuración —sin keystore propio se usa ese—, así que se instala con
+      # "orígenes desconocidos" y listo.
+      #
+      # AndroidLinkMode=None porque el linker rompe la interop de Jint con los objetos del host:
+      # eso ya lo verificamos con tests/aot-probe. El APK pesa más y para un spike da igual.
       - name: Armar el APK
         run: |
           dotnet build src/EasyRest.Android/EasyRest.Android.csproj \
-            -c Debug -t:SignAndroidPackage
+            -c Release -t:SignAndroidPackage -p:AndroidLinkMode=None
           find src/EasyRest.Android/bin -name "*-Signed.apk" -exec ls -la {} \;
+
+      # Evidencia de que el APK trae la actividad de lanzador: sin esto la app instala y no
+      # aparece en el cajón, y desde el log del build no se nota.
+      - name: Verificar que tenga lanzador
+        run: |
+          APK="$(find src/EasyRest.Android/bin -name '*-Signed.apk' | head -1)"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt2 | sort | tail -1)"
+          echo "--- manifiesto mergeado:"
+          find src/EasyRest.Android/obj -path '*android/manifest/AndroidManifest.xml' \
+            -exec cat {} \;
+          echo "--- actividades del APK:"
+          "$AAPT" dump badging "$APK" | grep -E "launchable-activity|package:|application-label" \
+            || { echo "::error::el APK no declara ninguna actividad de lanzador"; exit 1; }
 
       - name: Subir el APK
         uses: actions/upload-artifact@v4

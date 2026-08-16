@@ -12,6 +12,15 @@ corrida → Artifacts → `EasyRest-android-spike-apk`*. Viene firmado con el ke
 así que se instala en cualquier teléfono con "orígenes desconocidos" habilitado, sin necesidad de
 un keystore propio.
 
+Se compila en **Release** aunque sea un spike: en Debug, .NET Android usa fast deployment y deja
+los assemblies fuera del APK, pensando en que el IDE los va a empujar por adb — un APK Debug
+instalado a mano no arranca. Y con `AndroidLinkMode=None`, porque el linker rompe la interop de
+Jint (ver más abajo).
+
+El job además corre `aapt dump badging` y falla si el APK no declara una actividad de lanzador:
+sin esa verificación, la app instala, no aparece en el cajón de aplicaciones y el log del build
+no muestra nada raro.
+
 ```bash
 adb install com.rentlysoft.easyrest-Signed.apk
 ```
