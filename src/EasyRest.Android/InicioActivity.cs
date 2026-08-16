@@ -18,7 +18,7 @@ namespace EasyRest.Android;
     Label = "EasyRest",
     MainLauncher = true,
     Exported = true,
-    Theme = "@android:style/Theme.Material.Light.NoActionBar")]
+    Theme = "@style/EasyRestTheme")]
 public class InicioActivity : Activity
 {
     protected override void OnCreate(global::Android.OS.Bundle? savedInstanceState)

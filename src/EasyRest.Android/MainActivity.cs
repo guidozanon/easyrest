@@ -14,7 +14,7 @@ namespace EasyRest.Android;
 [Activity(
     Name = "com.rentlysoft.easyrest.MainActivity",
     Label = "EasyRest",
-    Theme = "@android:style/Theme.Material.Light.NoActionBar",
+    Theme = "@style/EasyRestTheme",
     Exported = false,
     LaunchMode = LaunchMode.SingleTop,
     ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize |

@@ -88,6 +88,25 @@ No es un bug del APK: sin un keystore propio, .NET Android firma con una clave d
 firma distinta es una actualización que Android rechaza. Pasa entre APKs de corridas distintas, y
 seguirá pasando hasta que haya un keystore fijo (ver abajo).
 
+### El tema tiene que ser AppCompat
+
+`AvaloniaMainActivity` hereda de `AppCompatActivity`, y esa clase exige un tema descendiente de
+`Theme.AppCompat`. Con un tema de la plataforma —`@android:style/Theme.Material.Light.NoActionBar`,
+que era lo que tenía— la app se cierra al instante:
+
+```
+java.lang.IllegalStateException: You need to use a Theme.AppCompat theme (or descendant)
+   at Avalonia.Android.AvaloniaActivity.set_Content(Object)
+```
+
+El tema propio está en `Resources/values/styles.xml`, hereda de `Theme.AppCompat.NoActionBar` y
+pinta el fondo de la ventana del color de la app para que no haya un flash blanco antes del
+primer frame.
+
+Esto no lo agarra el CI: el APK se arma perfecto y `aapt2` no tiene forma de saber que la
+actividad va a pedir otro tema. **Sólo se ve corriéndolo en un dispositivo**, que es exactamente
+para lo que existe el spike.
+
 ### La pantalla de inicio es Android puro, a propósito
 
 Al abrir no aparece Avalonia sino una pantalla hecha con `TextView` y `Button` de Android. No es

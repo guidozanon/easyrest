@@ -3,8 +3,10 @@
   <!-- Sin este permiso HttpClient falla en silencio, que para un cliente HTTP sería gracioso -->
   <uses-permission android:name="android.permission.INTERNET" />
 
+  <!-- El tema tiene que ser descendiente de Theme.AppCompat: la actividad de Avalonia hereda de
+       AppCompatActivity y con un tema de la plataforma revienta al abrir. Ver Resources/values. -->
   <application android:label="EasyRest"
                android:icon="@mipmap/appicon"
-               android:theme="@android:style/Theme.Material.Light.NoActionBar"
+               android:theme="@style/EasyRestTheme"
                android:usesCleartextTraffic="true" />
 </manifest>

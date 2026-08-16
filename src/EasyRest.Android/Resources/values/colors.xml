@@ -2,4 +2,6 @@
 <resources>
   <!-- El fondo del ícono adaptable: el mismo base de catppuccin que usa el escritorio -->
   <color name="appicon_background">#1E1E2E</color>
+  <!-- El fondo de la ventana, para que no haya flash blanco antes del primer frame -->
+  <color name="fondo_ventana">#1E1E2E</color>
 </resources>
