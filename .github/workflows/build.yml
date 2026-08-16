@@ -68,14 +68,24 @@ jobs:
           find src/EasyRest.Android/obj -name '*.java' | sed 's|.*/android/src/||' \
             | grep -v '^androidx/' | grep -v '/R\.java$' | sort
 
-          echo "--- parámetros con los que se llamó a GenerateJavaStubs:"
+          echo "--- dlls intermedios (hay más de una copia del assembly):"
+          ls -la src/EasyRest.Android/obj/Release/net8.0-android34.0/EasyRest.Android.dll \
+                 src/EasyRest.Android/obj/Release/net8.0-android34.0/Avalonia/EasyRest.Android.dll \
+                 2>&1 | head
+
           awk '/Task "GenerateJavaStubs"/{f=1} f{print} /Done executing task "GenerateJavaStubs"/{exit}' \
             build.log > stubs.log || true
-          wc -l stubs.log
-          grep -nE "=$|EasyRest" stubs.log | head -60 || true
 
-          echo "--- ¿aparece nuestro assembly en la lista?"
-          grep -c "EasyRest.Android.dll" stubs.log || echo "0 — no está"
+          echo "--- nombres de los parámetros de la tarea:"
+          grep -oE "^ +[A-Za-z_]+=$" stubs.log | tr -d ' =' | sort -u
+
+          echo "--- assemblies que efectivamente recibe (item specs, sin metadata):"
+          grep -v "=" stubs.log | sed 's/^ *//' | grep -E "\.dll$" | sort -u > asms.txt
+          wc -l asms.txt
+          echo "  nuestro assembly:"
+          grep -i easyrest asms.txt || echo "  NO ESTÁ — no recibe EasyRest.Android.dll"
+          echo "  avalonia:"
+          grep -i "Avalonia.Android.dll" asms.txt || echo "  tampoco está Avalonia.Android"
 
       # Sin esto la app instala, no aparece en el cajón y el log del build no muestra nada raro:
       # el chequeo tiene que fallar de verdad, no imprimir y seguir.
