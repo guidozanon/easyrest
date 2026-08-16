@@ -28,15 +28,18 @@
     <ApplicationDisplayVersion>0.1</ApplicationDisplayVersion>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
 
-    <!-- Sin linker: rompe la interop de Jint con los objetos del host, y eso ya está medido en
-         tests/aot-probe. Va por PublishTrimmed y no por AndroidLinkMode: ese último es la
-         propiedad de la época de Xamarin y en .NET Android deja el pipeline a medias — el paso
-         que arma los stubs de Java se queda sin assemblies que mirar y el APK termina sin
-         ninguna actividad, que es exactamente el bug de "instala pero no aparece en el cajón".
-         Y sin AOT, que en Release viene prendido por defecto y necesita la salida del linker.
-         Para el spike no hace falta ninguno de los dos: el APK pesa más y arranca un poco más
-         lento, y a cambio el motor de scripts anda. -->
-    <PublishTrimmed>false</PublishTrimmed>
+    <!-- Apagar el linker acá rompe el build de una forma silenciosa: el compilador de XAML de
+         Avalonia reescribe el assembly de la app en obj/…/Avalonia/, y sin el paso del linker
+         el SDK de Android pierde ese rastro — EasyRest.Android.dll no entra en los assets del
+         APK ni en la lista que escanea GenerateJavaStubs, así que no se genera el wrapper de
+         MainActivity y el APK sale sin ninguna actividad. Instala, no aparece en el cajón y el
+         build termina con cero warnings.
+         Así que va el trimming por defecto de Release (TrimMode=partial: sólo toca los
+         assemblies del SDK), que es la misma configuración que tests/aot-probe ya verificó con
+         Jint. Igual se anclan Core y Jint abajo, porque lo que rompe la interop de Jint es que
+         el trimmer le borre los miembros que resuelve por reflexión. -->
+    <TrimMode>partial</TrimMode>
+    <!-- El AOT sí queda apagado: en el spike no aporta y agrega otra variable al problema. -->
     <RunAOTCompilation>false</RunAOTCompilation>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
   </PropertyGroup>
@@ -50,6 +53,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EasyRest.Core\EasyRest.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Jint resolve por reflexión los miembros de los objetos del host (er.request.setHeader,
+       er.response.body) y el trimmer los borra por no ver quién los usa. El síntoma no es un
+       error de compilación sino un script que falla en runtime con "is not a function", así que
+       estos dos quedan anclados enteros. Está medido en tests/aot-probe. -->
+  <ItemGroup>
+    <TrimmerRootAssembly Include="EasyRest.Core" />
+    <TrimmerRootAssembly Include="Jint" />
   </ItemGroup>
 
 </Project>
