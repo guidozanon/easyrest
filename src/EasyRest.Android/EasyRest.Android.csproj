@@ -34,10 +34,11 @@
          APK ni en la lista que escanea GenerateJavaStubs, así que no se genera el wrapper de
          MainActivity y el APK sale sin ninguna actividad. Instala, no aparece en el cajón y el
          build termina con cero warnings.
-         Así que va el trimming por defecto de Release (TrimMode=partial: sólo toca los
-         assemblies del SDK), que es la misma configuración que tests/aot-probe ya verificó con
-         Jint. Igual se anclan Core y Jint abajo, porque lo que rompe la interop de Jint es que
-         el trimmer le borre los miembros que resuelve por reflexión. -->
+         Así que va el trimming por defecto de Release. TrimMode=partial sólo toca assemblies
+         marcados como recortables, o sea los del SDK: Jint y EasyRest.Core quedan enteros, que
+         es justo lo que hace falta —lo que rompe la interop de Jint es que el trimmer le borre
+         los miembros que resuelve por reflexión— y es la misma configuración que tests/aot-probe
+         ya verificó. -->
     <TrimMode>partial</TrimMode>
     <!-- El AOT sí queda apagado: en el spike no aporta y agrega otra variable al problema. -->
     <RunAOTCompilation>false</RunAOTCompilation>
@@ -53,15 +54,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EasyRest.Core\EasyRest.Core.csproj" />
-  </ItemGroup>
-
-  <!-- Jint resolve por reflexión los miembros de los objetos del host (er.request.setHeader,
-       er.response.body) y el trimmer los borra por no ver quién los usa. El síntoma no es un
-       error de compilación sino un script que falla en runtime con "is not a function", así que
-       estos dos quedan anclados enteros. Está medido en tests/aot-probe. -->
-  <ItemGroup>
-    <TrimmerRootAssembly Include="EasyRest.Core" />
-    <TrimmerRootAssembly Include="Jint" />
   </ItemGroup>
 
 </Project>
