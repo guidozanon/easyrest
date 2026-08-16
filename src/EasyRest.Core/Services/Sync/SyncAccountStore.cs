@@ -35,62 +35,54 @@ public class SyncAccount
     }
 }
 
-/// <summary>Dónde queda la sesión entre arranques.
+/// <summary>Dónde quedan las sesiones entre arranques. Recibe la ruta como SyncState y SyncBinding:
+/// la app usa <see cref="Default"/> y los tests un archivo temporal.
 ///
-/// Va en texto plano en AppData, igual que environments.json, que ya guarda secretos de ambientes.
-/// No es una decisión cómoda pero sí consistente: cifrarlo bien necesita el llavero de cada
-/// sistema operativo, y hacerlo a medias sólo da sensación de seguridad. Si algún día se cifra,
-/// se cifran los dos juntos.</summary>
-public static class SyncAccountStore
+/// Va en texto plano, igual que environments.json, que ya guarda secretos de ambientes. No es una
+/// decisión cómoda pero sí consistente: cifrarlo de verdad necesita el llavero de cada sistema
+/// operativo, y hacerlo a medias sólo da sensación de seguridad. Si algún día se cifra, se cifran
+/// los dos juntos.</summary>
+public class SyncAccountStore(string filePath)
 {
     static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
-    static readonly object Gate = new();
 
-    static string FilePath => Path.Combine(Storage.AppDataRoot, "sync-sessions.json");
+    readonly object _gate = new();
 
-    public static List<SyncAccount> All()
+    /// <summary>La de la app: AppData/sync-sessions.json.</summary>
+    public static SyncAccountStore Default { get; } =
+        new(Path.Combine(Storage.AppDataRoot, "sync-sessions.json"));
+
+    public string FilePath { get; } = filePath;
+
+    public List<SyncAccount> All()
     {
-        lock (Gate)
-        {
-            if (!File.Exists(FilePath)) return new List<SyncAccount>();
-            try
-            {
-                return JsonSerializer.Deserialize<List<SyncAccount>>(File.ReadAllText(FilePath), Json)
-                       ?? new List<SyncAccount>();
-            }
-            catch (Exception ex) when (ex is JsonException or IOException)
-            {
-                // si el archivo se rompió, se pierde la sesión y hay que loguearse de nuevo:
-                // molesto pero recuperable, y mejor que no arrancar
-                return new List<SyncAccount>();
-            }
-        }
+        lock (_gate) return Read();
     }
 
-    public static SyncAccount? Find(string serverUrl) =>
+    public SyncAccount? Find(string serverUrl) =>
         All().FirstOrDefault(a => Same(a.ServerUrl, serverUrl));
 
-    public static void Save(SyncAccount account)
+    public void Save(SyncAccount account)
     {
-        lock (Gate)
+        lock (_gate)
         {
-            var list = AllUnlocked();
+            var list = Read();
             list.RemoveAll(a => Same(a.ServerUrl, account.ServerUrl));
             list.Add(account);
-            WriteUnlocked(list);
+            Write(list);
         }
     }
 
-    public static void Remove(string serverUrl)
+    public void Remove(string serverUrl)
     {
-        lock (Gate)
+        lock (_gate)
         {
-            var list = AllUnlocked();
-            if (list.RemoveAll(a => Same(a.ServerUrl, serverUrl)) > 0) WriteUnlocked(list);
+            var list = Read();
+            if (list.RemoveAll(a => Same(a.ServerUrl, serverUrl)) > 0) Write(list);
         }
     }
 
-    static List<SyncAccount> AllUnlocked()
+    List<SyncAccount> Read()
     {
         if (!File.Exists(FilePath)) return new List<SyncAccount>();
         try
@@ -100,13 +92,16 @@ public static class SyncAccountStore
         }
         catch (Exception ex) when (ex is JsonException or IOException)
         {
+            // si el archivo se rompió se pierde la sesión y hay que loguearse de nuevo: molesto
+            // pero recuperable, y mejor que no arrancar
             return new List<SyncAccount>();
         }
     }
 
-    static void WriteUnlocked(List<SyncAccount> list)
+    void Write(List<SyncAccount> list)
     {
-        Directory.CreateDirectory(Storage.AppDataRoot);
+        var dir = Path.GetDirectoryName(FilePath);
+        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
         File.WriteAllText(FilePath, JsonSerializer.Serialize(list, Json));
     }
 

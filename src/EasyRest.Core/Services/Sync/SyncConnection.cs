@@ -15,11 +15,13 @@ public class SyncConnection : IDisposable
     static readonly TimeSpan Margen = TimeSpan.FromMinutes(2);
 
     readonly SemaphoreSlim _refrescando = new(1, 1);
+    readonly SyncAccountStore _store;
 
-    SyncConnection(SyncAccount account, SyncApiClient api)
+    SyncConnection(SyncAccount account, SyncApiClient api, SyncAccountStore store)
     {
         Account = account;
         Api = api;
+        _store = store;
         api.AccessToken = account.AccessToken;
         api.TokenRefresher = RefrescarAsync;
     }
@@ -28,25 +30,31 @@ public class SyncConnection : IDisposable
     public SyncApiClient Api { get; }
 
     /// <summary>Sesión guardada para ese server, o null si nunca se inició sesión.</summary>
-    public static SyncConnection? Restore(string serverUrl, HttpClient? http = null)
+    public static SyncConnection? Restore(string serverUrl, SyncAccountStore? store = null,
+        HttpClient? http = null)
     {
-        var account = SyncAccountStore.Find(serverUrl);
-        return account == null ? null : new SyncConnection(account, new SyncApiClient(account.ServerUrl, http));
+        store ??= SyncAccountStore.Default;
+        var account = store.Find(serverUrl);
+        return account == null
+            ? null
+            : new SyncConnection(account, new SyncApiClient(account.ServerUrl, http), store);
     }
 
     /// <summary>Después de un login exitoso: guarda la cuenta y devuelve la conexión.</summary>
-    public static SyncConnection Establish(string serverUrl, SyncSession session, HttpClient? http = null)
+    public static SyncConnection Establish(string serverUrl, SyncSession session,
+        SyncAccountStore? store = null, HttpClient? http = null)
     {
+        store ??= SyncAccountStore.Default;
         var account = new SyncAccount { ServerUrl = serverUrl.TrimEnd('/') };
         account.Apply(session);
-        SyncAccountStore.Save(account);
-        return new SyncConnection(account, new SyncApiClient(account.ServerUrl, http));
+        store.Save(account);
+        return new SyncConnection(account, new SyncApiClient(account.ServerUrl, http), store);
     }
 
     /// <summary>Cierra la sesión local. No invalida el refresh token en el server: para eso está
     /// /auth/logout, que se llama aparte porque puede fallar sin red y el olvido local igual tiene
     /// que ocurrir.</summary>
-    public void Forget() => SyncAccountStore.Remove(Account.ServerUrl);
+    public void Forget() => _store.Remove(Account.ServerUrl);
 
     /// <summary>Refresca si está por vencer. Conviene llamarlo antes de una tanda larga de
     /// requests, aunque el 401 igual está cubierto.</summary>
@@ -69,7 +77,7 @@ public class SyncConnection : IDisposable
             {
                 var session = await Api.RefreshAsync(Account.RefreshToken, ct);
                 Account.Apply(session);
-                SyncAccountStore.Save(Account);
+                _store.Save(Account);
                 return Account.AccessToken;
             }
             catch (SyncApiException ex) when (ex.Status is HttpStatusCode.Unauthorized or HttpStatusCode.BadRequest)
