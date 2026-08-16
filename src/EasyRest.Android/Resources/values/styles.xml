@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- AvaloniaMainActivity hereda de AppCompatActivity, y esa clase exige un tema descendiente
+       de Theme.AppCompat: con un tema de la plataforma (@android:style/Theme.Material…) tira
+       IllegalStateException apenas hace setContentView, o sea al abrir.
+
+       Va sin barra de acción porque la UI la dibuja Avalonia entera, y con el fondo ya pintado
+       del color de la app para que no haya un flash blanco antes del primer frame. -->
+  <style name="EasyRestTheme" parent="Theme.AppCompat.NoActionBar">
+    <item name="android:windowBackground">@color/fondo_ventana</item>
+  </style>
+</resources>

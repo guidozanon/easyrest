@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Sonda de NativeAOT: compila el Core sin JIT y sin Reflection.Emit, que es exactamente la
+       restricción que impone iOS y la que tiene que aguantar el motor de scripts para que la app
+       sea portable a móvil. Correrla es la forma de convertir "Jint debería andar" en un hecho.
+
+       Se corre a mano (no está en el CI porque tarda):
+         dotnet publish tests/aot-probe -c Release -r linux-x64 && ./bin/.../AotProbe -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- que avise si algo del Core no es compatible con AOT en vez de fallar en runtime -->
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+
+    <!-- Sin JIT, pero conservando los metadatos de reflexión. Esto imita al AOT de Mono en iOS,
+         que prohíbe generar código pero mantiene la reflexión, y es la combinación que importa:
+         con trimming completo la interop de Jint con los objetos del host desaparece y los
+         scripts dejan de andar. Lo que se verifica acá es que la falta de JIT no es el problema. -->
+    <TrimMode>partial</TrimMode>
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EasyRest.Core\EasyRest.Core.csproj" />
+  </ItemGroup>
+
+</Project>

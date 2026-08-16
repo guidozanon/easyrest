@@ -1,0 +1,57 @@
+@page "/Admin/Users"
+@model EasyRest.Sync.Server.Pages.Admin.UsersModel
+@{
+    ViewData["Title"] = "Usuarios";
+    ViewData["User"] = Model.CurrentUser.Email;
+}
+
+<h1>Usuarios</h1>
+
+@if (!string.IsNullOrEmpty(Model.Aviso)) { <div class="aviso">@Model.Aviso</div> }
+@if (!string.IsNullOrEmpty(Model.ErrorMsg)) { <div class="error">@Model.ErrorMsg</div> }
+
+<div class="card">
+    <table>
+        <thead>
+        <tr>
+            <th>Mail</th><th>Nombre</th><th>Proveedor</th><th>Workspaces</th>
+            <th>Último acceso</th><th>Estado</th><th></th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var u in Model.Users)
+        {
+            <tr>
+                <td>@u.Email</td>
+                <td>@u.DisplayName</td>
+                <td class="muted">@u.Provider</td>
+                <td>@u.Workspaces</td>
+                <td class="muted">@u.LastSeenAt.ToString("yyyy-MM-dd HH:mm")</td>
+                <td>
+                    @if (u.Disabled) { <span class="tag bad">desactivado</span> }
+                    @if (u.IsServerAdmin) { <span class="tag ok">admin</span> }
+                </td>
+                <td style="text-align:right;white-space:nowrap">
+                    <form class="inline" method="post" asp-page-handler="ToggleAdmin">
+                        <input type="hidden" name="userId" value="@u.Id" />
+                        <input type="hidden" name="value" value="@((!u.IsServerAdmin).ToString().ToLowerInvariant())" />
+                        <button type="submit">@(u.IsServerAdmin ? "Quitar admin" : "Hacer admin")</button>
+                    </form>
+                    <form class="inline" method="post" asp-page-handler="ToggleDisabled">
+                        <input type="hidden" name="userId" value="@u.Id" />
+                        <input type="hidden" name="value" value="@((!u.Disabled).ToString().ToLowerInvariant())" />
+                        <button type="submit" class="@(u.Disabled ? "" : "danger")">
+                            @(u.Disabled ? "Reactivar" : "Desactivar")
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<p class="muted">
+    Desactivar corta las sesiones en el acto y no deja volver a entrar. Se prefiere sobre borrar,
+    que perdería la autoría de lo que esa persona haya escrito.
+</p>

@@ -1,0 +1,63 @@
+# Servidor de sync de EasyRest, para que cada organización corra el suyo.
+#
+#   1. cp .env.example .env  &&  editá .env  (la master key es obligatoria)
+#   2. docker compose up -d
+#
+# Por defecto guarda en SQLite dentro del volumen `data`, que alcanza para un equipo.
+# Para Postgres, descomentá el servicio `db` y las dos variables de abajo.
+
+services:
+  sync:
+    build:
+      context: .
+      dockerfile: src/EasyRest.Sync.Server/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${EASYREST_PORT:-8080}:8080"
+    volumes:
+      - data:/data
+    environment:
+      # Cifra las claves de datos de cada workspace. Generala con: openssl rand -base64 32
+      # Si la perdés, los secretos guardados no se pueden recuperar.
+      EASYREST_MASTER_KEY: ${EASYREST_MASTER_KEY:?falta EASYREST_MASTER_KEY}
+
+      # URL pública del server: es la que ve el IdP y tiene que coincidir con el redirect
+      # registrado allá (<PublicUrl>/api/v1/auth/callback).
+      Auth__PublicUrl: ${EASYREST_PUBLIC_URL:-http://localhost:8080}
+      Auth__AllowedRedirectSchemes__0: easyrest
+
+      # Restringí quién puede entrar cuando el IdP es público (Google, GitHub):
+      # Auth__AllowedEmailDomains__0: tuempresa.com
+
+      # --- Provider 0: cualquier IdP con OIDC (Google, Microsoft Entra, Okta, Keycloak…) ---
+      Auth__Providers__0__Id: ${OIDC_ID:-oidc}
+      Auth__Providers__0__DisplayName: ${OIDC_NAME:-Iniciar sesión}
+      Auth__Providers__0__Kind: oidc
+      Auth__Providers__0__Authority: ${OIDC_AUTHORITY:-}
+      Auth__Providers__0__ClientId: ${OIDC_CLIENT_ID:-}
+      Auth__Providers__0__ClientSecret: ${OIDC_CLIENT_SECRET:-}
+
+      # --- Provider 1: GitHub (OAuth2 plano, no OIDC) ---
+      # Auth__Providers__1__Id: github
+      # Auth__Providers__1__DisplayName: GitHub
+      # Auth__Providers__1__Kind: github
+      # Auth__Providers__1__ClientId: ${GITHUB_CLIENT_ID:-}
+      # Auth__Providers__1__ClientSecret: ${GITHUB_CLIENT_SECRET:-}
+
+      # --- Postgres en vez de SQLite ---
+      # Database__Provider: postgres
+      # ConnectionStrings__Default: Host=db;Database=easyrest;Username=easyrest;Password=${DB_PASSWORD}
+
+  # db:
+  #   image: postgres:16-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: easyrest
+  #     POSTGRES_USER: easyrest
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:?falta DB_PASSWORD}
+  #   volumes:
+  #     - db:/var/lib/postgresql/data
+
+volumes:
+  data:
+  # db:

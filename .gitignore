@@ -1,6 +1,16 @@
 # Build
 bin/
 obj/
+publish/
+dist/
+stage/
+EasyRest.app/
+
+# Servidor de sync: base local y config con secretos
+*.db
+*.db-shm
+*.db-wal
+.env
 
 # Visual Studio / Rider
 .vs/

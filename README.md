@@ -5,8 +5,12 @@ Cliente HTTP de escritorio estilo Postman/Bruno. .NET 8.
 ## Estructura
 
 - `src/EasyRest.Core` — modelos y servicios (storage/workspace, HTTP, OpenAPI, cURL, scripts con Jint,
-  git, logs, runner). **Sin dependencias de UI**: es la base compartida.
+  git, sync, logs, runner). **Sin dependencias de UI**: es la base compartida.
 - `src/EasyRest.Avalonia` — la app multiplataforma (Windows/macOS/Linux) sobre el Core.
+- `src/EasyRest.Sync.Server` — servidor de sync self-hosted, opcional. Ver
+  [docs/SYNC.md](docs/SYNC.md) y, para instalarlo en Linux, [docs/INSTALL.md](docs/INSTALL.md).
+- `src/EasyRest.Android` — spike: head de Android sobre el mismo Core, para evaluar el móvil.
+  Ver [docs/ANDROID.md](docs/ANDROID.md).
 
 ## Ejecutar
 
@@ -14,10 +18,10 @@ Cliente HTTP de escritorio estilo Postman/Bruno. .NET 8.
 dotnet run --project src/EasyRest.Avalonia
 ```
 
-Ejecutable autocontenido para Windows:
+Carpeta autocontenida para Windows:
 
 ```powershell
-dotnet publish src/EasyRest.Avalonia -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
+dotnet publish src/EasyRest.Avalonia -c Release -r win-x64 --self-contained
 ```
 
 Para macOS (desde cualquier plataforma):
@@ -31,9 +35,30 @@ dotnet publish src/EasyRest.Avalonia -c Release -r osx-arm64 --self-contained
 Un GitHub Action (`.github/workflows/build.yml`) compila binarios autocontenidos para
 Windows (x64) y macOS (arm64/x64):
 
-- **Release**: al pushear un tag `vX.Y.Z` se publica un Release con los `.zip` de cada plataforma.
+- **Release**: al pushear un tag `vX.Y.Z` se publica un Release con los binarios de cada plataforma.
 - **Manual**: se puede correr el workflow a mano (*Actions → build → Run workflow*); los binarios
   quedan como artefactos de esa corrida.
+
+Qué bajar según la plataforma:
+
+| Archivo | Plataforma |
+|---|---|
+| `EasyRest-Setup-<versión>.exe` | Windows. Installer: instala en `%LocalAppData%\Programs\EasyRest`, sin permisos de admin |
+| `EasyRest-win-x64-portable.zip` | Windows sin instalar (la misma carpeta, descomprimida donde quieras) |
+| `EasyRest-macos-arm64.zip` | Mac con Apple Silicon (M1/M2/M3…) |
+| `EasyRest-macos-x64.zip` | Mac con Intel |
+| `EasyRest-linux-x64.tar.gz` | Linux x86_64 |
+| `EasyRest-linux-arm64.tar.gz` | Linux arm64 |
+
+### Firma
+
+Los binarios se firman en el CI: `EasyRest.app` con Developer ID de Apple y notarización, y el
+`.exe` y el installer de Windows con el certificado de [SignPath
+Foundation](https://signpath.org) (gratis para proyectos open source). El detalle de cómo está
+armado —y qué secrets necesita— está en [docs/FIRMA.md](docs/FIRMA.md).
+
+En Windows puede seguir apareciendo el cartel de SmartScreen hasta que el certificado acumule
+reputación: *Más información → Ejecutar de todas formas*.
 
 ### Auto update
 
@@ -44,29 +69,42 @@ EasyRest*) se abre el panel de actualizaciones con las notas de la release y tre
 descargar e instalar, omitir esa versión o cerrar. También se puede apagar el chequeo automático
 con el check *Buscar actualizaciones al iniciar*.
 
-Al instalar, EasyRest baja el zip de la plataforma, guarda todo lo pendiente y se cierra; un script
-externo espera a que el proceso termine, reemplaza el binario (el `.exe` autocontenido en Windows,
-el bundle `EasyRest.app` en macOS) y vuelve a abrir la app en la versión nueva. Si la carpeta de
-instalación no tiene permisos de escritura, avisa antes de cerrar nada. En Linux (el CI no publica
-binarios) y corriendo desde el código (`dotnet run`) el panel sólo ofrece abrir la release en GitHub.
+Al instalar, EasyRest baja el binario de la plataforma, guarda todo lo pendiente y se cierra; un
+script externo espera a que el proceso termine, reemplaza la instalación (la carpeta en Windows y
+Linux, el bundle `EasyRest.app` en macOS) y vuelve a abrir la app en la versión nueva. Si el swap
+falla, deja la versión anterior en su lugar. Si la carpeta de instalación no tiene permisos de
+escritura, avisa antes de cerrar nada. Corriendo desde el código (`dotnet run`) el panel sólo
+ofrece abrir la release en GitHub, para no pisar `bin/`.
+
+> **Si venís de la v0.1.10 o anterior en Windows** (la que era un único `EasyRest.exe`): esa
+> instalación no se actualiza sola a este formato. Bajá una vez el `EasyRest-Setup-<versión>.exe`
+> y desde ahí vuelve a actualizarse automáticamente. El motivo está en
+> [docs/FIRMA.md](docs/FIRMA.md#migración-de-los-que-ya-tienen-la-versión-single-file).
 
 ### macOS
 
-El zip de Mac trae `EasyRest.app`. Como **no está firmado** (haría falta cuenta de Apple Developer),
-Gatekeeper lo bloquea la primera vez. Para abrirlo:
+El zip de Mac trae `EasyRest.app`, firmado con Developer ID de Apple y notarizado: se descomprime,
+se mueve a `Aplicaciones` y abre normal, sin carteles de Gatekeeper.
 
-1. Descomprimí y movelo a `Aplicaciones`.
-2. **Click derecho → Abrir → Abrir** (así se abre "de un desarrollador no identificado").
+Elegí el zip según tu Mac: `macos-arm64` (Apple Silicon M1/M2/M3…) o `macos-x64` (Intel).
 
-Si sale *"está dañado y no se puede abrir"* (por el atributo de cuarentena al bajarlo del navegador),
-quitá la cuarentena en Terminal y abrilo:
+<details>
+<summary>Releases hasta la v0.1.10 (sin firmar)</summary>
+
+Esos zips llevaban firma ad-hoc y Gatekeeper los bloquea la primera vez. En macOS 14 y anteriores
+se abren con **click derecho → Abrir → Abrir**; en macOS 15 (Sequoia) y posteriores ese atajo ya no
+existe y hay que ir a *Ajustes del Sistema → Privacidad y seguridad*, y ahí tocar **Abrir de todos
+modos** en el aviso sobre EasyRest.
+
+Si sale *"está dañado y no se puede abrir"* (por el atributo de cuarentena al bajarlo del
+navegador), quitá la cuarentena en Terminal y abrilo:
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/EasyRest.app
 open /Applications/EasyRest.app
 ```
 
-Elegí el zip según tu Mac: `macos-arm64` (Apple Silicon M1/M2/M3…) o `macos-x64` (Intel).
+</details>
 
 ## Funcionalidades
 
@@ -115,9 +153,14 @@ Elegí el zip según tu Mac: `macos-arm64` (Apple Silicon M1/M2/M3…) o `macos-
   conflictos, un popup pregunta si querés quedarte con la versión del remoto o pisar con la tuya.
   Los ambientes y settings quedan siempre en AppData: los tokens no van al repo. La barra de estado
   muestra `⎇ rama · N cambios`.
+- **Servidor de sync (opcional)**: como alternativa a git, cada organización puede correr su propio
+  servidor y sincronizar colecciones y ambientes **con secretos**, invitando gente a workspaces con
+  roles y permisos. Login contra el IdP de la empresa (OIDC — Google, Entra, Okta, Keycloak… — o
+  GitHub), y una consola web en `/Admin` para administrar usuarios y workspaces. Ver
+  [docs/SYNC.md](docs/SYNC.md).
 - **Auto update**: chequeo silencioso al iniciar contra los Releases de GitHub y panel de
-  actualizaciones (barra de estado, menú ⋯ del sidebar o *Acerca de EasyRest*) que baja el zip de la
-  plataforma, reemplaza el binario y reinicia la app. Ver [Auto update](#auto-update).
+  actualizaciones (barra de estado, menú ⋯ del sidebar o *Acerca de EasyRest*) que baja el binario de
+  la plataforma, reemplaza la instalación y reinicia la app. Ver [Auto update](#auto-update).
 - **Persistencia local**: por defecto todo se guarda como JSON en `%AppData%\EasyRest`. Cada
   colección es una carpeta (`collections/{Nombre}/`) con un `collection.json` de metadata, un
   archivo `{Request}.req.json` por request y un subdirectorio (con `folder.json`) por carpeta —

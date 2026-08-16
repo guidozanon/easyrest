@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Artifact configuration "exe": firma el apphost que sube el workflow antes de armar el
+     installer y el zip portable.
+
+     El elemento raíz es <zip-file> porque el artefacto de GitHub Actions es siempre un zip,
+     incluso cuando adentro va un único archivo. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="EasyRest.exe">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

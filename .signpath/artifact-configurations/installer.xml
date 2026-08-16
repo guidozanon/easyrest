@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Artifact configuration "installer": firma el setup de Inno Setup.
+
+     El nombre lleva la versión (EasyRest-Setup-0.2.0.exe), así que se matchea con wildcard
+     en un <pe-file-set> en vez de un <pe-file path="..."> fijo. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file-set>
+      <include path="EasyRest-Setup-*.exe" />
+      <for-each>
+        <authenticode-sign />
+      </for-each>
+    </pe-file-set>
+  </zip-file>
+</artifact-configuration>

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Formats.Tar;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
@@ -8,9 +9,10 @@ using System.Text.Json;
 
 namespace EasyRest.Services;
 
-/// <summary>Qué hay que reemplazar para actualizar: el .exe autocontenido (Windows) o el
-/// bundle .app (macOS). Cualquier otro caso (Linux, `dotnet run`) no es actualizable.</summary>
-public enum InstallKind { WindowsExe, MacAppBundle }
+/// <summary>Qué hay que reemplazar para actualizar: la carpeta de instalación (Windows y Linux),
+/// el bundle .app (macOS), o un .exe single-file de las versiones ≤0.1.10 (que ya no se publican
+/// y hay que reinstalar a mano). Correr desde el código (`dotnet run`) no es actualizable.</summary>
+public enum InstallKind { WindowsFolder, WindowsLegacySingleFile, MacAppBundle, LinuxFolder }
 
 public record InstallTargetInfo(InstallKind Kind, string Path);
 
@@ -29,8 +31,9 @@ public record UpdateInfo(
     public bool IsNewer => UpdateService.IsNewer(Version, CurrentVersion);
 
     /// <summary>Se puede instalar sola: hay binario para esta plataforma y la instalación
-    /// actual es reemplazable (exe autocontenido o .app).</summary>
-    public bool CanInstall => !string.IsNullOrEmpty(AssetUrl) && UpdateService.InstallTarget != null;
+    /// actual es reemplazable (carpeta de Windows o .app).</summary>
+    public bool CanInstall => !string.IsNullOrEmpty(AssetUrl) &&
+                              UpdateService.InstallTarget is { Kind: not InstallKind.WindowsLegacySingleFile };
 }
 
 /// <summary>Auto-update contra los Releases de GitHub: consulta la última versión, baja el zip de
@@ -72,18 +75,25 @@ public static class UpdateService
         return asm.GetName().Version?.ToString(3) ?? "0.0.0";
     }
 
-    /// <summary>Sufijo del zip que publica el CI para esta plataforma (`EasyRest-&lt;sufijo&gt;.zip`),
-    /// o null si no se publican binarios para ella (Linux).</summary>
+    /// <summary>Etiqueta de plataforma de los assets del CI, o null si no se publican binarios
+    /// para ella (Linux). La UI la usa para distinguir "no hay binarios" de "no se puede
+    /// reemplazar esta instalación".</summary>
     public static string? AssetSuffix
     {
         get
         {
+            var arm = RuntimeInformation.OSArchitecture == Architecture.Arm64;
             if (OperatingSystem.IsWindows()) return "windows-x64";
-            if (OperatingSystem.IsMacOS())
-                return RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "macos-arm64" : "macos-x64";
+            if (OperatingSystem.IsMacOS()) return arm ? "macos-arm64" : "macos-x64";
+            if (OperatingSystem.IsLinux()) return arm ? "linux-arm64" : "linux-x64";
             return null;
         }
     }
+
+    /// <summary>Zip portable de Windows: la carpeta autocontenida completa. A propósito no dice
+    /// "windows-x64", porque las versiones ≤0.1.10 tomaban cualquier zip que tuviera ese texto y
+    /// sabían reemplazar un único .exe: si les matcheara esto, se romperían solas.</summary>
+    const string WindowsPortableAsset = "EasyRest-win-x64-portable.zip";
 
     /// <summary>Qué instalación se puede reemplazar en caliente, o null si no aplica (Linux,
     /// `dotnet run`, o un layout inesperado).</summary>
@@ -95,9 +105,22 @@ public static class UpdateService
             if (string.IsNullOrEmpty(exe)) return null;
 
             if (OperatingSystem.IsWindows())
-                return exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
-                    ? new InstallTargetInfo(InstallKind.WindowsExe, exe)
-                    : null;
+            {
+                if (!exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) return null;
+                var dir = Path.GetDirectoryName(exe);
+                if (string.IsNullOrEmpty(dir)) return null;
+
+                // el publish en carpeta deja el assembly al lado del exe; en el single-file de
+                // ≤0.1.10 está embebido y no hay nada más que el .exe
+                if (!File.Exists(Path.Combine(dir, "EasyRest.dll")))
+                    return new InstallTargetInfo(InstallKind.WindowsLegacySingleFile, exe);
+
+                // el host nativo sólo aparece en un publish autocontenido: si no está, esto es
+                // un `dotnet run` sobre bin\Debug y no hay que pisarlo
+                if (!File.Exists(Path.Combine(dir, "hostpolicy.dll"))) return null;
+
+                return new InstallTargetInfo(InstallKind.WindowsFolder, dir);
+            }
 
             if (OperatingSystem.IsMacOS())
             {
@@ -106,8 +129,47 @@ public static class UpdateService
                 return i > 0 ? new InstallTargetInfo(InstallKind.MacAppBundle, exe[..(i + 4)]) : null;
             }
 
+            if (OperatingSystem.IsLinux())
+            {
+                var dir = Path.GetDirectoryName(exe);
+                if (string.IsNullOrEmpty(dir)) return null;
+
+                // mismo criterio que en Windows: el host nativo sólo está en un publish
+                // autocontenido, así que un `dotnet run` sobre bin/Debug no se toca
+                if (!File.Exists(Path.Combine(dir, "EasyRest.dll")) ||
+                    !File.Exists(Path.Combine(dir, "libhostpolicy.so"))) return null;
+
+                return new InstallTargetInfo(InstallKind.LinuxFolder, dir);
+            }
+
             return null;
         }
+    }
+
+    /// <summary>Nombres de asset que sirven para esta instalación, en orden de preferencia.
+    /// Vacío si no hay ninguno aplicable (Linux, o un single-file viejo: esos no tienen asset
+    /// y se reinstalan a mano con el installer).</summary>
+    static IEnumerable<string> AssetCandidates()
+    {
+        var suffix = AssetSuffix;
+        if (suffix == null) yield break;
+
+        if (OperatingSystem.IsWindows())
+        {
+            if (InstallTarget?.Kind == InstallKind.WindowsLegacySingleFile) yield break;
+            yield return WindowsPortableAsset;
+            yield break;
+        }
+
+        // en Linux el CI publica tar.gz, que es la convención de la plataforma y lleva permisos
+        // y symlinks de forma portable entre cualquier herramienta
+        if (OperatingSystem.IsLinux())
+        {
+            yield return $"EasyRest-{suffix}.tar.gz";
+            yield break;
+        }
+
+        yield return $"EasyRest-{suffix}.zip";
     }
 
     // ----- Chequeo -----
@@ -132,19 +194,20 @@ public static class UpdateService
 
         string? assetName = null, assetUrl = null;
         long assetSize = 0;
-        var suffix = AssetSuffix;
-        if (suffix != null && root.TryGetProperty("assets", out var assets) &&
-            assets.ValueKind == JsonValueKind.Array)
+        if (root.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
         {
-            foreach (var asset in assets.EnumerateArray())
+            foreach (var candidate in AssetCandidates())
             {
-                var name = Str(asset, "name");
-                if (!name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) ||
-                    !name.Contains(suffix, StringComparison.OrdinalIgnoreCase)) continue;
-                assetName = name;
-                assetUrl = Str(asset, "browser_download_url");
-                assetSize = asset.TryGetProperty("size", out var s) && s.TryGetInt64(out var v) ? v : 0;
-                break;
+                foreach (var asset in assets.EnumerateArray())
+                {
+                    var name = Str(asset, "name");
+                    if (!name.Equals(candidate, StringComparison.OrdinalIgnoreCase)) continue;
+                    assetName = name;
+                    assetUrl = Str(asset, "browser_download_url");
+                    assetSize = asset.TryGetProperty("size", out var s) && s.TryGetInt64(out var v) ? v : 0;
+                    break;
+                }
+                if (assetUrl != null) break;
             }
         }
 
@@ -224,10 +287,36 @@ public static class UpdateService
         var target = InstallTarget ?? throw new InvalidOperationException(
             "No se pudo determinar la instalación a reemplazar: actualizá a mano desde GitHub.");
 
+        if (target.Kind == InstallKind.WindowsLegacySingleFile)
+            throw new InvalidOperationException(
+                "Esta instalación es la vieja de un único .exe y ya no se actualiza sola.\n" +
+                "Bajá el installer (EasyRest-Setup) desde GitHub: es una sola vez, después vuelve " +
+                "a actualizarse automáticamente.");
+
         EnsureWritable(target.Path);
 
-        if (target.Kind == InstallKind.WindowsExe) ApplyWindows(zipPath, target.Path);
-        else ApplyMac(zipPath, target.Path);
+        switch (target.Kind)
+        {
+            case InstallKind.WindowsFolder: ApplyWindowsFolder(zipPath, target.Path); break;
+            case InstallKind.LinuxFolder: ApplyLinuxFolder(zipPath, target.Path); break;
+            default: ApplyMac(zipPath, target.Path); break;
+        }
+    }
+
+    /// <summary>Descomprime el asset descargado: tar.gz en Linux, zip en el resto.</summary>
+    internal static void Extract(string archivePath, string targetDir)
+    {
+        Directory.CreateDirectory(targetDir);
+
+        if (archivePath.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase))
+        {
+            using var file = File.OpenRead(archivePath);
+            using var gzip = new GZipStream(file, CompressionMode.Decompress);
+            TarFile.ExtractToDirectory(gzip, targetDir, overwriteFiles: true);
+            return;
+        }
+
+        ZipFile.ExtractToDirectory(archivePath, targetDir, overwriteFiles: true);
     }
 
     /// <summary>Falla temprano si no hay permisos donde está instalada la app (Program Files sin
@@ -250,17 +339,26 @@ public static class UpdateService
         }
     }
 
-    static void ApplyWindows(string zipPath, string exePath)
+    static void ApplyWindowsFolder(string zipPath, string installDir)
     {
-        var work = Path.GetDirectoryName(zipPath)!;
-        var extracted = Path.Combine(work, "new");
-        ZipFile.ExtractToDirectory(zipPath, extracted, overwriteFiles: true);
+        installDir = Path.TrimEndingDirectorySeparator(Path.GetFullPath(installDir));
+        var parent = Path.GetDirectoryName(installDir) ?? throw new InvalidOperationException(
+            $"No se pudo resolver la carpeta que contiene {installDir}.");
 
-        var newExe = Directory.GetFiles(extracted, "*.exe", SearchOption.AllDirectories).FirstOrDefault()
+        // se extrae al lado de la instalación, no en %TEMP%: así el swap final es un rename en
+        // el mismo volumen (`move` no sabe mover carpetas entre volúmenes)
+        var staging = Path.Combine(parent, ".easyrest-update-" + Guid.NewGuid().ToString("N")[..8]);
+        Extract(zipPath, staging);
+
+        var newDir = FindAppDir(staging, "EasyRest.exe")
             ?? throw new InvalidOperationException("El zip descargado no trae EasyRest.exe.");
 
-        // el move falla mientras el exe siga en uso, así que reintentar es la forma de esperar
-        // a que la app cierre (sin bloques con paréntesis: ahí %var% se expandiría una sola vez)
+        var old = installDir + ".old";
+        var exePath = Path.Combine(installDir, "EasyRest.exe");
+        var work = Path.GetDirectoryName(zipPath)!;   // fuera de installDir: si no, no se puede renombrar
+
+        // el rename falla mientras la app siga abierta, así que reintentar es la forma de
+        // esperar a que cierre (sin bloques con paréntesis: ahí %var% se expandiría una sola vez)
         var script = Path.Combine(work, "apply-update.cmd");
         File.WriteAllText(script, string.Join("\r\n", new[]
         {
@@ -268,23 +366,92 @@ public static class UpdateService
             "setlocal",
             "set /a tries=0",
             ":retry",
-            $"move /y \"{newExe}\" \"{exePath}\" >nul 2>&1",
-            "if not errorlevel 1 goto done",
+            $"rmdir /s /q \"{old}\" >nul 2>&1",
+            $"move /y \"{installDir}\" \"{old}\" >nul 2>&1",
+            "if not errorlevel 1 goto swap",
             "set /a tries+=1",
             "if %tries% geq 90 goto fail",
             "ping -n 2 127.0.0.1 >nul",
             "goto retry",
-            ":done",
+            ":swap",
+            $"move /y \"{newDir}\" \"{installDir}\" >nul 2>&1",
+            "if errorlevel 1 goto restore",
+            // el desinstalador lo genera el installer y no viene en el zip: si no se rescata,
+            // la entrada de "Agregar o quitar programas" queda apuntando a la nada
+            $"copy /y \"{old}\\unins000.*\" \"{installDir}\\\" >nul 2>&1",
             $"start \"\" \"{exePath}\"",
+            $"rmdir /s /q \"{old}\" >nul 2>&1",
+            $"rmdir /s /q \"{staging}\" >nul 2>&1",
             $"del /q \"{zipPath}\" >nul 2>&1",
-            $"rmdir /s /q \"{extracted}\" >nul 2>&1",
             "exit /b 0",
+            // si el swap falla, la instalación vieja vuelve a su lugar: nunca quedarse sin app
+            ":restore",
+            $"move /y \"{old}\" \"{installDir}\" >nul 2>&1",
+            $"start \"\" \"{exePath}\"",
+            $"rmdir /s /q \"{staging}\" >nul 2>&1",
+            "exit /b 1",
             ":fail",
+            $"rmdir /s /q \"{staging}\" >nul 2>&1",
             "exit /b 1",
             ""
         }));
 
         StartDetached("cmd.exe", new[] { "/c", script }, work);
+    }
+
+    /// <summary>La carpeta con el ejecutable dentro de lo extraído (los paquetes traen todo bajo
+    /// `EasyRest/`).</summary>
+    static string? FindAppDir(string root, string executable)
+    {
+        if (File.Exists(Path.Combine(root, executable))) return root;
+        return Directory.EnumerateDirectories(root)
+            .FirstOrDefault(d => File.Exists(Path.Combine(d, executable)));
+    }
+
+    static void ApplyLinuxFolder(string archivePath, string installDir)
+    {
+        installDir = Path.TrimEndingDirectorySeparator(Path.GetFullPath(installDir));
+        var parent = Path.GetDirectoryName(installDir) ?? throw new InvalidOperationException(
+            $"No se pudo resolver la carpeta que contiene {installDir}.");
+
+        var staging = Path.Combine(parent, ".easyrest-update-" + Guid.NewGuid().ToString("N")[..8]);
+        Extract(archivePath, staging);
+
+        var newDir = FindAppDir(staging, "EasyRest")
+            ?? throw new InvalidOperationException("El paquete descargado no trae el ejecutable.");
+
+        var work = Path.GetDirectoryName(archivePath)!;
+        var script = Path.Combine(work, "apply-update.sh");
+        var exePath = Path.Combine(installDir, "EasyRest");
+
+        // A diferencia de Windows, acá se puede renombrar una carpeta con un binario en uso, así
+        // que no hace falta reintentar: alcanza con esperar a que el proceso termine para no
+        // levantar dos instancias.
+        File.WriteAllText(script, string.Join("\n", new[]
+        {
+            "#!/bin/sh",
+            $"pid={Environment.ProcessId}",
+            "i=0",
+            "while kill -0 \"$pid\" 2>/dev/null && [ $i -lt 90 ]; do sleep 1; i=$((i+1)); done",
+            $"install={Quote(installDir)}",
+            $"new={Quote(newDir)}",
+            $"staging={Quote(staging)}",
+            $"archive={Quote(archivePath)}",
+            "old=\"$install.old\"",
+            "rm -rf \"$old\"",
+            "mv \"$install\" \"$old\" || exit 1",
+            // si el swap falla, la instalación anterior vuelve a su lugar
+            "mv \"$new\" \"$install\" || { mv \"$old\" \"$install\"; exit 1; }",
+            "rm -rf \"$old\"",
+            $"chmod +x {Quote(exePath)} 2>/dev/null",
+            $"nohup {Quote(exePath)} >/dev/null 2>&1 &",
+            "rm -f \"$archive\"",
+            "rm -rf \"$staging\"",
+            ""
+        }));
+        RunAndWait("/bin/chmod", new[] { "+x", script });
+
+        StartDetached("/bin/sh", new[] { script }, work);
     }
 
     static void ApplyMac(string zipPath, string appPath)

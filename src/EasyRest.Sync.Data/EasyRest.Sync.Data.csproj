@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- El modelo vive aparte del server para poder tener migraciones de más de un proveedor:
+       cada assembly de migraciones referencia a este, y el server los referencia a todos.
+       Si el DbContext viviera en el server, la referencia sería circular.
+
+       El namespace sigue siendo EasyRest.Sync.Server.Data a propósito: mover los archivos no
+       tiene por qué cambiarle los using a nadie. -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>EasyRest.Sync.Server.Data</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.11" />
+  </ItemGroup>
+
+</Project>

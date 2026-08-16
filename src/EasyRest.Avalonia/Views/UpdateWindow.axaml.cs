@@ -113,14 +113,17 @@ public partial class UpdateWindow : Window
         }
         else
         {
-            // Linux (el CI no publica binarios) o `dotnet run`: se descarga a mano.
-            // El botón de acción ya lleva a GitHub, así que el otro sobra.
+            // Linux (el CI no publica binarios), `dotnet run` o un install viejo de un único
+            // .exe: se descarga a mano. El botón de acción ya lleva a GitHub, así que el otro sobra.
             SetButtons(action: "Descargar desde GitHub", skip: true, github: false);
             _mode = Mode.OpenGitHub;
-            ShowStatus(UpdateService.AssetSuffix == null
+            var reason = UpdateService.AssetSuffix == null
                 ? "No hay binarios publicados para esta plataforma: actualizá desde el código o el release."
-                : "Esta instalación no se puede reemplazar sola (¿la estás corriendo desde el código?).",
-                "#F9E2AF");
+                : UpdateService.InstallTarget?.Kind == InstallKind.WindowsLegacySingleFile
+                    ? "Esta instalación es la vieja de un único .exe: bajá el installer (EasyRest-Setup) " +
+                      "una vez y después vuelve a actualizarse sola."
+                    : "Esta instalación no se puede reemplazar sola (¿la estás corriendo desde el código?).";
+            ShowStatus(reason, "#F9E2AF");
         }
     }
 

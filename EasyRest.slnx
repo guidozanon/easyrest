@@ -2,5 +2,13 @@
   <Folder Name="/src/">
     <Project Path="src/EasyRest.Avalonia/EasyRest.Avalonia.csproj" />
     <Project Path="src/EasyRest.Core/EasyRest.Core.csproj" />
+    <Project Path="src/EasyRest.Sync.Data/EasyRest.Sync.Data.csproj" />
+    <Project Path="src/EasyRest.Sync.Server/EasyRest.Sync.Server.csproj" />
+    <Project Path="src/EasyRest.Sync.Server.Migrations.Postgres/EasyRest.Sync.Server.Migrations.Postgres.csproj" />
+    <Project Path="src/EasyRest.Sync.Server.Migrations.Sqlite/EasyRest.Sync.Server.Migrations.Sqlite.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/EasyRest.Sync.Server.Tests/EasyRest.Sync.Server.Tests.csproj" />
+    <Project Path="tests/aot-probe/AotProbe.csproj" />
   </Folder>
 </Solution>

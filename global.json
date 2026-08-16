@@ -1,0 +1,7 @@
+{
+  "//": "Fija el SDK en .NET 8. Sin esto MSBuild toma el más nuevo que haya instalado — en los runners de GitHub hoy es el 10 — y compilar net8.0-android con el SDK 10 falla con NETSDK1202 porque para esa versión el target ya está fuera de soporte.",
+  "sdk": {
+    "version": "8.0.100",
+    "rollForward": "latestFeature"
+  }
+}

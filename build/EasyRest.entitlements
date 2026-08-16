@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Hardened runtime (obligatorio para notarizar) rompe al CLR si no se le permite
+       generar y ejecutar código en runtime: el JIT de .NET y los scripts con Jint. -->
+  <key>com.apple.security.cs.allow-jit</key><true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>
+  <!-- el publish autocontenido carga sus propias dylibs (Skia, HarfBuzz) desde el bundle -->
+  <key>com.apple.security.cs.disable-library-validation</key><true/>
+  <!-- el host de .NET usa DOTNET_*/DYLD_* para resolver el runtime dentro del bundle -->
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key><true/>
+</dict>
+</plist>

@@ -1,0 +1,83 @@
+@page "/Admin"
+@model EasyRest.Sync.Server.Pages.Admin.IndexModel
+@{
+    ViewData["Title"] = "Resumen";
+    ViewData["User"] = Model.CurrentUser.Email;
+}
+
+<h1>Resumen</h1>
+
+<div class="card grid">
+    <div><div class="stat">@Model.Users</div><div>usuarios</div></div>
+    <div><div class="stat">@Model.Workspaces</div><div>workspaces</div></div>
+    <div><div class="stat">@Model.Documents</div><div>documentos</div></div>
+    <div><div class="stat">@Model.ServiceTokens</div><div>tokens de servicio activos</div></div>
+</div>
+
+<h2>Identidad</h2>
+
+<div class="card">
+    <p class="muted" style="margin-top:0">
+        Los proveedores se configuran por variables de entorno, no desde acá: cambian una vez por
+        instalación, traen client secrets, y configurar el login desde una pantalla que exige estar
+        logueado es un problema de huevo y gallina. Lo que sí se puede ver es si están bien.
+    </p>
+
+    @if (Model.Providers.Count == 0)
+    {
+        <p class="warn">No hay ningún proveedor configurado: nadie puede entrar.</p>
+    }
+    else
+    {
+        <table>
+            <thead>
+            <tr><th>Id</th><th>Nombre</th><th>Tipo</th><th>Estado</th></tr>
+            </thead>
+            <tbody>
+            @foreach (var p in Model.Providers)
+            {
+                <tr>
+                    <td><code>@p.Id</code></td>
+                    <td>@p.DisplayName</td>
+                    <td>@p.Kind</td>
+                    <td>
+                        @if (p.Problem == null)
+                        {
+                            <span class="ok">OK</span>
+                        }
+                        else
+                        {
+                            <span class="bad">@p.Problem</span>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+
+    <h2>Para registrar en el IdP</h2>
+    <p>
+        Redirect de la app y de la consola:<br />
+        <code>@Model.CallbackUrl</code>
+    </p>
+
+    @if (Model.PublicUrlWarning != null)
+    {
+        <p class="warn">@Model.PublicUrlWarning</p>
+    }
+</div>
+
+<h2>Server</h2>
+
+<div class="card">
+    <table>
+        <tr><td>URL pública</td><td><code>@Model.PublicUrl</code></td></tr>
+        <tr><td>Base de datos</td><td><code>@Model.DatabaseProvider</code></td></tr>
+        <tr><td>Migración aplicada</td><td><code>@Model.LastMigration</code></td></tr>
+        <tr>
+            <td>Dominios de mail permitidos</td>
+            <td>@(Model.AllowedDomains.Count == 0 ? "(todos)" : string.Join(", ", Model.AllowedDomains))</td>
+        </tr>
+    </table>
+</div>
