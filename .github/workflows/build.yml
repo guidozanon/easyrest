@@ -54,8 +54,20 @@ jobs:
       - name: Armar el APK
         run: |
           dotnet publish src/EasyRest.Android/EasyRest.Android.csproj \
-            -c Release -o apk
+            -c Release -o apk -v:normal 2>&1 | tee build.log
           ls -la apk/*-Signed.apk
+
+      # TEMPORAL — mientras el APK salga sin actividades. Corre igual si el build falla.
+      - name: Diagnóstico de los stubs de Java
+        if: always()
+        run: |
+          echo "--- .java generados (los ACW):"
+          find src/EasyRest.Android/obj -name '*.java' | sed 's|.*/android/src/||' | sort | head -40
+          echo "--- manifiesto generado:"
+          find src/EasyRest.Android/obj -path '*android/manifest/AndroidManifest.xml' \
+            -exec cat {} \;
+          echo "--- lo que dijo el build sobre stubs y assemblies:"
+          grep -inE "javastub|acw|typemap|MainActivity|ProbeActivity" build.log | head -40 || true
 
       # Sin esto la app instala, no aparece en el cajón y el log del build no muestra nada raro:
       # el chequeo tiene que fallar de verdad, no imprimir y seguir.
