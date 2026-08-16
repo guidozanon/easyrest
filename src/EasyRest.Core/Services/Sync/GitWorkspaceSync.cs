@@ -13,9 +13,15 @@ public class GitWorkspaceSync(string workspaceRoot) : IWorkspaceSync
         if (!IsConfigured) return Task.FromResult<WorkspaceSyncStatus?>(null);
 
         var status = GitService.Status(workspaceRoot);
-        return Task.FromResult(status == null
-            ? null
-            : new WorkspaceSyncStatus($"⎇ {status.Branch}", status.Pending));
+        if (status == null) return Task.FromResult<WorkspaceSyncStatus?>(null);
+
+        // el adelante/atrás respecto del remoto es propio de git, así que viaja en la etiqueta:
+        // la UI no tiene por qué saber que existe
+        var label = $"⎇ {status.Branch}";
+        if (status.Ahead > 0) label += $" ↑{status.Ahead}";
+        if (status.Behind > 0) label += $" ↓{status.Behind}";
+
+        return Task.FromResult<WorkspaceSyncStatus?>(new WorkspaceSyncStatus(label, status.Pending));
     }
 
     public Task<WorkspaceSyncOutcome> SyncAsync(ConflictResolution? resolution = null,

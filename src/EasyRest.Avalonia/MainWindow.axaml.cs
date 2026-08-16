@@ -8,6 +8,7 @@ using Avalonia.VisualTree;
 using EasyRest.Avalonia.Views;
 using EasyRest.Models;
 using EasyRest.Services;
+using EasyRest.Services.Sync;
 
 namespace EasyRest.Avalonia;
 
@@ -17,6 +18,7 @@ public partial class MainWindow : Window
     const string NewEnvironmentItem = "＋ Nuevo ambiente…";
     const string ManageEnvironmentsItem = "⚙ Administrar ambientes…";
     const string ManageWorkspacesItem = "⚙ Administrar workspaces…";
+    const string SyncServerItem = "☁ Servidor de sync…";
     bool _envComboGuard;
     bool _wsComboGuard;
     object? _lastRealEnvItem;
@@ -904,7 +906,7 @@ public partial class MainWindow : Window
     {
         _wsComboGuard = true;
         var workspaces = Storage.ListWorkspaces();
-        var items = new List<object>(workspaces) { ManageWorkspacesItem };
+        var items = new List<object>(workspaces) { ManageWorkspacesItem, SyncServerItem };
         WorkspaceCombo.ItemsSource = items;
         var activePath = Storage.HasCustomWorkspace ? Storage.WorkspaceRoot : "";
         var active = workspaces.FirstOrDefault(w =>
@@ -922,6 +924,14 @@ public partial class MainWindow : Window
             RefreshWorkspaceCombo(); // revertir la selección al workspace activo
             await new WorkspaceWindow(this).ShowDialog(this);
             RefreshWorkspaceCombo();
+            RefreshGitStatus();
+            return;
+        }
+
+        if (WorkspaceCombo.SelectedItem is string sync && sync == SyncServerItem)
+        {
+            RefreshWorkspaceCombo();
+            await new SyncServerWindow(true).ShowDialog(this);
             RefreshGitStatus();
             return;
         }
@@ -996,10 +1006,12 @@ public partial class MainWindow : Window
     public void RefreshGitStatus()
     {
         var root = Storage.WorkspaceRoot;
-        Task.Run(() =>
+        var necesitaLogin = WorkspaceSyncResolver.NeedsLogin(Storage.SyncBindingFile);
+
+        Task.Run(async () =>
         {
-            if (!GitService.IsAvailable() || !GitService.IsRepo(root)) return (GitStatusInfo?)null;
-            return GitService.Status(root);
+            var sync = WorkspaceSyncFor(root);
+            return sync == null ? null : await sync.StatusAsync();
         }).ContinueWith(t =>
         {
             var s = t.IsCompletedSuccessfully ? t.Result : null;
@@ -1009,14 +1021,14 @@ public partial class MainWindow : Window
                 string text;
                 if (s == null)
                 {
-                    text = $"◆ {ws}";
+                    // "hay servidor pero venció la sesión" no es lo mismo que "no sincroniza"
+                    text = necesitaLogin ? $"◆ {ws}  ☁ sin sesión" : $"◆ {ws}";
                 }
                 else
                 {
-                    text = $"◆ {ws}  ⎇ {s.Branch}";
-                    text += s.Pending > 0 ? $" · {s.Pending} cambio(s)" : " ✓";
-                    if (s.Ahead > 0) text += $" ↑{s.Ahead}";
-                    if (s.Behind > 0) text += $" ↓{s.Behind}";
+                    // la etiqueta la pone cada backend: "⎇ main" para git, "☁ sync" para el server
+                    text = $"◆ {ws}  {s.Label}";
+                    text += s.PendingChanges > 0 ? $" · {s.PendingChanges} cambio(s)" : " ✓";
                 }
                 if (_autoSyncError != null) text += " ⚠";
                 GitStatusBtn.Content = text;
@@ -1053,15 +1065,22 @@ public partial class MainWindow : Window
         _autoSyncTimer.Start();
     }
 
+    /// <summary>Con qué sincroniza esa carpeta: el repo git de siempre o el servidor de sync, según
+    /// esté configurado. Null significa que no sincroniza con nada.</summary>
+    static IWorkspaceSync? WorkspaceSyncFor(string root) =>
+        WorkspaceSyncResolver.For(root, Storage.SyncBindingFile, Storage.SyncStateFile);
+
     async Task AutoSync()
     {
         if (_autoSyncBusy) { _autoSyncQueued = true; return; }
         var root = _autoSyncRoot ?? Storage.WorkspaceRoot;
 
-        var status = await Task.Run(() =>
-            GitService.IsAvailable() && GitService.IsRepo(root) ? GitService.Status(root) : null);
-        if (status == null) return;                      // no conectado a git: no hay nada que hacer
-        if (status.Pending == 0 && status.Ahead == 0)    // nada para commitear ni pushear
+        var sync = WorkspaceSyncFor(root);
+        if (sync == null) return;                        // no sincroniza con nada
+
+        var status = await sync.StatusAsync();
+        if (status == null) return;
+        if (status.PendingChanges == 0)                  // nada para subir
         {
             RefreshGitStatus();
             return;
@@ -1085,7 +1104,16 @@ public partial class MainWindow : Window
     public async Task<(bool Ok, string Message)> SyncWorkspaceInteractive(Window owner, string? rootOverride = null)
     {
         var root = rootOverride ?? Storage.WorkspaceRoot;
-        var r = await Task.Run(() => GitService.Sync(root));
+
+        // git o el servidor de sync, según cómo esté configurado el workspace: de acá para abajo
+        // el flujo es el mismo, incluida la pregunta por los conflictos
+        var sync = WorkspaceSyncFor(root);
+        if (sync == null)
+            return (false, WorkspaceSyncResolver.NeedsLogin(Storage.SyncBindingFile)
+                ? "La sesión con el servidor de sync venció. Reconectate desde «Servidor de sync…»."
+                : "Este workspace no está sincronizando con nada.");
+
+        var r = await sync.SyncAsync();
 
         if (r.HasConflicts)
         {
@@ -1100,7 +1128,7 @@ public partial class MainWindow : Window
             if (choice == null)
                 return (false, "Sincronización cancelada: tus cambios quedaron locales, sin subir.");
             var resolution = choice == 0 ? ConflictResolution.KeepRemote : ConflictResolution.KeepLocal;
-            r = await Task.Run(() => GitService.Sync(root, resolution));
+            r = await sync.SyncAsync(resolution);
         }
 
         if (r.PulledRemote &&
