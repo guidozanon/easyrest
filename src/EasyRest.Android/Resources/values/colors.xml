@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- El fondo del ícono adaptable: el mismo base de catppuccin que usa el escritorio -->
+  <color name="appicon_background">#1E1E2E</color>
+</resources>

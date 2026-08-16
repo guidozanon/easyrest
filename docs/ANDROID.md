@@ -14,16 +14,33 @@ un keystore propio.
 
 Se compila en **Release** aunque sea un spike: en Debug, .NET Android usa fast deployment y deja
 los assemblies fuera del APK, pensando en que el IDE los va a empujar por adb — un APK Debug
-instalado a mano no arranca. Y con `AndroidLinkMode=None`, porque el linker rompe la interop de
-Jint (ver más abajo).
+instalado a mano no arranca. Y con el linker apagado, porque rompe la interop de Jint (ver más
+abajo).
 
-El job además corre `aapt dump badging` y falla si el APK no declara una actividad de lanzador:
-sin esa verificación, la app instala, no aparece en el cajón de aplicaciones y el log del build
-no muestra nada raro.
+El job además corre `aapt2 dump badging` y falla si el APK no declara una actividad de lanzador
+o no trae ícono: sin esa verificación, la app instala, no aparece en el cajón de aplicaciones y
+el log del build no muestra nada raro.
 
 ```bash
 adb install com.rentlysoft.easyrest-Signed.apk
 ```
+
+### Si instala pero no aparece en el cajón
+
+Ya pasó, y era un bug del build, no del teléfono: el APK salía **sin ninguna actividad**. Dos
+cosas lo causaban, y las dos están arregladas:
+
+- **`dotnet build -t:SignAndroidPackage -c Release`**. Arma un APK, pero en Release el paso que
+  genera los stubs de Java se queda sin assemblies que mirar y el `[Activity]` de `MainActivity`
+  nunca llega al manifiesto. El camino soportado para un APK de Release es `dotnet publish`.
+- **`AndroidLinkMode=None`**. Es la propiedad de la época de Xamarin; en .NET Android deja el
+  pipeline a medias y contribuye a lo mismo. El equivalente moderno es `PublishTrimmed=false`.
+
+El síntoma es engañoso porque el build termina con cero warnings y el APK instala bien. Para
+verlo hay que mirar el manifiesto mergeado
+(`obj/Release/net8.0-android34.0/android/manifest/AndroidManifest.xml`) y buscar el
+`<activity>`, o correr `aapt2 dump badging` y buscar `launchable-activity`. Eso es lo que ahora
+hace el CI.
 
 ### Si dice "aplicación no instalada"
 
@@ -118,6 +135,9 @@ El spike está para contestar esto **en un teléfono**, que es lo que no se pued
   no tiene por qué mover la versión de la app. Si el móvil avanza, lo primero es unificar.
 - El `AndroidManifest.xml` pide **permiso de INTERNET**: sin eso `HttpClient` falla en silencio,
   que en un cliente HTTP sería gracioso.
+- **Ícono propio**, generado por código (`Resources/mipmap-*`): dos flechas encontradas sobre el
+  fondo de catppuccin que usa el escritorio. No es un logo, es para no quedarse con el androide
+  genérico y poder distinguir la app en el cajón.
 - **No está en `EasyRest.slnx`** a propósito: sin el workload instalado, tenerlo en la solución
   rompería el build para todos los demás. Se compila apuntándole al csproj, y en CI tiene su
   propio job.

@@ -6,9 +6,10 @@ using Avalonia.Android;
 namespace EasyRest.Android;
 
 // Exported=true es obligatorio desde Android 12 para cualquier actividad con intent-filter, y
-// MainLauncher genera uno. Sin esto el sistema puede aceptar el paquete y dejar la app sin
-// entrada en el lanzador, que es justo el síntoma de "instala pero no aparece".
+// MainLauncher genera uno. Name fija el nombre del componente en el manifiesto: sin él queda el
+// crc64… que genera el SDK, que sirve igual pero no se puede lanzar a mano con `adb shell am`.
 [Activity(
+    Name = "com.rentlysoft.easyrest.MainActivity",
     Label = "EasyRest",
     Theme = "@android:style/Theme.Material.Light.NoActionBar",
     MainLauncher = true,
