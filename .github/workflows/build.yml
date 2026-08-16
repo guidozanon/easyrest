@@ -57,7 +57,9 @@ jobs:
           # así que va a archivo y abajo se filtra. TEMPORAL, vuelve a -v:minimal.
           dotnet publish src/EasyRest.Android/EasyRest.Android.csproj \
             -c Release -o apk -v:diag > build.log 2>&1 || true
-          tail -5 build.log
+          echo "--- errores, si los hubo:"
+          grep -oE "(error [A-Za-z]+[0-9]+.*|: error .*)" build.log | sort -u | head -20
+          tail -3 build.log
           ls -la apk/*-Signed.apk
 
       # TEMPORAL — mientras el APK salga sin actividades. Corre igual si el build falla.
