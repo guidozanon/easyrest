@@ -88,6 +88,18 @@ No es un bug del APK: sin un keystore propio, .NET Android firma con una clave d
 firma distinta es una actualización que Android rechaza. Pasa entre APKs de corridas distintas, y
 seguirá pasando hasta que haya un keystore fijo (ver abajo).
 
+### Si se cierra al abrir
+
+La app guarda la última excepción no manejada en `crash.txt`, dentro de su carpeta privada, y la
+muestra arriba de todo en el próximo arranque, con el stack seleccionable para poder copiarlo. Es
+para no depender de tener el teléfono enchufado. Si el crash pasa antes de que Avalonia levante,
+eso no alcanza y hay que ir al log del sistema:
+
+```bash
+adb logcat -c            # limpiar, abrir la app, y después:
+adb logcat -d | grep -iE "AndroidRuntime|mono-rt|EasyRest"
+```
+
 ## Correrlo desde el código
 
 Hace falta el workload de Android una sola vez:
