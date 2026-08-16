@@ -9,6 +9,10 @@ using Avalonia.Media;
 using EasyRest.Models;
 using EasyRest.Services;
 
+// Los proyectos de Android traen Android.Widget en los implicit usings y ahí también hay un
+// Button, así que el nombre queda ambiguo. Mismo caso que Application en App.cs.
+using Button = Avalonia.Controls.Button;
+
 namespace EasyRest.Android;
 
 /// <summary>La pantalla del spike. Manda una request de verdad con el HttpExecutor del Core y
