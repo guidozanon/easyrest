@@ -41,6 +41,10 @@ sudo bash install.sh
 El detalle —TLS, modo desatendido, actualización, backup— está en
 [docs/INSTALL.md](INSTALL.md).
 
+Para subirlo a una plataforma administrada en vez de una máquina propia (Railway, Fly, o un VPS
+con Docker), con lo que cuesta cada una y lo que hay que configurar, está
+[docs/DEPLOY.md](DEPLOY.md).
+
 ### Configurar el IdP
 
 El server no conoce proveedores: implementa **OIDC genérico** (Google, Microsoft Entra, Okta,
