@@ -7,9 +7,44 @@ La app abre en la lista de colecciones. Tocar una request abre el editor, que ma
 el `HttpExecutor` del Core y corre los scripts con Jint. La pantalla de diagnóstico del spike sigue
 disponible desde el botón «Diagnóstico».
 
-**El editor no guarda.** En el teléfono se corren requests que ya existen, no se arman: lo que se
-edita vale para esa corrida y no vuelve al disco ni al server. Así no hay forma de romper sin
-querer una colección compartida desde el colectivo.
+**El editor edita y guarda.** Método, URL, query params, cabeceras, autenticación, cuerpo (JSON,
+texto o form) y los dos scripts. Los cambios se escriben sobre el mismo modelo que muestra el
+árbol —igual que en el escritorio, así que se ven en el acto— y llegan al disco con el botón
+**Guardar**; de ahí al equipo, con **Sincronizar**. Guardar es un botón y no un efecto de escribir
+justamente porque la colección es compartida: un roce en el colectivo no tiene por qué terminar en
+el repo de todos.
+
+> Antes el editor era de sólo lectura a propósito. Se cambió cuando el móvil dejó de ser un spike
+> de diagnóstico: con el servidor de sync andando hay respaldo e historial, que es lo que faltaba
+> para que editar desde el teléfono no fuera un riesgo.
+
+## Layout adaptativo: teléfono, tablet y fold
+
+El layout lo decide **el ancho disponible**, no el tipo de aparato. Un fold desplegado, un teléfono
+en horizontal y una ventana en multiventana son el mismo problema, y el ancho es lo único que lo
+describe bien:
+
+| Ancho | Qué se ve |
+|---|---|
+| < 600 dip | Una columna: la lista, y el detalle la reemplaza con botón de volver |
+| ≥ 600 dip | Lista fija a la izquierda (300 dip) y detalle al lado, sin navegar |
+| ≥ 900 dip | Igual, con la lista un poco más ancha (360 dip) |
+
+600 es el corte con el que Android define "pantalla grande"; coincide con cualquier tablet y con un
+fold desplegado.
+
+Dos decisiones que hacen que el fold no moleste:
+
+- **Las dos vistas viven siempre.** Cambiar de modo sólo toca el ancho de las columnas y la
+  visibilidad, así que plegar y desplegar no reconstruye nada ni pierde lo que estabas escribiendo.
+- **La actividad declara los cambios de configuración** (`ScreenLayout` y `SmallestScreenSize`
+  además de los de siempre, en `MainActivity`). Sin eso Android recrea la actividad al desplegar
+  —la pantalla no rota, cambia de tamaño— y se pierde la request abierta. El manifiesto además
+  declara `resizeableActivity` explícito, para multiventana.
+
+Y una que hace usable un workspace de verdad: **el buscador de la lista**. Con doscientas requests
+importadas de un OpenAPI, bajar scrolleando no es una opción; mientras hay filtro, las carpetas
+plegadas no esconden resultados.
 
 ## Login: hace falta habilitar el esquema en el server
 

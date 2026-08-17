@@ -10,7 +10,8 @@ Cliente HTTP de escritorio estilo Postman/Bruno. .NET 8.
 - `src/EasyRest.Sync.Server` — servidor de sync self-hosted, opcional. Ver
   [docs/SYNC.md](docs/SYNC.md) y, para instalarlo, [docs/INSTALL.md](docs/INSTALL.md) (Linux) o
   [docs/DEPLOY.md](docs/DEPLOY.md) (Railway, Fly, cualquier VPS con Docker).
-- `src/EasyRest.Android` — spike: head de Android sobre el mismo Core, para evaluar el móvil.
+- `src/EasyRest.Android` — head de Android sobre el mismo Core: colecciones con buscador, editor
+  completo de requests y sync, con layout adaptativo para teléfono, tablet y fold.
   Ver [docs/ANDROID.md](docs/ANDROID.md).
 
 ## Ejecutar

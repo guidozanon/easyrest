@@ -1,4 +1,3 @@
-using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -13,182 +12,205 @@ using Orientation = Avalonia.Layout.Orientation;
 
 namespace EasyRest.Android;
 
-/// <summary>La app en el teléfono: colecciones, editor de request y la conexión con el servidor
-/// de sync.
+/// <summary>La app en el dispositivo: lista de colecciones, editor de request y la conexión con
+/// el servidor de sync.
 ///
-/// Es una sola vista que cambia de contenido en vez de varias actividades: en móvil Avalonia corre
-/// sobre una única actividad, y para tres pantallas un navegador propio de dos líneas alcanza.
+/// El layout es adaptativo y se decide por el ancho disponible, no por si el aparato "es" un
+/// teléfono o una tablet: un fold desplegado, un teléfono en horizontal y una ventana en modo
+/// multiventana son todos el mismo problema, y el ancho es lo único que lo describe bien.
+///
+/// - Menos de <see cref="AnchoDosPaneles"/>: una columna. La lista ocupa todo y el detalle la
+///   reemplaza, con botón de volver.
+/// - Más: lista y detalle a la vez, la lista fija a la izquierda. Tocar una request ya no navega
+///   a ningún lado, la abre al lado — que es lo que hace que en una tablet se sienta la app de
+///   escritorio y no un teléfono estirado.
+///
+/// El cambio entre los dos modos no reconstruye nada: las dos vistas viven siempre, y lo único
+/// que se toca es el ancho de las columnas y la visibilidad. Por eso plegar y desplegar un fold
+/// no pierde lo que estabas escribiendo. Que la actividad tampoco se recree es cosa del
+/// manifiesto: ver ConfigurationChanges en MainActivity.
 ///
 /// Escrita en C# y no en XAML por el bug de build que documenta docs/ANDROID.md.</summary>
 public class ShellView : UserControl
 {
-    static readonly IBrush Fondo = new SolidColorBrush(Color.Parse("#1E1E2E"));
-    static readonly IBrush Panel = new SolidColorBrush(Color.Parse("#272739"));
-    static readonly IBrush Acento = new SolidColorBrush(Color.Parse("#89B4FA"));
-    static readonly IBrush Tenue = new SolidColorBrush(Color.Parse("#9399B2"));
-    static readonly IBrush Normal = new SolidColorBrush(Color.Parse("#CDD6F4"));
-    static readonly IBrush Verde = new SolidColorBrush(Color.Parse("#A6E3A1"));
-    static readonly IBrush Rojo = new SolidColorBrush(Color.Parse("#F38BA8"));
+    /// <summary>600 unidades independientes de densidad es el corte con el que Android define
+    /// "pantalla grande", y coincide con un fold desplegado y con cualquier tablet.</summary>
+    const double AnchoDosPaneles = 600;
 
-    readonly ContentControl _cuerpo = new();
-    readonly TextBlock _titulo = new() { FontSize = 18, FontWeight = FontWeight.SemiBold, Foreground = Acento };
-    readonly TextBlock _estado = new() { FontSize = 11, Foreground = Tenue, TextWrapping = TextWrapping.Wrap };
-    readonly Button _atrás = new() { Content = "‹", FontSize = 20, IsVisible = false, Padding = new Thickness(10, 0) };
+    /// <summary>Arriba de esto la lista se puede dar el lujo de ser más ancha.</summary>
+    const double AnchoHolgado = 900;
+
+    readonly CollectionListView _lista;
+    readonly ContentControl _detalle = new();
+    readonly ColumnDefinition _columnaLista = new(new GridLength(1, GridUnitType.Star));
+    readonly ColumnDefinition _columnaDetalle = new(new GridLength(0, GridUnitType.Pixel));
+
+    readonly TextBlock _titulo = new() { FontSize = 18, FontWeight = FontWeight.SemiBold, Foreground = Ui.Acento };
+    readonly TextBlock _estado = new() { FontSize = 11, Foreground = Ui.Tenue, TextWrapping = TextWrapping.Wrap };
+    readonly Button _atrás = new() { Content = "‹", FontSize = 20, IsVisible = false, MinHeight = Ui.Toque, Padding = new Thickness(12, 0) };
+    readonly ComboBox _selectorAmbiente = new() { MinHeight = Ui.Toque, MinWidth = 140 };
 
     List<RequestCollection> _colecciones = new();
-    EnvironmentModel _ambiente = new() { Name = "Móvil" };
+    List<EnvironmentModel> _ambientes = new();
+    EnvironmentModel? _ambiente;
+
+    bool _dosPaneles;
+    bool _mostrandoDetalle;
+    bool _layoutAplicado;
 
     public ShellView()
     {
-        _atrás.Click += (_, _) => MostrarColecciones();
+        _lista = new CollectionListView(AbrirRequest);
 
-        Content = new DockPanel
+        _atrás.Click += (_, _) => VolverALista();
+
+        _selectorAmbiente.SelectionChanged += (_, _) =>
         {
-            Background = Fondo,
-            Children =
-            {
-                Encabezado(),
-                _cuerpo
-            }
+            if (_selectorAmbiente.SelectedItem is not EnvironmentModel elegido) return;
+            _ambiente = elegido;
+            Storage.SetActiveEnvironmentId(elegido.Id);
         };
 
+        var cuerpo = new Grid();
+        cuerpo.ColumnDefinitions.Add(_columnaLista);
+        cuerpo.ColumnDefinitions.Add(_columnaDetalle);
+        Grid.SetColumn(_lista, 0);
+        Grid.SetColumn(_detalle, 1);
+        cuerpo.Children.Add(_lista);
+        cuerpo.Children.Add(_detalle);
+
+        var raíz = new DockPanel { Background = Ui.Fondo };
+        var encabezado = Encabezado();
+        DockPanel.SetDock(encabezado, Dock.Top);
+        raíz.Children.Add(encabezado);
+        raíz.Children.Add(cuerpo);
+        Content = raíz;
+
         Recargar();
-        MostrarColecciones();
+        VolverALista();
     }
 
     Control Encabezado()
     {
-        var barra = new StackPanel
+        var primera = new StackPanel
         {
-            Margin = new Thickness(14, 12),
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children = { _atrás, _titulo }
+        };
+
+        var acciones = Ui.Barra(
+            Ui.AccionAsync("Sincronizar", SincronizarAsync),
+            Ui.Accion("Servidor…", MostrarConexión),
+            Ui.Accion("Diagnóstico", () => Abrir("Diagnóstico", new SpikeView())));
+
+        return new StackPanel
+        {
+            Margin = new Thickness(12, 10, 12, 6),
             Spacing = 6,
             Children =
             {
+                primera,
                 new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
                     Spacing = 8,
-                    Children = { _atrás, _titulo }
+                    Children = { Ui.Rotulo("Ambiente"), _selectorAmbiente }
                 },
+                acciones,
                 _estado
             }
         };
-        DockPanel.SetDock(barra, Dock.Top);
-        return barra;
     }
+
+    // ----- Layout adaptativo -----
+
+    /// <summary>Se aplica al arreglar y no en un evento de tamaño: es el único momento en que el
+    /// ancho real ya está resuelto. El guardia evita reacomodar en cada pasada de layout, que si
+    /// no se realimenta sola.</summary>
+    protected override Size ArrangeOverride(Size finalSize)
+    {
+        AplicarAncho(finalSize.Width);
+        return base.ArrangeOverride(finalSize);
+    }
+
+    void AplicarAncho(double ancho)
+    {
+        var dos = ancho >= AnchoDosPaneles;
+        if (_layoutAplicado && dos == _dosPaneles) return;
+
+        _dosPaneles = dos;
+        _layoutAplicado = true;
+        AplicarLayout(ancho);
+    }
+
+    void AplicarLayout(double ancho)
+    {
+        if (_dosPaneles)
+        {
+            _columnaLista.Width = new GridLength(ancho >= AnchoHolgado ? 360 : 300, GridUnitType.Pixel);
+            _columnaDetalle.Width = new GridLength(1, GridUnitType.Star);
+            _lista.IsVisible = true;
+            _detalle.IsVisible = true;
+            _atrás.IsVisible = false;
+            return;
+        }
+
+        // una sola columna: la que no se muestra queda en cero y oculta, para que no mida ni pinte
+        _columnaLista.Width = new GridLength(_mostrandoDetalle ? 0 : 1,
+            _mostrandoDetalle ? GridUnitType.Pixel : GridUnitType.Star);
+        _columnaDetalle.Width = new GridLength(_mostrandoDetalle ? 1 : 0,
+            _mostrandoDetalle ? GridUnitType.Star : GridUnitType.Pixel);
+        _lista.IsVisible = !_mostrandoDetalle;
+        _detalle.IsVisible = _mostrandoDetalle;
+        _atrás.IsVisible = _mostrandoDetalle;
+    }
+
+    // ----- Navegación -----
+
+    void AbrirRequest(RequestItem request, RequestCollection colección)
+    {
+        Abrir(request.Name, new RequestEditorView(request, colección,
+            () => _ambiente,
+            // guardar puede cambiar el nombre o el método: la lista los muestra, así que se
+            // redibuja. No se recarga del disco a propósito: eso crearía objetos nuevos y el
+            // editor abierto quedaría editando los viejos.
+            () => { _lista.Cargar(_colecciones); MostrarEstadoDeSync(); }));
+    }
+
+    void Abrir(string título, Control vista)
+    {
+        _titulo.Text = título;
+        _detalle.Content = vista;
+        _mostrandoDetalle = true;
+        AplicarLayout(Bounds.Width);
+    }
+
+    void VolverALista()
+    {
+        _titulo.Text = "EasyRest";
+        _mostrandoDetalle = false;
+        if (!_dosPaneles) _lista.MarcarSeleccion(null);
+        MostrarEstadoDeSync();
+        AplicarLayout(Bounds.Width);
+    }
+
+    // ----- Datos -----
 
     void Recargar()
     {
         _colecciones = Storage.LoadCollections();
-        var ambientes = Storage.LoadEnvironments();
-        if (ambientes.Count > 0) _ambiente = ambientes[0];
-    }
+        _ambientes = Storage.LoadEnvironments();
 
-    // ----- Colecciones -----
+        var activo = Storage.GetActiveEnvironmentId();
+        _ambiente = _ambientes.FirstOrDefault(a => a.Id == activo) ?? _ambientes.FirstOrDefault();
 
-    void MostrarColecciones()
-    {
-        Recargar();
-        _titulo.Text = "EasyRest";
-        _atrás.IsVisible = false;
-        MostrarEstadoDeSync();
+        _selectorAmbiente.ItemsSource = _ambientes;
+        _selectorAmbiente.SelectedItem = _ambiente;
+        _selectorAmbiente.IsVisible = _ambientes.Count > 0;
 
-        var pila = new StackPanel { Margin = new Thickness(14, 0, 14, 14), Spacing = 10 };
-
-        pila.Children.Add(new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            Children =
-            {
-                AccionAsync("Sincronizar", SincronizarAsync),
-                Accion("Servidor…", MostrarConexión),
-                Accion("Diagnóstico", () => Navegar("Diagnóstico", new SpikeView()))
-            }
-        });
-
-        if (_colecciones.Count == 0)
-        {
-            pila.Children.Add(Parrafo(
-                "Todavía no hay colecciones en este teléfono.\n\n" +
-                "Conectate a un servidor de sync y elegí un workspace: las colecciones bajan solas."));
-        }
-        else
-        {
-            foreach (var colección in _colecciones)
-            {
-                pila.Children.Add(new TextBlock
-                {
-                    Text = colección.Name,
-                    FontSize = 15,
-                    FontWeight = FontWeight.SemiBold,
-                    Foreground = Acento,
-                    Margin = new Thickness(0, 6, 0, 0)
-                });
-                AgregarRequests(pila, colección.Requests, 0);
-                foreach (var carpeta in colección.Folders) AgregarCarpeta(pila, carpeta, 1);
-            }
-        }
-
-        _cuerpo.Content = new ScrollViewer { Content = pila };
-    }
-
-    void AgregarCarpeta(StackPanel pila, Folder carpeta, int nivel)
-    {
-        pila.Children.Add(new TextBlock
-        {
-            Text = "▸ " + carpeta.Name,
-            FontSize = 13,
-            Foreground = Tenue,
-            Margin = new Thickness(nivel * 14, 4, 0, 0)
-        });
-        AgregarRequests(pila, carpeta.Requests, nivel);
-        foreach (var hija in carpeta.Folders) AgregarCarpeta(pila, hija, nivel + 1);
-    }
-
-    void AgregarRequests(StackPanel pila, IEnumerable<RequestItem> requests, int nivel)
-    {
-        foreach (var request in requests)
-        {
-            var fila = new Button
-            {
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                HorizontalContentAlignment = HorizontalAlignment.Left,
-                Background = Panel,
-                Padding = new Thickness(12, 10),
-                Margin = new Thickness(nivel * 14, 0, 0, 0),
-                Content = new StackPanel
-                {
-                    Spacing = 2,
-                    Children =
-                    {
-                        new TextBlock
-                        {
-                            Text = $"{request.Method}  {request.Name}",
-                            FontSize = 14,
-                            Foreground = Normal
-                        },
-                        new TextBlock
-                        {
-                            Text = request.Url,
-                            FontSize = 11,
-                            Foreground = Tenue,
-                            TextTrimming = TextTrimming.CharacterEllipsis
-                        }
-                    }
-                }
-            };
-            var elegida = request;
-            fila.Click += (_, _) => Navegar(elegida.Name, new RequestView(elegida, _ambiente));
-            pila.Children.Add(fila);
-        }
-    }
-
-    void Navegar(string título, Control vista)
-    {
-        _titulo.Text = título;
-        _atrás.IsVisible = true;
-        _cuerpo.Content = vista;
+        _lista.Cargar(_colecciones);
     }
 
     // ----- Sync -----
@@ -227,7 +249,14 @@ public class ShellView : UserControl
             // el motor guarda la versión del server al lado y gana lo local, que es su default
             var resultado = await sync.SyncAsync();
             _estado.Text = resultado.Message;
-            if (resultado.PulledRemote) MostrarColecciones();
+
+            // recargar reemplaza los modelos en memoria, así que el detalle abierto quedaría
+            // apuntando a objetos que ya no son los del árbol: se vuelve a la lista
+            if (resultado.PulledRemote)
+            {
+                Recargar();
+                VolverALista();
+            }
         }
         catch (Exception ex)
         {
@@ -235,65 +264,30 @@ public class ShellView : UserControl
         }
     }
 
-    void MostrarConexión() => Navegar("Servidor de sync", new SyncSetupView(this));
+    void MostrarConexión() => Abrir("Servidor de sync", new SyncSetupView(this));
 
     /// <summary>La llama SyncSetupView cuando termina de atar un workspace: hay que volver a la
     /// lista y bajar lo que haya.</summary>
     internal async Task VolverYSincronizarAsync()
     {
-        MostrarColecciones();
+        VolverALista();
         await SincronizarAsync();
-        MostrarColecciones();
+        Recargar();
     }
 
     // ----- Piezas compartidas -----
+    //
+    // Siguen acá porque las usan SpikeView y SyncSetupView; el contenido vive en Ui.
 
-    internal static Button Accion(string texto, Action al)
-    {
-        var boton = new Button { Content = texto, Padding = new Thickness(12, 8) };
-        boton.Click += (_, _) => al();
-        return boton;
-    }
+    internal static Button Accion(string texto, Action al) => Ui.Accion(texto, al);
+    internal static Button AccionAsync(string texto, Func<Task> al) => Ui.AccionAsync(texto, al);
+    internal static TextBlock Parrafo(string texto, IBrush? color = null, double tamaño = 13) =>
+        Ui.Parrafo(texto, color, tamaño);
+    internal static TextBlock Rotulo(string texto) => Ui.Rotulo(texto);
+    internal static Border Tarjeta(params Control[] hijos) => Ui.Tarjeta(hijos);
 
-    /// <summary>Separada de la sincrónica y no una sobrecarga: un lambda como `() => AlgoAsync()`
-    /// encaja en Action y en Func&lt;Task&gt;, y el compilador no sabe cuál querés.</summary>
-    internal static Button AccionAsync(string texto, Func<Task> al)
-    {
-        var boton = new Button { Content = texto, Padding = new Thickness(12, 8) };
-        boton.Click += async (_, _) => await al();
-        return boton;
-    }
-
-    internal static TextBlock Parrafo(string texto, IBrush? color = null, double tamaño = 13) => new()
-    {
-        Text = texto,
-        FontSize = tamaño,
-        Foreground = color ?? Normal,
-        TextWrapping = TextWrapping.Wrap
-    };
-
-    internal static TextBlock Rotulo(string texto) => new()
-    {
-        Text = texto,
-        FontSize = 11,
-        Foreground = Tenue
-    };
-
-    internal static Border Tarjeta(params Control[] hijos)
-    {
-        var pila = new StackPanel { Spacing = 8 };
-        foreach (var hijo in hijos) pila.Children.Add(hijo);
-        return new Border
-        {
-            Background = Panel,
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(12),
-            Child = pila
-        };
-    }
-
-    internal static IBrush ColorOk => Verde;
-    internal static IBrush ColorError => Rojo;
-    internal static IBrush ColorTenue => Tenue;
-    internal static IBrush ColorNormal => Normal;
+    internal static IBrush ColorOk => Ui.Verde;
+    internal static IBrush ColorError => Ui.Rojo;
+    internal static IBrush ColorTenue => Ui.Tenue;
+    internal static IBrush ColorNormal => Ui.Normal;
 }
