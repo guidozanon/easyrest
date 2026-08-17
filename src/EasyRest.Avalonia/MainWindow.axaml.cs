@@ -518,12 +518,21 @@ public partial class MainWindow : Window
         newCol.Click += NewCollection_Click;
         var updates = new MenuItem { Header = "Buscar actualizaciones…" };
         updates.Click += Updates_Click;
+        // Acerca de vive también acá y no sólo en el menú nativo de macOS: en Windows y Linux ese
+        // menú no existe, así que la ventana —y con ella el número de versión instalada— no tenía
+        // ninguna puerta de entrada.
+        var about = new MenuItem { Header = "Acerca de EasyRest" };
+        about.Click += About_Click;
         menu.Items.Add(import);
         menu.Items.Add(newCol);
         menu.Items.Add(new Separator());
         menu.Items.Add(updates);
+        menu.Items.Add(about);
         menu.Open(sender as Control);
     }
+
+    async void About_Click(object? sender, RoutedEventArgs e) =>
+        await new AboutWindow().ShowDialog(this);
 
     // ----- Actualizaciones -----
 

@@ -66,8 +66,13 @@ reputación: *Más información → Ejecutar de todas formas*.
 
 La app se actualiza sola contra los Releases de GitHub. Al iniciar hace un chequeo silencioso
 (como máximo una vez cada 20 h) y, si hay una versión nueva, aparece **⬆ vX.Y.Z disponible** en la
-barra de estado. Desde ahí (o desde el menú ⋯ del sidebar → *Buscar actualizaciones…*, o *Acerca de
-EasyRest*) se abre el panel de actualizaciones con las notas de la release y tres opciones:
+barra de estado. Si no hay ninguna, ese botón no está: que no se vea nada es la señal de que estás
+al día.
+
+El resto de las puertas de entrada están en el **menú ⋯ del sidebar** (el botón al lado del `+`,
+arriba de las colecciones): *Buscar actualizaciones…* y *Acerca de EasyRest*, que es donde se ve
+la versión instalada. Desde cualquiera de las tres se abre el panel de actualizaciones con las
+notas de la release y tres opciones:
 descargar e instalar, omitir esa versión o cerrar. También se puede apagar el chequeo automático
 con el check *Buscar actualizaciones al iniciar*.
 
