@@ -104,10 +104,46 @@ en un teléfono sería peor que abrir la computadora.
 
 ## Bajar el APK
 
-El job `android-spike` arma el APK en cada corrida y lo deja como artefacto: *Actions → la
-corrida → Artifacts → `EasyRest-android-spike-apk`*. Viene firmado con el keystore de depuración,
-así que se instala en cualquier teléfono con "orígenes desconocidos" habilitado, sin necesidad de
-un keystore propio.
+`EasyRest-android.apk` va **adjunto a cada Release**, junto a los binarios de escritorio. Se
+instala en cualquier teléfono con "orígenes desconocidos" habilitado.
+
+El job `android-spike` además lo arma en **cada corrida** y lo deja como artefacto (*Actions → la
+corrida → Artifacts → `EasyRest-android-apk`*), que es la forma de probar algo antes de publicarlo.
+
+La versión del APK sale de la misma fuente que la de los binarios de escritorio: el tag, o el
+input del disparo manual. El `versionCode` que pide Android se deriva de ahí (0.1.13 → 113), que
+es un entero que siempre crece.
+
+### La firma, y por qué importa más ahora
+
+Sin keystore propio, .NET Android firma con **una clave de depuración que se genera por máquina**,
+y los runners del CI son efímeros: cada corrida firma con una clave distinta. Android rechaza
+instalar encima de un APK con otra firma, así que actualizar obliga a desinstalar primero
+(`adb uninstall com.rentlysoft.easyrest`) y se pierden los datos locales de la app.
+
+Eso era tolerable cuando el APK era un artefacto de CI para probar. **Publicado en un release ya
+no lo es**: la promesa de un release es que se instala encima del anterior.
+
+El workflow ya está preparado y se prende solo cuando existen los secrets, igual que la firma de
+Windows y macOS:
+
+| Secret | Qué es |
+|---|---|
+| `ANDROID_KEYSTORE_B64` | el `.keystore` en base64 (`base64 -w0 easyrest.keystore`) |
+| `ANDROID_KEY_ALIAS` | el alias de la clave dentro del keystore |
+| `ANDROID_KEYSTORE_PASSWORD` | la contraseña del keystore |
+| `ANDROID_KEY_PASSWORD` | la de la clave, si es distinta de la anterior |
+
+Para generarlo, una vez:
+
+```bash
+keytool -genkeypair -v -keystore easyrest.keystore -alias easyrest \
+  -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 easyrest.keystore    # esto va en ANDROID_KEYSTORE_B64
+```
+
+**Guardá el keystore fuera del CI.** Si se pierde, no hay forma de firmar una actualización de la
+app que ya instaló la gente: hay que cambiar el `applicationId` y volver a empezar.
 
 Se compila en **Release** aunque sea un spike: en Debug, .NET Android usa fast deployment y deja
 los assemblies fuera del APK, pensando en que el IDE los va a empujar por adb — un APK Debug
