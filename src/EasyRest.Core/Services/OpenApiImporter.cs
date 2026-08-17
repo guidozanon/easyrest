@@ -25,7 +25,7 @@ public static class OpenApiImporter
             throw new InvalidOperationException("Documento OpenAPI inválido: " + detail);
         }
 
-        var baseUrl = ResolveServerUrl(doc.Servers?.FirstOrDefault());
+        var baseUrl = doc.Servers?.FirstOrDefault()?.Url?.TrimEnd('/');
         var collection = new RequestCollection
         {
             Name = string.IsNullOrWhiteSpace(doc.Info?.Title)
@@ -108,29 +108,6 @@ public static class OpenApiImporter
         }
 
         return (collection, baseUrl);
-    }
-
-    /// <summary>La URL de un server puede ser una plantilla con variables —
-    /// <c>https://{tenant}.example.com</c>— y OpenAPI obliga a que cada una declare un
-    /// <c>default</c>. Sin reemplazarlas, el ambiente queda con un baseUrl que no resuelve y
-    /// todas las requests importadas fallan al enviarse, que es peor que no importar: parece que
-    /// anduvo.
-    ///
-    /// Lo que no tiene default se deja como está: visible, para que se note qué falta completar.</summary>
-    static string? ResolveServerUrl(OpenApiServer? server)
-    {
-        var url = server?.Url?.TrimEnd('/');
-        if (string.IsNullOrWhiteSpace(url) || server?.Variables is not { Count: > 0 }) return url;
-
-        foreach (var (name, variable) in server.Variables)
-        {
-            var value = string.IsNullOrEmpty(variable?.Default)
-                ? variable?.Enum?.FirstOrDefault()
-                : variable.Default;
-            if (!string.IsNullOrEmpty(value))
-                url = url!.Replace("{" + name + "}", value, StringComparison.Ordinal);
-        }
-        return url;
     }
 
     static string[] FolderSegments(string path) =>
