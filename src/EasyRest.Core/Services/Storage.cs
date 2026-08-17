@@ -313,27 +313,110 @@ public static class Storage
         return name.Length == 0 ? "coleccion" : name;
     }
 
-    // ----- Ambientes (locales por workspace: siempre en AppData, nunca en el repo) -----
+    // ----- Ambientes -----
+    //
+    // Viven en AppData y no en la carpeta del workspace, y eso no cambió: con sync por git el
+    // workspace es el repo, y los tokens no van a un repo. Lo que sí cambió es la forma: un
+    // archivo por ambiente adentro de una carpeta `environments/`, en el mismo formato que el
+    // documento que viaja al servidor de sync (camelCase, con `secretKeys`).
+    //
+    // Ese cambio es lo que hace que los ambientes se puedan sincronizar. Antes eran un único
+    // `environments.json` que no estaba adentro de ninguna carpeta sincronizada: el motor subía
+    // `collections/` y `environments/`, y esta última nunca existía. No fallaba nada, sencillamente
+    // no había qué subir.
+
+    /// <summary>Carpeta que contiene el `environments/` del workspace activo. Es la que el motor
+    /// de sync recorre para los ambientes.</summary>
+    public static string EnvironmentsRoot => Path.GetDirectoryName(EnvironmentsFile)!;
+
+    static string EnvironmentsDir =>
+        Path.Combine(EnvironmentsRoot, Sync.EnvironmentDocument.FolderName);
+
+    /// <summary>Los documentos de ambiente usan camelCase: es el formato que leen tanto
+    /// EnvironmentDocument —que parte y vuelve a juntar los secretos— como el servidor.</summary>
+    static readonly JsonSerializerOptions DocumentOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
+    };
 
     public static List<EnvironmentModel> LoadEnvironments()
     {
+        var dir = EnvironmentsDir;
+        if (!Directory.Exists(dir)) return MigrateEnvironments();
+
+        var environments = new List<EnvironmentModel>();
+        foreach (var file in Directory.EnumerateFiles(dir, "*.json"))
+        {
+            // la copia que deja un conflicto de sync no es un ambiente más
+            if (file.Contains(".remoto-", StringComparison.Ordinal)) continue;
+            try
+            {
+                if (JsonSerializer.Deserialize<EnvironmentModel>(File.ReadAllText(file), DocumentOptions)
+                    is { } env) environments.Add(env);
+            }
+            catch (JsonException)
+            {
+                // un archivo corrupto no puede dejar sin ambientes al resto
+            }
+        }
+
+        // el orden lo daba la posición en el archivo único; con un archivo por ambiente hace
+        // falta un criterio estable, y el nombre es el que la persona ve
+        return environments.OrderBy(e => e.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+    }
+
+    /// <summary>Pasa el `environments.json` de siempre a un archivo por ambiente. El original
+    /// queda como `.bak`: son los tokens de la persona, no se borran porque sí.</summary>
+    static List<EnvironmentModel> MigrateEnvironments()
+    {
         var file = EnvironmentsFile;
         if (!File.Exists(file)) return new();
+
+        List<EnvironmentModel> environments;
         try
         {
-            return JsonSerializer.Deserialize<List<EnvironmentModel>>(File.ReadAllText(file)) ?? new();
+            environments = JsonSerializer.Deserialize<List<EnvironmentModel>>(File.ReadAllText(file))
+                           ?? new();
         }
-        catch
+        catch (JsonException)
         {
             return new();
         }
+
+        SaveEnvironments(environments);
+        try { File.Move(file, file + ".bak", overwrite: true); } catch (IOException) { /* queda el viejo */ }
+        return environments;
     }
 
     public static void SaveEnvironments(IEnumerable<EnvironmentModel> environments)
     {
-        var file = EnvironmentsFile;
-        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-        File.WriteAllText(file, JsonSerializer.Serialize(environments.ToList(), Options));
+        var dir = EnvironmentsDir;
+        Directory.CreateDirectory(dir);
+
+        var vigentes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var env in environments)
+        {
+            if (string.IsNullOrWhiteSpace(env.Id)) env.Id = Guid.NewGuid().ToString("N");
+
+            var file = Path.Combine(dir, env.Id + ".json");
+            vigentes.Add(Path.GetFileName(file));
+
+            // no reescribir lo que no cambió: el motor de sync compara contenido, pero una
+            // reescritura igual mueve la fecha y ensucia cualquier diff que mire alguien
+            var json = JsonSerializer.Serialize(env, DocumentOptions);
+            if (!File.Exists(file) || File.ReadAllText(file) != json) File.WriteAllText(file, json);
+        }
+
+        // los que ya no están se borran: es lo que hace que borrar un ambiente llegue al server
+        foreach (var file in Directory.EnumerateFiles(dir, "*.json"))
+        {
+            if (file.Contains(".remoto-", StringComparison.Ordinal)) continue;
+            if (!vigentes.Contains(Path.GetFileName(file))) File.Delete(file);
+        }
+
+        WorkspaceDataChanged?.Invoke();
     }
 
     /// <summary>Id del ambiente activo del workspace actual (null si ninguno).</summary>

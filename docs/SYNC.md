@@ -234,9 +234,21 @@ Ante ediciones cruzadas, **gana lo local** y la versión del server queda al lad
 `<archivo>.remoto-<rev>.json`. Nunca se pierde una edición sin dejar rastro. La UI puede pedir otra
 resolución (`KeepRemote` / `KeepLocal`), igual que ya hacía con los conflictos de git.
 
-Sólo se sincronizan las carpetas `collections/` y `environments/`. Es deliberado: la raíz del
-workspace personal es AppData, donde viven `settings.json` y `environments.json` con los tokens
-locales, y esos **no se suben nunca**.
+Sólo se sincronizan las carpetas `collections/` y `environments/`. Todo lo demás que hay en la
+raíz —`settings.json`, `sync.json`, `sync-state.json`— es estado local y **no se sube nunca**.
+
+Las dos carpetas no cuelgan del mismo lado, y no es un descuido:
+
+| Carpeta | Dónde vive | Por qué |
+|---|---|---|
+| `collections/` | la carpeta del workspace | es lo que uno quiere ver, versionar y compartir |
+| `environments/` | AppData, junto al estado local | con sync por git el workspace **es el repo**, y los tokens no van a un repo |
+
+Por eso `RemoteWorkspaceSync` recibe una raíz aparte para los ambientes. Antes de que existiera,
+los ambientes estaban en un único `environments.json` que no estaba adentro de ninguna carpeta
+sincronizada: **no fallaba nada, simplemente no había qué subir**. Hoy es un archivo por ambiente,
+en el mismo formato que viaja al server, y hay un test que lo fija
+(`Los_ambientes_sincronizan_aunque_vivan_fuera_del_workspace`).
 
 Los ambientes viajan partidos: en disco tienen los valores completos porque la app los necesita, y
 al subir se separan según la lista `secretKeys` del propio ambiente:
@@ -266,9 +278,9 @@ Vale tenerlos a la vista antes de ponerlo en producción:
   hasta que un miembro que ya tiene la clave esté online para envolverla para el nuevo.
 - **En el dispositivo los secretos quedan en JSON plano**, como hasta ahora. El siguiente paso de
   endurecimiento es guardarlos en el keychain del sistema (DPAPI, Keychain, Keystore).
-- **Falta la UI en la app.** El server, la consola de administración y el cliente de sync están
-  completos y testeados; lo que falta es la pantalla de login, el selector de workspace y la
-  administración de miembros dentro de EasyRest.
+- **La administración de miembros se hace fuera de la app.** El login, el selector de workspace y
+  la sincronización de colecciones y ambientes están dentro de EasyRest; invitar gente, cambiar
+  roles y repartir permisos sobre secretos siguen viviendo en la consola web del server.
 - **La sesión de la consola dura lo que el access token** (una hora por defecto). Cuando vence hay
   que volver a entrar, que con la sesión del IdP viva es un ida y vuelta silencioso.
 

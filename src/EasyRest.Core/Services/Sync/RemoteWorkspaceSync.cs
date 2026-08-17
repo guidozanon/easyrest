@@ -13,22 +13,32 @@ namespace EasyRest.Services.Sync;
 public class RemoteWorkspaceSync : IWorkspaceSync
 {
     /// <summary>Sólo se sincronizan estas subcarpetas. Es deliberado: la raíz del workspace
-    /// personal es AppData, donde viven settings.json y environments.json con los tokens
-    /// locales, y esos no se suben nunca.</summary>
+    /// personal es AppData, donde viven settings.json y sync.json, y esos no se suben nunca.</summary>
     public static readonly string[] SyncedFolders = { "collections", EnvironmentDocument.FolderName };
 
     readonly string _root;
+    readonly string _environmentsRoot;
     readonly SyncApiClient _api;
     readonly Guid _workspaceId;
     readonly string _statePath;
 
-    public RemoteWorkspaceSync(string workspaceRoot, SyncApiClient api, Guid workspaceId, string statePath)
+    /// <param name="environmentsRoot">Dónde vive la carpeta <c>environments/</c>, que no está
+    /// bajo la del workspace: los ambientes se guardan en AppData porque con sync por git el
+    /// workspace es el repo y los tokens no van a un repo. Si no se pasa, se usa la del
+    /// workspace —que es lo que hacen los tests, donde todo cuelga de la misma carpeta.</param>
+    public RemoteWorkspaceSync(string workspaceRoot, SyncApiClient api, Guid workspaceId,
+        string statePath, string? environmentsRoot = null)
     {
         _root = workspaceRoot;
+        _environmentsRoot = environmentsRoot ?? workspaceRoot;
         _api = api;
         _workspaceId = workspaceId;
         _statePath = statePath;
     }
+
+    /// <summary>Cada carpeta sincronizada puede colgar de una raíz distinta.</summary>
+    string RootOf(string folder) =>
+        folder == EnvironmentDocument.FolderName ? _environmentsRoot : _root;
 
     public string DisplayName => "Servidor de sync";
 
@@ -326,14 +336,15 @@ public class RemoteWorkspaceSync : IWorkspaceSync
     {
         foreach (var folder in SyncedFolders)
         {
-            var dir = Path.Combine(_root, folder);
+            var raíz = RootOf(folder);
+            var dir = Path.Combine(raíz, folder);
             if (!Directory.Exists(dir)) continue;
 
             foreach (var file in Directory.EnumerateFiles(dir, "*.json", SearchOption.AllDirectories))
             {
                 if (file.Contains(".remoto-", StringComparison.Ordinal)) continue;
 
-                var relative = Path.GetRelativePath(_root, file).Replace('\\', '/');
+                var relative = Path.GetRelativePath(raíz, file).Replace('\\', '/');
                 string content;
                 try
                 {
@@ -349,8 +360,11 @@ public class RemoteWorkspaceSync : IWorkspaceSync
         }
     }
 
-    string FullPath(string relative) =>
-        Path.Combine(_root, relative.Replace('/', Path.DirectorySeparatorChar));
+    string FullPath(string relative)
+    {
+        var folder = relative.Split('/')[0];
+        return Path.Combine(RootOf(folder), relative.Replace('/', Path.DirectorySeparatorChar));
+    }
 
     static void Write(string fullPath, string content)
     {

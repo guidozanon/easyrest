@@ -1186,9 +1186,27 @@ public partial class MainWindow : Window
 
         if (r.PulledRemote &&
             string.Equals(root, Storage.WorkspaceRoot, StringComparison.OrdinalIgnoreCase))
+        {
             await ReloadCollectionsFromDisk();
+            ReloadEnvironmentsFromDisk();
+        }
 
         return (r.Ok, r.Message);
+    }
+
+    /// <summary>Los ambientes también viajan por sync, así que un pull deja la lista en memoria
+    /// vieja. No es cosmético: guardar borra del disco los ambientes que no estén en la lista, y
+    /// sin recargar, el próximo guardado se llevaría puesto lo que acaba de bajar.</summary>
+    void ReloadEnvironmentsFromDisk()
+    {
+        var activeId = ActiveEnv?.Id ?? Storage.GetActiveEnvironmentId();
+
+        Environments.Clear();
+        foreach (var env in Storage.LoadEnvironments()) Environments.Add(env);
+
+        RefreshEnvCombo();
+        if (Environments.FirstOrDefault(e => e.Id == activeId) is { } active)
+            EnvCombo.SelectedItem = active;
     }
 
     /// <summary>Recarga las colecciones del workspace activo desde el disco (después de que un

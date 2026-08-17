@@ -14,14 +14,17 @@ public static class WorkspaceSyncResolver
     /// Devuelve null también cuando hay atadura pero no hay sesión: eso no es "no configurado"
     /// sino "hay que volver a loguearse", y para distinguirlo está <see cref="NeedsLogin"/>.</summary>
     public static IWorkspaceSync? For(string workspaceRoot, string bindingPath, string statePath,
-        SyncAccountStore? store = null, HttpClient? http = null)
+        SyncAccountStore? store = null, HttpClient? http = null, string? environmentsRoot = null)
     {
         var binding = SyncBinding.Load(bindingPath);
         if (binding.IsSet)
         {
             var conexión = SyncConnection.Restore(binding.ServerUrl, store, http);
             if (conexión != null)
-                return new RemoteWorkspaceSync(workspaceRoot, conexión.Api, binding.WorkspaceId, statePath);
+                // los ambientes no cuelgan del workspace sino de AppData (ver Storage): el motor
+                // necesita saberlo, o la carpeta environments/ que sincroniza nunca existe
+                return new RemoteWorkspaceSync(workspaceRoot, conexión.Api, binding.WorkspaceId,
+                    statePath, environmentsRoot ?? Storage.EnvironmentsRoot);
             return null;
         }
 
