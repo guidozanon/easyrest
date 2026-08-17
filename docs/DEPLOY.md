@@ -61,12 +61,23 @@ construir, dónde está el health check y que va una sola réplica.
    ConnectionStrings__Default=Data Source=/data/easyrest-sync.db
    Auth__ServerAdminEmails__0=vos@tuempresa.com
    Auth__AllowedEmailDomains__0=tuempresa.com
+   RAILWAY_RUN_UID=0
    ```
+
+   Esa última hace falta y no es opcional: **Railway monta el volumen como root** y la imagen
+   corre con un usuario sin privilegios, así que sin ella el server arranca y muere con
+   `SQLite Error 14: unable to open database file`. Es la respuesta documentada de Railway y
+   tiene su costo —el contenedor pasa a correr como root—; en las otras plataformas no hace
+   falta porque el montaje respeta al usuario de la imagen.
 
 3. **Volume** montado en `/data`. Es el paso que más se olvida y el único irreversible.
 4. **Settings → Networking → Generate Domain**, y con esa URL agregá
    `Auth__PublicUrl=https://<tu-app>.up.railway.app`.
 5. Registrá el redirect en el IdP y cargá sus credenciales ([abajo](#el-idp)).
+
+Un detalle del Dockerfile que conviene no deshacer: **no declara `VOLUME`**. Railway rechaza la
+imagen entera si lo encuentra (*"docker VOLUME is not supported, use Railway Volumes"*), y el
+build falla en dos segundos sin escribir un solo log, que es lo más caro de diagnosticar.
 
 ## Fly.io
 
