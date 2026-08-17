@@ -59,6 +59,7 @@ public partial class MainWindow : Window
         RequestTabs.SelectionChanged += (_, _) => PersistUiState();
 
         UpdateStatusEnv();
+        VersionBtn.Content = "v" + UpdateService.CurrentVersion;
         Opened += (_, _) => { RefreshGitStatus(); CheckUpdatesSilently(); };
         Closing += OnClosing;
 
