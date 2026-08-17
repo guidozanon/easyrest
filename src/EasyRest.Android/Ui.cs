@@ -3,7 +3,9 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 
+// Android.Widget viene en los implicit usings del SDK y trae sus propios Button y Orientation
 using Button = Avalonia.Controls.Button;
+using Orientation = Avalonia.Layout.Orientation;
 
 namespace EasyRest.Android;
 

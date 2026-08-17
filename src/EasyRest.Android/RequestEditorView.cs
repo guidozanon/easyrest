@@ -216,6 +216,20 @@ internal class RequestEditorView : UserControl
         return pila;
     }
 
+    /// <summary>Un campo de texto atado a una propiedad del modelo: lo que se escribe se escribe
+    /// en el modelo y marca la request como sucia. Es el pegamento que usan los campos de auth,
+    /// que son todos iguales salvo qué propiedad tocan.</summary>
+    TextBox Atado(string valor, string marca, Action<string> asignar)
+    {
+        var campo = Ui.Campo(valor, marca);
+        campo.TextChanged += (_, _) =>
+        {
+            asignar(campo.Text ?? "");
+            Ensuciar();
+        };
+        return campo;
+    }
+
     static string Nombre(AuthType tipo) => tipo switch
     {
         AuthType.Inherit => "Heredada",
