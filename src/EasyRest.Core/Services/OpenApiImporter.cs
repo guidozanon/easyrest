@@ -11,8 +11,11 @@ namespace EasyRest.Services;
 
 public static class OpenApiImporter
 {
-    /// <summary>Importa un documento OpenAPI (JSON o YAML) y genera una colección con una request por operación.</summary>
-    public static (RequestCollection Collection, string? BaseUrl) Import(string filePath)
+    /// <summary>Importa un documento OpenAPI (JSON o YAML) y genera una colección con una request
+    /// por operación. Devuelve además el baseUrl y las variables del server, para armar el
+    /// ambiente.</summary>
+    public static (RequestCollection Collection, string? BaseUrl, List<KeyValueItem> ServerVariables)
+        Import(string filePath)
     {
         using var stream = File.OpenRead(filePath);
         var doc = new OpenApiStreamReader().Read(stream, out var diagnostic);
@@ -25,7 +28,7 @@ public static class OpenApiImporter
             throw new InvalidOperationException("Documento OpenAPI inválido: " + detail);
         }
 
-        var baseUrl = doc.Servers?.FirstOrDefault()?.Url?.TrimEnd('/');
+        var (baseUrl, serverVariables) = ReadServer(doc.Servers?.FirstOrDefault());
         var collection = new RequestCollection
         {
             Name = string.IsNullOrWhiteSpace(doc.Info?.Title)
@@ -107,7 +110,39 @@ public static class OpenApiImporter
             }
         }
 
-        return (collection, baseUrl);
+        return (collection, baseUrl, serverVariables);
+    }
+
+    /// <summary>La URL del server puede ser una plantilla con variables
+    /// —<c>https://{tenant}.example.com</c>—, y eso es deliberado del documento: describe qué
+    /// parte cambia según quién lo use.
+    ///
+    /// Se traduce a la sintaxis de EasyRest (<c>{{tenant}}</c>), que es exactamente lo que ya se
+    /// hace con los parámetros del path, y cada variable vuelve con su <c>default</c> para que el
+    /// ambiente quede armado. Así cambiar de tenant es cambiar una variable, y no editar la URL
+    /// de las 142 requests. Reemplazarla por el default —que fue mi primer intento— borraba justo
+    /// la información que el documento quería dar.</summary>
+    static (string? Url, List<KeyValueItem> Variables) ReadServer(OpenApiServer? server)
+    {
+        var url = server?.Url?.TrimEnd('/');
+        var variables = new List<KeyValueItem>();
+        if (string.IsNullOrWhiteSpace(url) || server?.Variables is not { Count: > 0 })
+            return (url, variables);
+
+        foreach (var (name, variable) in server.Variables)
+        {
+            if (!url!.Contains("{" + name + "}", StringComparison.Ordinal)) continue;
+
+            url = url.Replace("{" + name + "}", "{{" + name + "}}", StringComparison.Ordinal);
+            variables.Add(new KeyValueItem
+            {
+                Key = name,
+                Value = string.IsNullOrEmpty(variable?.Default)
+                    ? variable?.Enum?.FirstOrDefault() ?? ""
+                    : variable.Default
+            });
+        }
+        return (url, variables);
     }
 
     static string[] FolderSegments(string path) =>

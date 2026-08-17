@@ -36,6 +36,12 @@ jobs:
   # Android sólo está acá, así que este es el lugar donde se puede armar.
   android-spike:
     runs-on: ubuntu-latest
+    env:
+      # los secrets no se pueden usar en el `if:` de un step: se pasan por env y se chequea env
+      ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -43,17 +49,56 @@ jobs:
           dotnet-version: '8.0.x'
       - run: dotnet workload install android
 
+      # La versión del APK sale de la misma fuente que la de los binarios de escritorio: el tag
+      # o el input del disparo manual. El versionCode de Android tiene que ser un entero que
+      # crezca siempre, así que se deriva de la versión (0.1.13 → 113) y nunca es cero, que
+      # Android rechaza.
+      - name: Resolver versión
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then VERSION="${GITHUB_REF_NAME#v}"
+          else VERSION="${{ inputs.version }}"; fi
+          [ -z "$VERSION" ] && VERSION="0.0.0"
+          IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
+          CODE=$(( 10#${MAJOR:-0} * 10000 + 10#${MINOR:-0} * 100 + 10#${PATCH:-0} ))
+          [ "$CODE" -lt 1 ] && CODE=1
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$CODE" >> "$GITHUB_ENV"
+
       # publish y no build -t:SignAndroidPackage: ese target arma un APK igual, pero en Release
       # el paso que genera los stubs de Java sale con las manos vacías y el APK queda sin la
       # actividad de lanzador. publish es el camino soportado para un APK de Release.
       #
       # Release y no Debug: en Debug, .NET Android usa fast deployment y deja los assemblies
-      # fuera del APK, así que un APK instalado a mano no arranca. Igual va firmado con el
-      # keystore de depuración —sin keystore propio se usa ese—, así que se instala con
-      # "orígenes desconocidos" y listo. Lo del linker y el AOT está en el csproj.
+      # fuera del APK, así que un APK instalado a mano no arranca. Lo del linker y el AOT está
+      # en el csproj.
+      #
+      # La firma: si están cargados los secrets del keystore propio se firma con ese —y entonces
+      # una versión se puede instalar encima de la anterior—; si no, .NET Android firma con un
+      # keystore de depuración que se genera por máquina, y como los runners son efímeros cada
+      # corrida firma con una clave distinta. Mismo criterio que la firma de Windows y macOS:
+      # los pasos se prenden solos cuando el secret existe.
+      - name: Preparar keystore (si hay secret)
+        if: env.ANDROID_KEYSTORE_B64 != ''
+        run: |
+          echo "$ANDROID_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/easyrest.keystore"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/easyrest.keystore" >> "$GITHUB_ENV"
+
       - name: Armar el APK
         run: |
-          dotnet publish src/EasyRest.Android/EasyRest.Android.csproj -c Release -o apk
+          FIRMA=()
+          if [ -n "$ANDROID_KEYSTORE_PATH" ]; then
+            FIRMA=(-p:AndroidKeyStore=true
+                   "-p:AndroidSigningKeyStore=$ANDROID_KEYSTORE_PATH"
+                   "-p:AndroidSigningKeyAlias=$ANDROID_KEY_ALIAS"
+                   "-p:AndroidSigningStorePass=$ANDROID_KEYSTORE_PASSWORD"
+                   "-p:AndroidSigningKeyPass=${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}")
+            echo "::notice::APK firmado con el keystore del repo"
+          fi
+
+          dotnet publish src/EasyRest.Android/EasyRest.Android.csproj -c Release -o apk \
+            -p:ApplicationDisplayVersion="$VERSION" -p:ApplicationVersion="$VERSION_CODE" \
+            "${FIRMA[@]}"
           ls -la apk/*-Signed.apk
 
       # Si el APK sale sin actividades, el culpable histórico es que EasyRest.Android.dll no
@@ -81,17 +126,31 @@ jobs:
           grep -qE "^application:.*icon='[^']+'" badging.txt || {
             echo "::error::el APK no declara ícono de aplicación"; exit 1; }
 
-          # Cada corrida firma con un keystore de depuración distinto (se genera por máquina y
-          # los runners son efímeros), así que instalar encima de un APK de otra corrida falla
-          # con "aplicación no instalada".
-          echo "::notice::Si ya tenías instalada otra versión, desinstalala primero: adb uninstall com.rentlysoft.easyrest"
+          # Sin keystore propio, cada corrida firma con uno de depuración distinto (se genera por
+          # máquina y los runners son efímeros), así que instalar encima de un APK de otra
+          # corrida falla con "aplicación no instalada".
+          if [ -z "$ANDROID_KEYSTORE_PATH" ]; then
+            echo "::notice::APK sin keystore propio: si ya tenías otra versión instalada, desinstalala primero (adb uninstall com.rentlysoft.easyrest)"
+          fi
+
+      # El nombre del publish es com.rentlysoft.easyrest-Signed.apk, que como asset de un release
+      # no le dice nada a nadie: se renombra al mismo estilo que los binarios de escritorio.
+      - name: Renombrar el APK
+        run: mv apk/*-Signed.apk EasyRest-android.apk
 
       - name: Subir el APK
         uses: actions/upload-artifact@v4
         with:
-          name: EasyRest-android-spike-apk
-          path: apk/*-Signed.apk
+          name: EasyRest-android-apk
+          path: EasyRest-android.apk
           if-no-files-found: error
+
+      - name: Adjuntar al release
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != '')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', inputs.version) }}
+          files: EasyRest-android.apk
 
   # El Core compilado sin JIT ni Reflection.Emit, que es la restricción de iOS. Verifica que el
   # motor de scripts y el resto del Core sigan funcionando ahí: si esto se rompe, el móvil deja

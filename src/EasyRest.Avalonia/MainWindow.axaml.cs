@@ -454,6 +454,36 @@ public partial class MainWindow : Window
         var path = files.FirstOrDefault()?.TryGetLocalPath();
         if (string.IsNullOrEmpty(path)) return;
 
+        await ImportOpenApiFile(path);
+    }
+
+    /// <summary>Un documento OpenAPI publicado se comparte como link, no como archivo: obligar a
+    /// bajarlo a mano para después buscarlo en el selector es un paso que no aporta nada.</summary>
+    async void ImportOpenApiUrl_Click(object? sender, RoutedEventArgs e)
+    {
+        var url = (await Dialogs.Prompt(this, "Importar OpenAPI desde URL",
+            "Pegá la URL del documento (JSON o YAML)."))?.Trim();
+        if (string.IsNullOrWhiteSpace(url)) return;
+
+        var temp = Path.Combine(Path.GetTempPath(), $"easyrest-import-{Guid.NewGuid():N}.json");
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+            await File.WriteAllTextAsync(temp, await http.GetStringAsync(url));
+        }
+        catch (Exception ex)
+        {
+            await Dialogs.Info(this, $"No se pudo bajar el documento:\n\n{ex.Message}",
+                "Importar OpenAPI");
+            return;
+        }
+
+        try { await ImportOpenApiFile(temp); }
+        finally { try { File.Delete(temp); } catch (IOException) { /* temporal huérfano */ } }
+    }
+
+    async Task ImportOpenApiFile(string path)
+    {
         var dlg = new ImportWindow(path);
         await dlg.ShowDialog(this);
         if (dlg.ImportedCollection is not { } col) return;
@@ -462,14 +492,33 @@ public partial class MainWindow : Window
         Storage.SaveCollection(col);
         if (!string.IsNullOrWhiteSpace(dlg.BaseUrl))
         {
-            var env = new EnvironmentModel { Name = col.Name };
-            env.Variables.Add(new KeyValueItem { Key = "baseUrl", Value = dlg.BaseUrl });
-            Environments.Add(env);
+            // reusar el que ya exista: importar dos veces el mismo documento no tiene por qué
+            // dejar dos ambientes con el mismo nombre
+            var env = Environments.FirstOrDefault(x => x.Name == col.Name);
+            if (env == null)
+            {
+                env = new EnvironmentModel { Name = col.Name };
+                Environments.Add(env);
+            }
+            SetVariable(env, "baseUrl", dlg.BaseUrl!);
+            // las variables del server (tenant, region…) van al lado: el baseUrl las usa como
+            // {{variable}}, así que cambiar de entorno es cambiar una y no editar cada request
+            foreach (var variable in dlg.ServerVariables) SetVariable(env, variable.Key, variable.Value);
+
             Storage.SaveEnvironments(Environments);
             RefreshEnvCombo();
             EnvCombo.SelectedItem = env;
         }
         RefreshGitStatus();
+    }
+
+    /// <summary>Pone la variable sin pisar una que ya tenga valor: si volvés a importar, tu
+    /// tenant no se reemplaza por el default del documento.</summary>
+    static void SetVariable(EnvironmentModel env, string key, string value)
+    {
+        var existing = env.Variables.FirstOrDefault(v => v.Key == key);
+        if (existing == null) env.Variables.Add(new KeyValueItem { Key = key, Value = value });
+        else if (string.IsNullOrWhiteSpace(existing.Value)) existing.Value = value;
     }
 
     async void OpenEnvironmentsManager()
@@ -513,11 +562,14 @@ public partial class MainWindow : Window
     void SidebarMenu_Click(object? sender, RoutedEventArgs e)
     {
         var menu = new ContextMenu();
-        var import = new MenuItem { Header = "Importar OpenAPI" };
+        var import = new MenuItem { Header = "Importar OpenAPI…" };
         import.Click += ImportOpenApi_Click;
+        var importUrl = new MenuItem { Header = "Importar OpenAPI desde URL…" };
+        importUrl.Click += ImportOpenApiUrl_Click;
         var newCol = new MenuItem { Header = "Nueva colección" };
         newCol.Click += NewCollection_Click;
         menu.Items.Add(import);
+        menu.Items.Add(importUrl);
         menu.Items.Add(newCol);
         menu.Open(sender as Control);
     }
@@ -1134,9 +1186,27 @@ public partial class MainWindow : Window
 
         if (r.PulledRemote &&
             string.Equals(root, Storage.WorkspaceRoot, StringComparison.OrdinalIgnoreCase))
+        {
             await ReloadCollectionsFromDisk();
+            ReloadEnvironmentsFromDisk();
+        }
 
         return (r.Ok, r.Message);
+    }
+
+    /// <summary>Los ambientes también viajan por sync, así que un pull deja la lista en memoria
+    /// vieja. No es cosmético: guardar borra del disco los ambientes que no estén en la lista, y
+    /// sin recargar, el próximo guardado se llevaría puesto lo que acaba de bajar.</summary>
+    void ReloadEnvironmentsFromDisk()
+    {
+        var activeId = ActiveEnv?.Id ?? Storage.GetActiveEnvironmentId();
+
+        Environments.Clear();
+        foreach (var env in Storage.LoadEnvironments()) Environments.Add(env);
+
+        RefreshEnvCombo();
+        if (Environments.FirstOrDefault(e => e.Id == activeId) is { } active)
+            EnvCombo.SelectedItem = active;
     }
 
     /// <summary>Recarga las colecciones del workspace activo desde el disco (después de que un

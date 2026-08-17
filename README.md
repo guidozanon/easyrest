@@ -35,7 +35,7 @@ dotnet publish src/EasyRest.Avalonia -c Release -r osx-arm64 --self-contained
 ## Descargas
 
 Un GitHub Action (`.github/workflows/build.yml`) compila binarios autocontenidos para
-Windows (x64) y macOS (arm64/x64):
+Windows (x64), macOS (arm64/x64), Linux (x64/arm64) y el APK de Android:
 
 - **Release**: al pushear un tag `vX.Y.Z` se publica un Release con los binarios de cada plataforma.
 - **Manual**: se puede correr el workflow a mano (*Actions → build → Run workflow*); los binarios
@@ -51,6 +51,7 @@ Qué bajar según la plataforma:
 | `EasyRest-macos-x64.zip` | Mac con Intel |
 | `EasyRest-linux-x64.tar.gz` | Linux x86_64 |
 | `EasyRest-linux-arm64.tar.gz` | Linux arm64 |
+| `EasyRest-android.apk` | Android (teléfono, tablet y fold). Hay que habilitar "orígenes desconocidos" para instalarlo; ver [docs/ANDROID.md](docs/ANDROID.md) |
 
 ### Firma
 

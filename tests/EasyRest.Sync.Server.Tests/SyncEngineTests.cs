@@ -258,22 +258,61 @@ public class SyncEngineTests : IClassFixture<SyncServerFactory>, IDisposable
     public void El_tipo_sale_del_nombre_del_archivo(string path, string expected) =>
         Assert.Equal(expected, RemoteWorkspaceSync.KindOf(path));
 
+    /// <summary>En la app los ambientes no cuelgan de la carpeta del workspace sino de AppData
+    /// —con sync por git el workspace es el repo, y los tokens no van a un repo—, así que el
+    /// motor recibe una raíz distinta para `environments/`. Si eso se rompe, los ambientes dejan
+    /// de sincronizar sin que falle nada: la carpeta que el motor recorre simplemente no existe.
+    /// Es exactamente lo que pasaba antes de que hubiera un archivo por ambiente.</summary>
+    [Fact]
+    public async Task Los_ambientes_sincronizan_aunque_vivan_fuera_del_workspace()
+    {
+        var user = await _factory.LoginAsync("engine-env-aparte");
+        var ws = await _factory.CreateWorkspaceAsync(user, "Equipo");
+        var a = NewDevice(user, ws, ambientesAparte: true);
+        var b = NewDevice(user, ws, ambientesAparte: true);
+        File.WriteAllText(EnvFile(a, "e1.json"), EnvJson);
+
+        Assert.True((await a.Sync.SyncAsync()).Ok);
+        Assert.True((await b.Sync.SyncAsync()).Ok);
+
+        // bajó a la raíz de ambientes del otro dispositivo, con su secreto rearmado…
+        Assert.Contains("tok-super-secreto", File.ReadAllText(EnvFile(b, "e1.json")));
+        // …y no a la carpeta del workspace, que es de las colecciones
+        Assert.False(Directory.Exists(Path.Combine(b.Root, "environments")));
+    }
+
     // ----- Andamiaje -----
 
-    record Device(string Root, SyncApiClient Api, RemoteWorkspaceSync Sync);
+    record Device(string Root, string EnvRoot, SyncApiClient Api, RemoteWorkspaceSync Sync);
 
-    Device NewDevice(TestUser user, Guid workspaceId)
+    Device NewDevice(TestUser user, Guid workspaceId, bool ambientesAparte = false)
     {
         var root = Path.Combine(Path.GetTempPath(), $"easyrest-device-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
         _tempDirs.Add(root);
 
+        var envRoot = root;
+        if (ambientesAparte)
+        {
+            envRoot = Path.Combine(Path.GetTempPath(), $"easyrest-envs-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(envRoot);
+            _tempDirs.Add(envRoot);
+        }
+
         var api = new SyncApiClient("http://localhost", _factory.CreateClient())
         {
             AccessToken = user.Tokens.AccessToken
         };
-        var sync = new RemoteWorkspaceSync(root, api, workspaceId, Path.Combine(root, ".sync-state.json"));
-        return new Device(root, api, sync);
+        var sync = new RemoteWorkspaceSync(root, api, workspaceId,
+            Path.Combine(root, ".sync-state.json"), ambientesAparte ? envRoot : null);
+        return new Device(root, envRoot, api, sync);
+    }
+
+    static string EnvFile(Device device, string name)
+    {
+        var full = Path.Combine(device.EnvRoot, "environments", name);
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+        return full;
     }
 
     async Task InviteAsync(TestUser admin, TestUser invitado, Guid workspaceId, bool canReadSecrets)

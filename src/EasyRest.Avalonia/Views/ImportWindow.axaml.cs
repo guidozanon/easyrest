@@ -14,6 +14,9 @@ public partial class ImportWindow : Window
     public RequestCollection? ImportedCollection { get; private set; }
     public string? BaseUrl { get; private set; }
 
+    /// <summary>Variables del server del documento (con su default), para el ambiente.</summary>
+    public List<KeyValueItem> ServerVariables { get; private set; } = new();
+
     public ImportWindow() => InitializeComponent();
 
     public ImportWindow(string filePath) : this()
@@ -27,9 +30,11 @@ public partial class ImportWindow : Window
     {
         try
         {
-            var (collection, baseUrl) = await Task.Run(() => OpenApiImporter.Import(_filePath));
+            var (collection, baseUrl, serverVariables) =
+                await Task.Run(() => OpenApiImporter.Import(_filePath));
             ImportedCollection = collection;
             BaseUrl = baseUrl;
+            ServerVariables = serverVariables;
 
             TitleText.Text = "✔ Importación completa";
             TitleText.Foreground = Brush.Parse("#A6E3A1");
@@ -39,7 +44,11 @@ public partial class ImportWindow : Window
                 $"    •  {collection.AllFolders.Count()} carpetas\n" +
                 (string.IsNullOrWhiteSpace(baseUrl)
                     ? "    •  El documento no define servers: definí {{baseUrl}} en un ambiente."
-                    : $"    •  Se creará el ambiente \"{collection.Name}\" con baseUrl = {baseUrl}");
+                    : $"    •  Se creará el ambiente \"{collection.Name}\" con baseUrl = {baseUrl}") +
+                (serverVariables.Count == 0
+                    ? ""
+                    : "\n    •  Y sus variables: " +
+                      string.Join(", ", serverVariables.Select(v => $"{v.Key} = {v.Value}")));
         }
         catch (Exception ex)
         {
