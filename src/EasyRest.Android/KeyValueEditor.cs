@@ -5,6 +5,7 @@ using Avalonia.Layout;
 using EasyRest.Models;
 
 using Button = Avalonia.Controls.Button;
+using CheckBox = Avalonia.Controls.CheckBox;
 
 namespace EasyRest.Android;
 

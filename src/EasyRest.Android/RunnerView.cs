@@ -5,8 +5,12 @@ using Avalonia.Threading;
 using EasyRest.Models;
 using EasyRest.Services;
 
+// Android.Widget viene en los implicit usings del SDK y tiene su propio CheckBox, ProgressBar,
+// Button y Orientation: sin los alias, cada uno de esos nombres es ambiguo
 using Button = Avalonia.Controls.Button;
+using CheckBox = Avalonia.Controls.CheckBox;
 using Orientation = Avalonia.Layout.Orientation;
+using ProgressBar = Avalonia.Controls.ProgressBar;
 
 namespace EasyRest.Android;
 
