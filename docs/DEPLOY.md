@@ -141,6 +141,21 @@ La consola en `/Admin` diagnostica esto —si el discovery del IdP responde, qu�
 si la URL pública no coincide con el host por el que entrás— y es el primer lugar donde mirar
 cuando el login falla.
 
+### Microsoft Entra
+
+Tres cosas que no son obvias y se pagan con un login que falla sin explicar:
+
+- **La plataforma del redirect tiene que ser `Web`, no `Single-page application`.** Con SPA, Entra
+  exige PKCE contra el IdP y rechaza el login con `AADSTS9002325`, aunque todo lo demás esté bien.
+  El server es un cliente confidencial: guarda el client secret, así que va como Web.
+- **La Authority lleva el tenant, no `common`.** El server valida que el emisor del `id_token` sea
+  el del discovery, y `common` emite con un issuer que no coincide:
+  `https://login.microsoftonline.com/<tenant-id>/v2.0`.
+- **Permisos: `openid`, `profile` y `email` delegados, y nada más.** El server no llama a la Graph
+  API. Si el tenant tiene apagado el consentimiento de usuario, hace falta el *Grant admin consent*
+  una vez. Conviene además agregar `email` como optional claim del ID token, porque Entra no
+  siempre lo manda y sin mail el server no puede identificar a la persona.
+
 ## Un server público no es un server interno
 
 En una VM detrás de la VPN alcanza con instalarlo. Expuesto a internet, tres cosas antes de
