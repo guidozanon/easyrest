@@ -19,7 +19,9 @@ namespace EasyRest.Android;
 /// Es una sola vista que cambia de contenido en vez de varias actividades: en móvil Avalonia corre
 /// sobre una única actividad, y para tres pantallas un navegador propio de dos líneas alcanza.
 ///
-/// Escrita en C# y no en XAML por el bug de build que documenta docs/ANDROID.md.</summary>
+/// El árbol se arma en C#. Ya no es una obligación —el bug del XAML está parcheado en el csproj y
+/// App vuelve a ser .axaml— pero para una UI que se construye en bucles sobre las colecciones el
+/// código directo se lee mejor que un DataTemplate.</summary>
 public class ShellView : UserControl
 {
     static readonly IBrush Fondo = new SolidColorBrush(Color.Parse("#1E1E2E"));

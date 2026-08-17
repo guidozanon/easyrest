@@ -56,4 +56,35 @@
     <ProjectReference Include="..\EasyRest.Core\EasyRest.Core.csproj" />
   </ItemGroup>
 
+  <!-- Arreglo del bug que dejaba el APK sin actividades.
+
+       Avalonia calcula dónde escribir el assembly con el XAML compilado así:
+
+           <IntermediateAssembly Update="*"
+               AvaloniaCompileOutput="%(RelativeDir)Avalonia\%(Filename)%(Extension)"/>
+
+       o sea, relativo a dónde está el item *en ese momento*. Después InjectAvaloniaXamlOutput
+       reemplaza el item por esa salida. En el build de Android eso ocurre dos veces, y la segunda
+       vuelta calcula la ruta sobre un item que ya vive en Avalonia/, dando Avalonia/Avalonia/…,
+       que no existe. El assembly de la app se cae del pipeline: no entra en los assets del APK ni
+       en lo que escanea GenerateJavaStubs, y el APK sale sin MainActivity.
+
+       Acá se vuelve a fijar la metadata a una ruta absoluta derivada de IntermediateOutputPath,
+       que no depende de dónde esté el item. Con eso la segunda pasada apunta al mismo lugar que
+       la primera en vez de anidar. Es un parche local: lo correcto sería que Avalonia la calcule
+       de forma idempotente aguas arriba. -->
+  <Target Name="_EasyRestFijarSalidaDeAvalonia" AfterTargets="PrepareToCompileAvaloniaXaml">
+    <PropertyGroup>
+      <_EasyRestAvaloniaDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/$(IntermediateOutputPath)Avalonia'))</_EasyRestAvaloniaDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <IntermediateAssembly Update="*"
+          AvaloniaCompileOutput="$(_EasyRestAvaloniaDir)/%(Filename)%(Extension)" />
+      <IntermediateRefAssembly Update="*"
+          AvaloniaCompileOutput="$(_EasyRestAvaloniaDir)/%(Filename)%(Extension)" />
+      <_DebugSymbolsIntermediatePath Update="*"
+          AvaloniaCompileOutput="$(_EasyRestAvaloniaDir)/%(Filename)%(Extension)" />
+    </ItemGroup>
+  </Target>
+
 </Project>
