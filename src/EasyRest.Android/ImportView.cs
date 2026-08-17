@@ -105,10 +105,10 @@ internal class ImportView : UserControl
         try
         {
             File.WriteAllText(temporal, texto);
-            var (colección, baseUrl) = OpenApiImporter.Import(temporal);
+            var (colección, baseUrl, variables) = OpenApiImporter.Import(temporal);
 
             Storage.SaveCollection(colección);
-            if (baseUrl != null) GuardarBaseUrl(colección.Name, baseUrl);
+            if (baseUrl != null) GuardarAmbiente(colección.Name, baseUrl, variables);
 
             _estado.Text = $"Importada «{colección.Name}» con {colección.AllRequests.Count()} requests" +
                            (baseUrl != null ? $" y el ambiente «{colección.Name}» con baseUrl." : ".");
@@ -129,9 +129,10 @@ internal class ImportView : UserControl
         }
     }
 
-    /// <summary>Mismo gesto que el escritorio: si el spec declara servers, el baseUrl queda en un
-    /// ambiente propio, porque las requests importadas lo usan como {{baseUrl}}.</summary>
-    static void GuardarBaseUrl(string nombre, string baseUrl)
+    /// <summary>Mismo gesto que el escritorio: si el spec declara servers, el baseUrl y las
+    /// variables del server quedan en un ambiente propio, porque las requests importadas los usan
+    /// como {{baseUrl}} y {{variable}}.</summary>
+    static void GuardarAmbiente(string nombre, string baseUrl, List<KeyValueItem> variables)
     {
         var ambientes = Storage.LoadEnvironments();
         var ambiente = ambientes.FirstOrDefault(a => a.Name == nombre);
@@ -141,11 +142,18 @@ internal class ImportView : UserControl
             ambientes.Add(ambiente);
         }
 
-        var variable = ambiente.Variables.FirstOrDefault(v => v.Key == "baseUrl");
-        if (variable == null) ambiente.Variables.Add(new KeyValueItem { Key = "baseUrl", Value = baseUrl });
-        else variable.Value = baseUrl;
+        Poner(ambiente, "baseUrl", baseUrl);
+        foreach (var variable in variables) Poner(ambiente, variable.Key, variable.Value);
 
         Storage.SaveEnvironments(ambientes);
+    }
+
+    /// <summary>No pisa lo que ya tenga valor: reimportar no te borra el tenant que configuraste.</summary>
+    static void Poner(EnvironmentModel ambiente, string clave, string valor)
+    {
+        var variable = ambiente.Variables.FirstOrDefault(v => v.Key == clave);
+        if (variable == null) ambiente.Variables.Add(new KeyValueItem { Key = clave, Value = valor });
+        else if (string.IsNullOrWhiteSpace(variable.Value)) variable.Value = valor;
     }
 
     void ImportarCurl()
