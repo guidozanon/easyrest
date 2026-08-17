@@ -281,15 +281,18 @@ jobs:
         shell: bash
         run: choco install innosetup -y --no-progress
 
+      # Ojo: este step va en pwsh a propósito. En Git Bash, MSYS2 traduce los argumentos que
+      # arrancan con `/` a rutas de Windows, así que ISCC recibía `C:/Program Files/Git/DAppVersion=...`
+      # en vez de `/DAppVersion=...` y fallaba con "You may not specify more than one script filename".
       - name: Armar installer (Windows)
         if: runner.os == 'Windows'
-        shell: bash
+        shell: pwsh
         run: |
-          "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" \
-            "/DAppVersion=$VERSION" \
-            '/DPayloadDir=..\publish\${{ matrix.name }}' \
-            build/easyrest.iss
-          ls -la dist/
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
+            "/DAppVersion=$env:VERSION" `
+            "/DPayloadDir=..\publish\${{ matrix.name }}" `
+            build\easyrest.iss
+          Get-ChildItem dist
 
       - name: Subir installer sin firmar (SignPath)
         id: upload-unsigned-setup
