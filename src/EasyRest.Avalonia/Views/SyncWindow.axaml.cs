@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using EasyRest.Services;
+using EasyRest.Services.Sync;
 
 namespace EasyRest.Avalonia.Views;
 
@@ -23,6 +24,19 @@ public partial class SyncWindow : Window
     async System.Threading.Tasks.Task Refresh()
     {
         WsName.Text = Storage.ActiveWorkspaceName;
+
+        // Un workspace puede sincronizar con el servidor de sync o con un repo git, y esta
+        // pantalla sólo sabía de git: contra un workspace del servidor decía "todavía no es un
+        // repositorio git" y encima dejaba el botón apagado — justo en el caso donde forzar una
+        // sincronización es lo más útil. La acción de sincronizar ya resolvía bien el backend;
+        // lo que estaba cableado a git era lo que se mostraba.
+        var atadura = SyncBinding.Load(Storage.SyncBindingFile);
+        ServerBtn.IsVisible = atadura.IsSet;
+        if (atadura.IsSet)
+        {
+            await RefreshServidor(atadura);
+            return;
+        }
 
         if (!GitService.IsAvailable())
         {
@@ -61,6 +75,39 @@ public partial class SyncWindow : Window
         SetState(true, null);
     }
 
+    /// <summary>El workspace sincroniza contra el servidor: se muestra a qué servidor y a qué
+    /// workspace remoto está atado, y cuánto falta subir.</summary>
+    async System.Threading.Tasks.Task RefreshServidor(SyncBinding atadura)
+    {
+        var cabecera = $"☁ {atadura.WorkspaceName}\nservidor: {atadura.ServerUrl}";
+
+        var sync = WorkspaceSyncResolver.For(Storage.WorkspaceRoot, Storage.SyncBindingFile,
+            Storage.SyncStateFile);
+        if (sync == null)
+        {
+            // hay atadura pero no sesión: no es "no sincroniza", es "volvé a entrar"
+            SetState(false, cabecera + "\n\nLa sesión con el servidor venció. Reconectate con " +
+                            "«Servidor de sync…» y volvé a sincronizar.");
+            return;
+        }
+
+        var estado = await sync.StatusAsync();
+        BranchInfo.Text = cabecera;
+
+        // el backend remoto informa cuántos archivos hay pendientes, no cuáles: la lista de
+        // archivos es propia de git. Mostrar el número es honesto; inventar una lista, no.
+        ChangesList.ItemsSource = null;
+        ChangesList.IsVisible = false;
+        var pendientes = estado?.PendingChanges ?? 0;
+        ChangesCount.Text = pendientes == 1 ? "1 archivo" : $"{pendientes} archivos";
+        EmptyHint.IsVisible = true;
+        EmptyHint.Text = pendientes == 0
+            ? "Todo lo local ya está en el servidor."
+            : $"{pendientes} archivo(s) con cambios locales sin subir.";
+
+        SetState(true, null);
+    }
+
     void SetState(bool canSync, string? message)
     {
         _canSync = canSync;
@@ -90,6 +137,15 @@ public partial class SyncWindow : Window
         ShowResult(true, "Sincronizando…");
         var r = await _main.SyncWorkspaceInteractive(this);
         ShowResult(r.Ok, r.Message);
+        await Refresh();
+        _main.RefreshGitStatus();
+    }
+
+    /// <summary>Sólo visible cuando el workspace está atado a un servidor: es donde se reconecta
+    /// la sesión vencida, que es el único motivo por el que este panel no puede sincronizar.</summary>
+    async void Server_Click(object? sender, RoutedEventArgs e)
+    {
+        await new SyncServerWindow(true).ShowDialog(this);
         await Refresh();
         _main.RefreshGitStatus();
     }
