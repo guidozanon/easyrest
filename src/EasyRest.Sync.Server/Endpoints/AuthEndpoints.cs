@@ -37,9 +37,16 @@ public static class AuthEndpoints
 
         // Paso 2: vuelve el IdP acá y nosotros devolvemos a la app su authorization code.
         app.MapGet("/api/v1/auth/callback", async (
-            string? code, string? state, string? error, AuthService auth, CancellationToken ct) =>
+            string? code, string? state, string? error, string? error_description,
+            AuthService auth, CancellationToken ct) =>
         {
-            if (!string.IsNullOrEmpty(error)) return Api.Invalid($"El IdP devolvió un error: {error}");
+            // El `error` solo es siempre genérico ("invalid_request"): lo que dice qué pasó es la
+            // descripción —ahí viajan los AADSTS de Entra y los mensajes de Google—, así que se
+            // muestra. Es la diferencia entre saber qué arreglar y probar a ciegas.
+            if (!string.IsNullOrEmpty(error))
+                return Api.Invalid(string.IsNullOrWhiteSpace(error_description)
+                    ? $"El IdP devolvió un error: {error}"
+                    : $"El IdP devolvió un error: {error} — {error_description}");
             if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(state))
                 return Api.Invalid("Faltan code o state.");
 
