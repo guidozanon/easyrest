@@ -69,10 +69,14 @@ La app se actualiza sola contra los Releases de GitHub. Al iniciar hace un chequ
 barra de estado. Si no hay ninguna, ese botón no está: que no se vea nada es la señal de que estás
 al día.
 
-El resto de las puertas de entrada están en el **menú ⋯ del sidebar** (el botón al lado del `+`,
-arriba de las colecciones): *Buscar actualizaciones…* y *Acerca de EasyRest*, que es donde se ve
-la versión instalada. Desde cualquiera de las tres se abre el panel de actualizaciones con las
-notas de la release y tres opciones:
+Para buscar a mano, **la versión instalada está abajo a la derecha, en la barra de estado**: se
+toca y abre *Acerca de EasyRest*, que tiene el botón *Buscar actualizaciones*. Es a propósito la
+única puerta manual — la barra de estado está siempre visible, mientras que el sidebar se puede
+ocultar con el toggle *◧ Colecciones*, y algo que se busca una vez cada tanto no puede vivir
+adentro de algo que se puede esconder.
+
+Desde cualquiera de las dos se abre el panel de actualizaciones con las notas de la release y tres
+opciones:
 descargar e instalar, omitir esa versión o cerrar. También se puede apagar el chequeo automático
 con el check *Buscar actualizaciones al iniciar*.
 
