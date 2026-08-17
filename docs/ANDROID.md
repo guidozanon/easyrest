@@ -54,7 +54,7 @@ plegadas no esconden resultados.
 | **Editor** | método, URL, query params, cabeceras, auth (heredada, Bearer, Basic, API key), cuerpo (JSON con formateo, texto o form) y los dos scripts |
 | **Respuesta** | estado, tiempo y tamaño; cuerpo (JSON indentado), cabeceras y tests en solapas; botón de copiar |
 | **Ambientes** | crear, renombrar, eliminar y editar variables, con el activo elegido desde la barra |
-| **Importar** | pegando: un OpenAPI (JSON o YAML) crea la colección entera; un cURL crea una request |
+| **Importar** | pegando: la **URL** de un OpenAPI (se baja sola), el documento entero (JSON o YAML), o un cURL para crear una request |
 | **Runner** | usuarios virtuales, iteraciones o duración, ramp-up y delay, con métricas en vivo |
 | **Sync** | conectarse a un servidor, elegir workspace y sincronizar |
 
