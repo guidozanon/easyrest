@@ -46,6 +46,42 @@ Y una que hace usable un workspace de verdad: **el buscador de la lista**. Con d
 importadas de un OpenAPI, bajar scrolleando no es una opción; mientras hay filtro, las carpetas
 plegadas no esconden resultados.
 
+## Qué se puede hacer
+
+| | |
+|---|---|
+| **Colecciones** | crear, renombrar y eliminar colecciones, carpetas y subcarpetas; duplicar y eliminar requests. El menú «⋯» de cada nodo es el click derecho del escritorio traducido a algo que se pueda tocar |
+| **Editor** | método, URL, query params, cabeceras, auth (heredada, Bearer, Basic, API key), cuerpo (JSON con formateo, texto o form) y los dos scripts |
+| **Respuesta** | estado, tiempo y tamaño; cuerpo (JSON indentado), cabeceras y tests en solapas; botón de copiar |
+| **Ambientes** | crear, renombrar, eliminar y editar variables, con el activo elegido desde la barra |
+| **Importar** | pegando: un OpenAPI (JSON o YAML) crea la colección entera; un cURL crea una request |
+| **Runner** | usuarios virtuales, iteraciones o duración, ramp-up y delay, con métricas en vivo |
+| **Sync** | conectarse a un servidor, elegir workspace y sincronizar |
+
+Todo se apoya en el Core: el importador, el parser de cURL y el motor del runner son los mismos
+que usa el escritorio. La app de Android es pantalla, no una segunda implementación.
+
+### Variables secretas
+
+Una variable de ambiente se puede marcar como secreta y su valor va enmascarado, con un botón
+para revelarlo. **No es cifrado**: en el disco del teléfono sigue en claro, igual que en el
+escritorio. Lo que resuelve es mostrar la pantalla en una reunión o en el subte sin exponer un
+token.
+
+La marca se guarda como `secretKeys`, el mismo nombre que usa el documento de ambiente que viaja
+al servidor de sync (`Services/Sync/EnvironmentDocument`). Es a propósito: hoy la app todavía no
+sincroniza ambientes —falta la pieza del lado del cliente, ver [SYNC.md](SYNC.md#límites-conocidos)—
+y cuando la tenga, lo que hay que cifrar ya está expresado y no hay que migrar nada.
+
+### Runner: qué mide
+
+Correr carga desde un teléfono **mide también al teléfono y a su red**. Sirve para ver cómo
+responde un servicio desde afuera, no para sacar números de capacidad.
+
+No trae el gráfico temporal ni la comparación de corridas: en una pantalla de teléfono el gráfico
+es decorado y comparar dos corridas se hace sentado. Las corridas **se guardan**, así que la
+comparación queda disponible desde el escritorio.
+
 ## Login: hace falta habilitar el esquema en el server
 
 En el escritorio el redirect de OAuth vuelve por un puerto local; en el teléfono vuelve por un

@@ -60,7 +60,7 @@ public class ShellView : UserControl
 
     public ShellView()
     {
-        _lista = new CollectionListView(AbrirRequest);
+        _lista = new CollectionListView(AbrirRequest, MenúDeNodo, NuevaColección);
 
         _atrás.Click += (_, _) => VolverALista();
 
@@ -84,7 +84,13 @@ public class ShellView : UserControl
         DockPanel.SetDock(encabezado, Dock.Top);
         raíz.Children.Add(encabezado);
         raíz.Children.Add(cuerpo);
-        Content = raíz;
+
+        // los diálogos van encima de todo: en móvil no hay ventanas, así que preguntar algo es
+        // pintar una capa sobre la app
+        var capa = new Grid { IsVisible = false };
+        Dialogo.Instalar(capa);
+
+        Content = new Grid { Children = { raíz, capa } };
 
         Recargar();
         VolverALista();
@@ -102,6 +108,8 @@ public class ShellView : UserControl
 
         var acciones = Ui.Barra(
             Ui.AccionAsync("Sincronizar", SincronizarAsync),
+            Ui.Accion("Ambientes", AbrirAmbientes),
+            Ui.Accion("Importar", AbrirImportar),
             Ui.Accion("Servidor…", MostrarConexión),
             Ui.Accion("Diagnóstico", () => Abrir("Diagnóstico", new SpikeView())));
 
@@ -195,6 +203,199 @@ public class ShellView : UserControl
         MostrarEstadoDeSync();
         AplicarLayout(Bounds.Width);
     }
+
+    // ----- Crear, renombrar, borrar -----
+    //
+    // El árbol avisa qué nodo se tocó y acá se decide: la lista no escribe ni en el modelo ni en
+    // el disco. Cada cambio se guarda en el acto —crear una carpeta y que no quede es peor que
+    // no poder crearla— salvo lo que se edita dentro de una request, que tiene su propio botón.
+
+    void MenúDeNodo(Nodo nodo)
+    {
+        if (nodo.Request is { } request)
+        {
+            Dialogo.Opciones(request.Name,
+                ("Abrir", () => AbrirRequest(request, nodo.Colección)),
+                ("Correr carga…", () => AbrirRunner(nodo.Colección, new List<RequestItem> { request }, request.Name)),
+                ("Duplicar", () => Duplicar(nodo, request)),
+                ("Renombrar", () => Renombrar(nodo)),
+                ("Eliminar", () => Eliminar(nodo)));
+            return;
+        }
+
+        if (nodo.Carpeta is { } carpeta)
+        {
+            Dialogo.Opciones(carpeta.Name,
+                ("Nueva request", () => NuevaRequest(nodo.Colección, carpeta)),
+                ("Nueva subcarpeta", () => NuevaCarpeta(nodo.Colección, carpeta)),
+                ("Renombrar", () => Renombrar(nodo)),
+                ("Eliminar", () => Eliminar(nodo)));
+            return;
+        }
+
+        Dialogo.Opciones(nodo.Colección.Name,
+            ("Nueva request", () => NuevaRequest(nodo.Colección, null)),
+            ("Nueva carpeta", () => NuevaCarpeta(nodo.Colección, null)),
+            ("Correr carga…", () => AbrirRunner(nodo.Colección, nodo.Colección.AllRequests.ToList(),
+                "(todas las requests)")),
+            ("Renombrar", () => Renombrar(nodo)),
+            ("Eliminar", () => Eliminar(nodo)));
+    }
+
+    void NuevaColección() => Dialogo.Texto("Nueva colección", "", "nombre", nombre =>
+    {
+        var colección = new RequestCollection { Name = nombre };
+        _colecciones.Add(colección);
+        GuardarYRefrescar(colección);
+    });
+
+    void NuevaRequest(RequestCollection colección, Folder? carpeta) =>
+        Dialogo.Texto("Nueva request", "", "nombre", nombre =>
+        {
+            var request = new RequestItem { Name = nombre };
+            (carpeta?.Requests ?? colección.Requests).Add(request);
+            GuardarYRefrescar(colección);
+            AbrirRequest(request, colección);
+        });
+
+    void NuevaCarpeta(RequestCollection colección, Folder? padre) =>
+        Dialogo.Texto("Nueva carpeta", "", "nombre", nombre =>
+        {
+            (padre?.Folders ?? colección.Folders).Add(new Folder { Name = nombre });
+            GuardarYRefrescar(colección);
+        });
+
+    void Renombrar(Nodo nodo)
+    {
+        var actual = nodo.Request?.Name ?? nodo.Carpeta?.Name ?? nodo.Colección.Name;
+        Dialogo.Texto("Renombrar", actual, "nombre", nombre =>
+        {
+            if (nodo.Request is { } request) request.Name = nombre;
+            else if (nodo.Carpeta is { } carpeta) carpeta.Name = nombre;
+            else nodo.Colección.Name = nombre;
+
+            GuardarYRefrescar(nodo.Colección);
+            if (nodo.Request != null && _mostrandoDetalle) _titulo.Text = nombre;
+        });
+    }
+
+    void Duplicar(Nodo nodo, RequestItem request)
+    {
+        var copia = Clonar(request);
+        (nodo.Carpeta?.Requests ?? nodo.Colección.Requests).Add(copia);
+        GuardarYRefrescar(nodo.Colección);
+    }
+
+    void Eliminar(Nodo nodo)
+    {
+        var qué = nodo.Request?.Name ?? nodo.Carpeta?.Name ?? nodo.Colección.Name;
+        var detalle = nodo.Request != null ? "Se borra la request."
+            : nodo.Carpeta != null ? "Se borra la carpeta con todo lo que tenga adentro."
+            : "Se borra la colección entera, con sus carpetas y requests.";
+
+        Dialogo.Confirmar($"Eliminar «{qué}»", detalle + " No se puede deshacer.", "Eliminar", () =>
+        {
+            if (nodo.Request is { } request)
+            {
+                (nodo.Carpeta?.Requests ?? nodo.Colección.Requests).Remove(request);
+                GuardarYRefrescar(nodo.Colección);
+            }
+            else if (nodo.Carpeta is { } carpeta)
+            {
+                QuitarCarpeta(nodo.Colección, carpeta);
+                GuardarYRefrescar(nodo.Colección);
+            }
+            else
+            {
+                Storage.DeleteCollection(nodo.Colección);
+                _colecciones.Remove(nodo.Colección);
+                _lista.Cargar(_colecciones);
+            }
+
+            // el detalle puede estar mostrando justo lo que se borró
+            if (_mostrandoDetalle) VolverALista();
+        });
+    }
+
+    /// <summary>La carpeta puede estar a cualquier profundidad y el nodo no trae a su padre: se
+    /// busca. Se materializa la lista antes de tocar nada, porque AllFolders recorre el árbol en
+    /// vivo y quitar mientras se enumera revienta.</summary>
+    static void QuitarCarpeta(RequestCollection colección, Folder objetivo)
+    {
+        if (colección.Folders.Remove(objetivo)) return;
+        foreach (var carpeta in colección.AllFolders.ToList())
+            if (carpeta.Folders.Remove(objetivo)) return;
+    }
+
+    /// <summary>Copia a mano y no por serialización: el head corre con el trimming del SDK y el
+    /// serializador resuelve por reflexión, que es justo lo que ahí se rompe en silencio.</summary>
+    static RequestItem Clonar(RequestItem original)
+    {
+        var copia = new RequestItem
+        {
+            Name = original.Name + " (copia)",
+            Method = original.Method,
+            Url = original.Url,
+            Description = original.Description,
+            PreRequestScript = original.PreRequestScript,
+            TestScript = original.TestScript
+        };
+
+        copia.Auth.Type = original.Auth.Type;
+        copia.Auth.BearerToken = original.Auth.BearerToken;
+        copia.Auth.Username = original.Auth.Username;
+        copia.Auth.Password = original.Auth.Password;
+        copia.Auth.ApiKeyName = original.Auth.ApiKeyName;
+        copia.Auth.ApiKeyValue = original.Auth.ApiKeyValue;
+        copia.Auth.ApiKeyIn = original.Auth.ApiKeyIn;
+
+        copia.Body.Type = original.Body.Type;
+        copia.Body.Raw = original.Body.Raw;
+
+        foreach (var item in original.Body.FormItems) copia.Body.FormItems.Add(Clonar(item));
+        foreach (var item in original.Headers) copia.Headers.Add(Clonar(item));
+        foreach (var item in original.QueryParams) copia.QueryParams.Add(Clonar(item));
+        return copia;
+    }
+
+    static KeyValueItem Clonar(KeyValueItem item) =>
+        new() { Enabled = item.Enabled, Key = item.Key, Value = item.Value };
+
+    void GuardarYRefrescar(RequestCollection colección)
+    {
+        try
+        {
+            Storage.SaveCollection(colección);
+            _lista.Cargar(_colecciones);
+        }
+        catch (Exception ex)
+        {
+            _estado.Text = $"No se pudo guardar: {ex.Message}";
+        }
+    }
+
+    // ----- Otras pantallas -----
+
+    void AbrirAmbientes() => Abrir("Ambientes", new EnvironmentsView(_ambientes, _ambiente, () =>
+    {
+        // el selector de la barra y el ambiente con el que se manda tienen que seguir al editor
+        var activo = Storage.GetActiveEnvironmentId();
+        _ambiente = _ambientes.FirstOrDefault(a => a.Id == activo) ?? _ambientes.FirstOrDefault();
+        _selectorAmbiente.ItemsSource = null;
+        _selectorAmbiente.ItemsSource = _ambientes;
+        _selectorAmbiente.SelectedItem = _ambiente;
+        _selectorAmbiente.IsVisible = _ambientes.Count > 0;
+    }));
+
+    void AbrirImportar() => Abrir("Importar", new ImportView(() => _colecciones, colección =>
+    {
+        // puede ser una colección nueva o una que ya estaba (un cURL agregado adentro)
+        if (!_colecciones.Contains(colección)) _colecciones.Add(colección);
+        _lista.Cargar(_colecciones);
+    }));
+
+    void AbrirRunner(RequestCollection colección, List<RequestItem> requests, string etiqueta) =>
+        Abrir("Runner", new RunnerView(colección, requests, etiqueta, () => _ambiente));
 
     // ----- Datos -----
 
