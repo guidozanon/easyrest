@@ -1,0 +1,38 @@
+# Servidor de sync en Fly.io. Ver docs/DEPLOY.md.
+# El nombre y la región los completa `fly launch`; el volumen se crea aparte:
+#   fly volumes create easyrest_data --size 1
+
+app = "easyrest-sync"
+primary_region = "eze"
+
+[build]
+  dockerfile = "src/EasyRest.Sync.Server/Dockerfile"
+
+[env]
+  # Fly termina el TLS en su proxy: la request llega al contenedor como http.
+  Server__BehindProxy = "true"
+  ConnectionStrings__Default = "Data Source=/data/easyrest-sync.db"
+
+# La base es un archivo en el volumen, así que corre una sola máquina: la asignación de
+# secuencia se serializa en memoria y dos réplicas romperían el orden de los cambios.
+[mounts]
+  source = "easyrest_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/health"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

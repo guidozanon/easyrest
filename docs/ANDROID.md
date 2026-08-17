@@ -7,9 +7,80 @@ La app abre en la lista de colecciones. Tocar una request abre el editor, que ma
 el `HttpExecutor` del Core y corre los scripts con Jint. La pantalla de diagnóstico del spike sigue
 disponible desde el botón «Diagnóstico».
 
-**El editor no guarda.** En el teléfono se corren requests que ya existen, no se arman: lo que se
-edita vale para esa corrida y no vuelve al disco ni al server. Así no hay forma de romper sin
-querer una colección compartida desde el colectivo.
+**El editor edita y guarda.** Método, URL, query params, cabeceras, autenticación, cuerpo (JSON,
+texto o form) y los dos scripts. Los cambios se escriben sobre el mismo modelo que muestra el
+árbol —igual que en el escritorio, así que se ven en el acto— y llegan al disco con el botón
+**Guardar**; de ahí al equipo, con **Sincronizar**. Guardar es un botón y no un efecto de escribir
+justamente porque la colección es compartida: un roce en el colectivo no tiene por qué terminar en
+el repo de todos.
+
+> Antes el editor era de sólo lectura a propósito. Se cambió cuando el móvil dejó de ser un spike
+> de diagnóstico: con el servidor de sync andando hay respaldo e historial, que es lo que faltaba
+> para que editar desde el teléfono no fuera un riesgo.
+
+## Layout adaptativo: teléfono, tablet y fold
+
+El layout lo decide **el ancho disponible**, no el tipo de aparato. Un fold desplegado, un teléfono
+en horizontal y una ventana en multiventana son el mismo problema, y el ancho es lo único que lo
+describe bien:
+
+| Ancho | Qué se ve |
+|---|---|
+| < 600 dip | Una columna: la lista, y el detalle la reemplaza con botón de volver |
+| ≥ 600 dip | Lista fija a la izquierda (300 dip) y detalle al lado, sin navegar |
+| ≥ 900 dip | Igual, con la lista un poco más ancha (360 dip) |
+
+600 es el corte con el que Android define "pantalla grande"; coincide con cualquier tablet y con un
+fold desplegado.
+
+Dos decisiones que hacen que el fold no moleste:
+
+- **Las dos vistas viven siempre.** Cambiar de modo sólo toca el ancho de las columnas y la
+  visibilidad, así que plegar y desplegar no reconstruye nada ni pierde lo que estabas escribiendo.
+- **La actividad declara los cambios de configuración** (`ScreenLayout` y `SmallestScreenSize`
+  además de los de siempre, en `MainActivity`). Sin eso Android recrea la actividad al desplegar
+  —la pantalla no rota, cambia de tamaño— y se pierde la request abierta. El manifiesto además
+  declara `resizeableActivity` explícito, para multiventana.
+
+Y una que hace usable un workspace de verdad: **el buscador de la lista**. Con doscientas requests
+importadas de un OpenAPI, bajar scrolleando no es una opción; mientras hay filtro, las carpetas
+plegadas no esconden resultados.
+
+## Qué se puede hacer
+
+| | |
+|---|---|
+| **Colecciones** | crear, renombrar y eliminar colecciones, carpetas y subcarpetas; duplicar y eliminar requests. El menú «⋯» de cada nodo es el click derecho del escritorio traducido a algo que se pueda tocar |
+| **Editor** | método, URL, query params, cabeceras, auth (heredada, Bearer, Basic, API key), cuerpo (JSON con formateo, texto o form) y los dos scripts |
+| **Respuesta** | estado, tiempo y tamaño; cuerpo (JSON indentado), cabeceras y tests en solapas; botón de copiar |
+| **Ambientes** | crear, renombrar, eliminar y editar variables, con el activo elegido desde la barra |
+| **Importar** | pegando: un OpenAPI (JSON o YAML) crea la colección entera; un cURL crea una request |
+| **Runner** | usuarios virtuales, iteraciones o duración, ramp-up y delay, con métricas en vivo |
+| **Sync** | conectarse a un servidor, elegir workspace y sincronizar |
+
+Todo se apoya en el Core: el importador, el parser de cURL y el motor del runner son los mismos
+que usa el escritorio. La app de Android es pantalla, no una segunda implementación.
+
+### Variables secretas
+
+Una variable de ambiente se puede marcar como secreta y su valor va enmascarado, con un botón
+para revelarlo. **No es cifrado**: en el disco del teléfono sigue en claro, igual que en el
+escritorio. Lo que resuelve es mostrar la pantalla en una reunión o en el subte sin exponer un
+token.
+
+La marca se guarda como `secretKeys`, el mismo nombre que usa el documento de ambiente que viaja
+al servidor de sync (`Services/Sync/EnvironmentDocument`). Es a propósito: hoy la app todavía no
+sincroniza ambientes —falta la pieza del lado del cliente, ver [SYNC.md](SYNC.md#límites-conocidos)—
+y cuando la tenga, lo que hay que cifrar ya está expresado y no hay que migrar nada.
+
+### Runner: qué mide
+
+Correr carga desde un teléfono **mide también al teléfono y a su red**. Sirve para ver cómo
+responde un servicio desde afuera, no para sacar números de capacidad.
+
+No trae el gráfico temporal ni la comparación de corridas: en una pantalla de teléfono el gráfico
+es decorado y comparar dos corridas se hace sentado. Las corridas **se guardan**, así que la
+comparación queda disponible desde el escritorio.
 
 ## Login: hace falta habilitar el esquema en el server
 

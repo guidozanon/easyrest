@@ -59,6 +59,7 @@ public partial class MainWindow : Window
         RequestTabs.SelectionChanged += (_, _) => PersistUiState();
 
         UpdateStatusEnv();
+        VersionBtn.Content = "v" + UpdateService.CurrentVersion;
         Opened += (_, _) => { RefreshGitStatus(); CheckUpdatesSilently(); };
         Closing += OnClosing;
 
@@ -516,14 +517,13 @@ public partial class MainWindow : Window
         import.Click += ImportOpenApi_Click;
         var newCol = new MenuItem { Header = "Nueva colección" };
         newCol.Click += NewCollection_Click;
-        var updates = new MenuItem { Header = "Buscar actualizaciones…" };
-        updates.Click += Updates_Click;
         menu.Items.Add(import);
         menu.Items.Add(newCol);
-        menu.Items.Add(new Separator());
-        menu.Items.Add(updates);
         menu.Open(sender as Control);
     }
+
+    async void About_Click(object? sender, RoutedEventArgs e) =>
+        await new AboutWindow().ShowDialog(this);
 
     // ----- Actualizaciones -----
 
@@ -560,9 +560,10 @@ public partial class MainWindow : Window
         UpdateBtn.IsVisible = true;
     }
 
+    /// <summary>El aviso de la barra de estado, que sólo aparece cuando ya sabemos que hay una
+    /// versión nueva. Buscar a mano se hace desde Acerca de, que se abre con la versión de la
+    /// misma barra: son dos puertas al mismo panel y ninguna vive dentro del sidebar.</summary>
     async void Update_Click(object? sender, RoutedEventArgs e) => await OpenUpdates(_pendingUpdate);
-
-    async void Updates_Click(object? sender, RoutedEventArgs e) => await OpenUpdates(null);
 
     async Task OpenUpdates(UpdateInfo? preloaded)
     {

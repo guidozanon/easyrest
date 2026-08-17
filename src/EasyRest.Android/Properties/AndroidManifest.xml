@@ -5,8 +5,12 @@
 
   <!-- El tema tiene que ser descendiente de Theme.AppCompat: la actividad de Avalonia hereda de
        AppCompatActivity y con un tema de la plataforma revienta al abrir. Ver Resources/values. -->
+  <!-- resizeableActivity va explícito aunque el default para targetSdk 24+ sea true: es lo que
+       habilita multiventana y el redimensionado de un fold, y dejarlo escrito evita que un
+       cambio de target lo apague sin que nadie se entere. -->
   <application android:label="EasyRest"
                android:icon="@mipmap/appicon"
                android:theme="@style/EasyRestTheme"
+               android:resizeableActivity="true"
                android:usesCleartextTraffic="true" />
 </manifest>

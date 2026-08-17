@@ -21,6 +21,8 @@
         <StackPanel DockPanel.Dock="Bottom" Spacing="10" Margin="0,12,0,0">
             <TextBlock x:Name="ResultText" TextWrapping="Wrap" FontSize="12" IsVisible="False"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <!-- sólo aparece si el workspace está atado a un servidor de sync -->
+                <Button x:Name="ServerBtn" Content="Servidor de sync…" IsVisible="False" Click="Server_Click"/>
                 <Button Content="Cerrar" MinWidth="90" Click="Close_Click"/>
                 <Button x:Name="SyncBtn" Content="⇅ Sincronizar ahora" Classes="accent" Click="Sync_Click"/>
             </StackPanel>

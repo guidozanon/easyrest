@@ -23,9 +23,11 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build /app .
 
-# La base y su carpeta son del usuario no root que corre la app
+# La base y su carpeta son del usuario no root que corre la app. El montaje de /data lo declara
+# quien corre la imagen —el compose, el volumen de Railway, el -v de docker run—: `VOLUME` acá no
+# agregaría nada (salvo volúmenes anónimos si nadie monta) y hay plataformas que rechazan la
+# imagen por tenerlo.
 RUN mkdir -p /data && chown -R $APP_UID:$APP_UID /data
-VOLUME /data
 USER $APP_UID
 
 ENV ASPNETCORE_URLS=http://+:8080

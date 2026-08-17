@@ -8,8 +8,10 @@ Cliente HTTP de escritorio estilo Postman/Bruno. .NET 8.
   git, sync, logs, runner). **Sin dependencias de UI**: es la base compartida.
 - `src/EasyRest.Avalonia` — la app multiplataforma (Windows/macOS/Linux) sobre el Core.
 - `src/EasyRest.Sync.Server` — servidor de sync self-hosted, opcional. Ver
-  [docs/SYNC.md](docs/SYNC.md) y, para instalarlo en Linux, [docs/INSTALL.md](docs/INSTALL.md).
-- `src/EasyRest.Android` — spike: head de Android sobre el mismo Core, para evaluar el móvil.
+  [docs/SYNC.md](docs/SYNC.md) y, para instalarlo, [docs/INSTALL.md](docs/INSTALL.md) (Linux) o
+  [docs/DEPLOY.md](docs/DEPLOY.md) (Railway, Fly, cualquier VPS con Docker).
+- `src/EasyRest.Android` — head de Android sobre el mismo Core: colecciones con buscador, editor
+  completo de requests y sync, con layout adaptativo para teléfono, tablet y fold.
   Ver [docs/ANDROID.md](docs/ANDROID.md).
 
 ## Ejecutar
@@ -64,8 +66,17 @@ reputación: *Más información → Ejecutar de todas formas*.
 
 La app se actualiza sola contra los Releases de GitHub. Al iniciar hace un chequeo silencioso
 (como máximo una vez cada 20 h) y, si hay una versión nueva, aparece **⬆ vX.Y.Z disponible** en la
-barra de estado. Desde ahí (o desde el menú ⋯ del sidebar → *Buscar actualizaciones…*, o *Acerca de
-EasyRest*) se abre el panel de actualizaciones con las notas de la release y tres opciones:
+barra de estado. Si no hay ninguna, ese botón no está: que no se vea nada es la señal de que estás
+al día.
+
+Para buscar a mano, **la versión instalada está abajo a la derecha, en la barra de estado**: se
+toca y abre *Acerca de EasyRest*, que tiene el botón *Buscar actualizaciones*. Es a propósito la
+única puerta manual — la barra de estado está siempre visible, mientras que el sidebar se puede
+ocultar con el toggle *◧ Colecciones*, y algo que se busca una vez cada tanto no puede vivir
+adentro de algo que se puede esconder.
+
+Desde cualquiera de las dos se abre el panel de actualizaciones con las notas de la release y tres
+opciones:
 descargar e instalar, omitir esa versión o cerrar. También se puede apagar el chequeo automático
 con el check *Buscar actualizaciones al iniciar*.
 

@@ -177,6 +177,25 @@ public class EnvironmentModel : Observable
     public string Name { get => _name; set => Set(ref _name, value); }
     public ObservableCollection<KeyValueItem> Variables { get; set; } = new();
 
+    /// <summary>Claves de <see cref="Variables"/> cuyo valor es secreto: no se muestran en
+    /// pantalla salvo que se pidan, y son las que el servidor de sync cifra aparte.
+    ///
+    /// El nombre JSON es el mismo que usa el documento de ambiente que viaja al server
+    /// (<c>secretKeys</c>, ver Services/Sync/EnvironmentDocument), a propósito: son la misma
+    /// idea y así el día que la app sincronice ambientes no hay que migrar nada.</summary>
+    [JsonPropertyName("secretKeys")]
+    public List<string> SecretKeys { get; set; } = new();
+
+    /// <summary>Si el valor de esa clave no se muestra en claro.</summary>
+    public bool IsSecret(string key) =>
+        SecretKeys.Any(k => string.Equals(k, key, StringComparison.Ordinal));
+
+    public void SetSecret(string key, bool secret)
+    {
+        SecretKeys.RemoveAll(k => string.Equals(k, key, StringComparison.Ordinal));
+        if (secret && !string.IsNullOrWhiteSpace(key)) SecretKeys.Add(key);
+    }
+
     public override string ToString() => Name;
 }
 
