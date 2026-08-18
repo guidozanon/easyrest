@@ -88,7 +88,8 @@ internal static class Ui
         FontSize = 17,
         FontWeight = FontWeight.SemiBold,
         Foreground = Normal,
-        VerticalAlignment = VerticalAlignment.Center
+        VerticalAlignment = VerticalAlignment.Center,
+        TextTrimming = TextTrimming.CharacterEllipsis
     };
 
     public static TextBlock Parrafo(string texto, IBrush? color = null, double tamaño = 13) => new()
@@ -140,17 +141,37 @@ internal static class Ui
         VerticalAlignment = VerticalAlignment.Center
     };
 
-    /// <summary>Un ícono que va pegado a un texto, en la misma línea.
+    /// <summary>Un ícono que acompaña a un texto y se sube apenas.
     ///
-    /// Centrar las dos cajas no alcanza: la del texto incluye el espacio del descendente, así que
-    /// las letras se apoyan arriba de su propio centro y el ícono, centrado de verdad, queda bajo.
-    /// El margen de abajo lo sube la mitad — es la corrección óptica de siempre, y es lo que hace
-    /// que el chevron del método y el del ambiente dejen de verse caídos.</summary>
+    /// Centrar las dos cajas deja el ícono un pelo bajo respecto de las letras, porque la caja del
+    /// texto reserva lugar para el descendente. El margen de abajo lo sube la mitad de eso.
+    ///
+    /// No va en todos lados: en los dos chevrones de desplegable —el del método y el del ambiente—
+    /// esta corrección los dejaba altos, así que ahí se usa <see cref="Icono"/> pelado. La
+    /// diferencia es de un píxel y se decide mirando, no calculando.</summary>
     public static Forma IconoDeTexto(Geometry geometria, double tamaño, IBrush color)
     {
         var icono = Icono(geometria, tamaño, color);
         icono.Margin = new Thickness(0, 0, 0, 3);
         return icono;
+    }
+
+    /// <summary>Una línea donde lo último ocupa lo que sobra.
+    ///
+    /// Un StackPanel horizontal no sirve para esto: mide a sus hijos con ancho infinito, así que
+    /// un TextBlock con puntos suspensivos nunca se entera de que no entra y se dibuja encima de
+    /// lo que tenga al lado. Era lo que hacía que el nombre de una request larga se metiera abajo
+    /// del selector de ambiente.</summary>
+    public static DockPanel Linea(Control relleno, params Control[] fijos)
+    {
+        var linea = new DockPanel { LastChildFill = true };
+        foreach (var fijo in fijos)
+        {
+            DockPanel.SetDock(fijo, Dock.Left);
+            linea.Children.Add(fijo);
+        }
+        linea.Children.Add(relleno);
+        return linea;
     }
 
     // ----- Botones -----

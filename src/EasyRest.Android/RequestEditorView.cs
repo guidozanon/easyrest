@@ -153,7 +153,7 @@ internal class RequestEditorView : UserControl
                     Foreground = new SolidColorBrush(color),
                     VerticalAlignment = VerticalAlignment.Center
                 },
-                Ui.IconoDeTexto(Iconos.ChevronAbajo, 12, new SolidColorBrush(color))
+                Ui.Icono(Iconos.ChevronAbajo, 12, new SolidColorBrush(color))
             }
         };
     }

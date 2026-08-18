@@ -91,13 +91,8 @@ internal class ImportView : UserControl
         };
 
         var atrás = Ui.BotonIcono(Iconos.Atras, alVolver, Ui.Normal);
-        var titulo = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 4,
-            VerticalAlignment = VerticalAlignment.Center,
-            Children = { atrás, Ui.Titulo("Importar") }
-        };
+        var titulo = Ui.Linea(Ui.Titulo("Importar"), atrás);
+        titulo.VerticalAlignment = VerticalAlignment.Center;
 
         var raíz = new DockPanel();
         var encabezado = Ui.Encabezado(titulo);

@@ -152,13 +152,9 @@ public class ShellView : UserControl
 
     Control Encabezado()
     {
-        var izquierda = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            VerticalAlignment = VerticalAlignment.Center,
-            Children = { _atrás, _colapsar, _rayo, _titulo }
-        };
+        _rayo.Margin = new Thickness(4, 0, 8, 0);
+        var izquierda = Ui.Linea(_titulo, _atrás, _colapsar, _rayo);
+        izquierda.VerticalAlignment = VerticalAlignment.Center;
 
         PintarChip();
         return Ui.Encabezado(izquierda, _chipAmbiente);
@@ -196,7 +192,7 @@ public class ShellView : UserControl
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center
         });
-        contenido.Children.Add(Ui.IconoDeTexto(Iconos.ChevronAbajo, 12, Ui.Tenue));
+        contenido.Children.Add(Ui.Icono(Iconos.ChevronAbajo, 12, Ui.Tenue));
 
         _chipAmbiente.Content = contenido;
         _chipAmbiente.Background = Ui.Superficie;
@@ -653,13 +649,8 @@ public class ShellView : UserControl
     void MostrarEnMas(string título, Control vista)
     {
         var atrás = Ui.BotonIcono(Iconos.Atras, VolverAMas, Ui.Normal);
-        var izquierda = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 4,
-            VerticalAlignment = VerticalAlignment.Center,
-            Children = { atrás, Ui.Titulo(título) }
-        };
+        var izquierda = Ui.Linea(Ui.Titulo(título), atrás);
+        izquierda.VerticalAlignment = VerticalAlignment.Center;
 
         var raíz = new DockPanel();
         var encabezado = Ui.Encabezado(izquierda);

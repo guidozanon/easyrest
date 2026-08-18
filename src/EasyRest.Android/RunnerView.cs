@@ -112,12 +112,7 @@ internal class RunnerView : UserControl
 
         var izquierda = alVolver == null
             ? (Control)titulo
-            : new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 4,
-                Children = { Ui.BotonIcono(Iconos.Atras, alVolver, Ui.Normal), titulo }
-            };
+            : Ui.Linea(titulo, Ui.BotonIcono(Iconos.Atras, alVolver, Ui.Normal));
 
         var pie = new Border
         {
