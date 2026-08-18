@@ -17,9 +17,12 @@ internal record Nodo(RequestCollection Colección, Folder? Carpeta, RequestItem?
 /// <summary>El árbol de colecciones: el panel izquierdo en tablet y fold desplegado, la pantalla
 /// de entrada en teléfono.
 ///
-/// Carpetas plegables, un buscador arriba y un menú «⋯» por nodo. El buscador es lo que hace
-/// usable un workspace real desde un teléfono: con doscientas requests importadas de un OpenAPI,
-/// bajar scrolleando no es una opción, y escribir tres letras sí. Mientras hay filtro se muestra
+/// Cada request es una fila de 60 px con su método en color —GET azul, POST verde, PUT durazno,
+/// DELETE rojo— y la URL abajo en monoespaciada. El color del método es lo que hace que una lista
+/// de doscientas se lea de un vistazo; antes eran todas tarjetas grises iguales.
+///
+/// El buscador es lo que hace usable un workspace real desde un teléfono: con doscientas requests
+/// importadas de un OpenAPI, bajar scrolleando no es una opción. Mientras hay filtro se muestra
 /// todo lo que coincide sin respetar el plegado, porque esconder un resultado detrás de una
 /// carpeta cerrada haría que la búsqueda parezca rota.
 ///
@@ -28,8 +31,11 @@ internal class CollectionListView : UserControl
 {
     readonly Action<RequestItem, RequestCollection> _alElegir;
     readonly Action<Nodo> _alMenu;
-    readonly StackPanel _lista = new() { Spacing = 4, Margin = new Thickness(10, 0, 10, 14) };
+    readonly StackPanel _lista = new();
     readonly TextBox _busqueda;
+    readonly Border _fondo;
+    readonly Border _banda;
+    readonly Button _nueva;
     readonly Dictionary<RequestItem, Border> _filas = new();
 
     List<RequestCollection> _colecciones = new();
@@ -44,21 +50,66 @@ internal class CollectionListView : UserControl
         _busqueda = Ui.Campo("", "Buscar request…");
         _busqueda.TextChanged += (_, _) => Redibujar();
 
-        var nueva = Ui.Accion("+", alNuevaColección);
-        nueva.MinWidth = Ui.Toque;
+        var lupa = Ui.Icono(Iconos.Buscar, 16, Ui.Tenue);
+        lupa.Margin = new Thickness(12, 0, 0, 0);
+        var buscador = new Grid();
+        buscador.Children.Add(_busqueda);
+        buscador.Children.Add(lupa);
+        _busqueda.Padding = new Thickness(38, 4, 12, 4);
+        lupa.HorizontalAlignment = HorizontalAlignment.Left;
 
-        var barra = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(10, 0, 10, 8) };
-        Grid.SetColumn(_busqueda, 0);
-        Grid.SetColumn(nueva, 1);
-        nueva.Margin = new Thickness(8, 0, 0, 0);
-        barra.Children.Add(_busqueda);
-        barra.Children.Add(nueva);
+        var barra = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        _nueva = Ui.BotonIcono(Iconos.Mas, alNuevaColección, Ui.Normal, Ui.Superficie);
+        _nueva.Margin = new Thickness(8, 0, 0, 0);
+        Grid.SetColumn(buscador, 0);
+        Grid.SetColumn(_nueva, 1);
+        barra.Children.Add(buscador);
+        barra.Children.Add(_nueva);
+
+        // el buscador va sobre el color del panel y con el mismo borde de abajo que el encabezado
+        // del shell: así los dos se leen como un solo bloque fijo arriba de la lista
+        _banda = new Border
+        {
+            Background = Ui.Panel,
+            BorderBrush = Ui.Superficie,
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Child = barra
+        };
 
         var raíz = new DockPanel();
-        DockPanel.SetDock(barra, Dock.Top);
-        raíz.Children.Add(barra);
+        DockPanel.SetDock(_banda, Dock.Top);
+        raíz.Children.Add(_banda);
         raíz.Children.Add(new ScrollViewer { Content = _lista });
-        Content = raíz;
+
+        _fondo = new Border { Child = raíz };
+        ModoPanel(false);
+        Content = _fondo;
+    }
+
+    /// <summary>Con dos paneles la lista es una columna propia y se pinta entera del color del
+    /// panel, con su línea a la derecha: así se lee como el panel lateral del escritorio. En una
+    /// columna la lista es la pantalla, va sobre el fondo, y lo único pintado es la banda del
+    /// buscador — que ahí sí tiene que separarse de las filas.</summary>
+    public void ModoPanel(bool dosPaneles)
+    {
+        _fondo.Background = dosPaneles ? Ui.Panel : Ui.Fondo;
+        _fondo.BorderBrush = Ui.Superficie;
+        _fondo.BorderThickness = new Thickness(0, 0, dosPaneles ? 1 : 0, 0);
+
+        _banda.Background = dosPaneles ? Brushes.Transparent : Ui.Panel;
+        _banda.BorderThickness = new Thickness(0, 0, 0, dosPaneles ? 0 : 1);
+        // el buscador respira arriba: pegado al borde del encabezado se leía como si se hubiera
+        // desbordado desde ahí
+        _banda.Padding = new Thickness(16, 12, 8, 12);
+
+        // de panel el buscador es un accesorio y no la pantalla: más chico, como en el diseño del
+        // fold. En una columna es lo primero que se toca y va del tamaño del dedo.
+        var alto = dosPaneles ? 40 : Ui.Toque - 4;
+        _busqueda.MinHeight = alto;
+        _busqueda.Height = alto;
+        _nueva.Width = alto;
+        _nueva.MinHeight = alto;
+        _nueva.Height = alto;
     }
 
     public void Cargar(List<RequestCollection> colecciones)
@@ -73,7 +124,7 @@ internal class CollectionListView : UserControl
     {
         _seleccionada = request;
         foreach (var (item, fila) in _filas)
-            fila.Background = ReferenceEquals(item, request) ? Ui.PanelAlto : Ui.Panel;
+            fila.Background = ReferenceEquals(item, request) ? Ui.Superficie : Brushes.Transparent;
     }
 
     public void Redibujar()
@@ -85,11 +136,7 @@ internal class CollectionListView : UserControl
 
         if (_colecciones.Count == 0)
         {
-            _lista.Children.Add(Ui.Parrafo(
-                "Todavía no hay colecciones en este teléfono.\n\n" +
-                "Creá una con «+», importá un OpenAPI o un cURL, o conectate a un servidor de " +
-                "sync y elegí un workspace: las colecciones bajan solas.",
-                Ui.Tenue));
+            _lista.Children.Add(Vacío());
             return;
         }
 
@@ -101,9 +148,9 @@ internal class CollectionListView : UserControl
             hubo = true;
 
             var elegida = colección;
-            _lista.Children.Add(Encabezado(colección.Name, requests, colección.IsExpandedInTree,
+            _lista.Children.Add(Encabezado(colección.Name, requests, colección.IsExpandedInTree, 0,
                 () => { elegida.IsExpandedInTree = !elegida.IsExpandedInTree; Redibujar(); },
-                () => _alMenu(new Nodo(elegida, null, null)), 0));
+                () => _alMenu(new Nodo(elegida, null, null)), Ui.Acento, null));
 
             if (!Abierto(colección.IsExpandedInTree, filtro)) continue;
             AgregarRequests(colección.Requests, colección, null, filtro, 1);
@@ -113,6 +160,25 @@ internal class CollectionListView : UserControl
         if (!hubo) _lista.Children.Add(Ui.Parrafo($"Nada coincide con «{filtro}».", Ui.Tenue));
 
         MarcarSeleccion(_seleccionada);
+    }
+
+    Control Vacío()
+    {
+        var pila = new StackPanel { Spacing = 14, Margin = new Thickness(24, 48, 24, 24) };
+        var icono = Ui.Icono(Iconos.Nube, 40, Ui.Superficie);
+        icono.HorizontalAlignment = HorizontalAlignment.Center;
+        pila.Children.Add(icono);
+
+        var titulo = Ui.Parrafo("Todavía no hay colecciones", Ui.Subtexto, 15);
+        titulo.TextAlignment = TextAlignment.Center;
+        pila.Children.Add(titulo);
+
+        var texto = Ui.Parrafo(
+            "Creála con +, importá un OpenAPI pegando su link, o conectate a un servidor de sync: " +
+            "las colecciones bajan solas.", Ui.Tenue, 13);
+        texto.TextAlignment = TextAlignment.Center;
+        pila.Children.Add(texto);
+        return pila;
     }
 
     /// <summary>Con filtro activo el plegado no manda: si algo coincide, se ve.</summary>
@@ -130,9 +196,9 @@ internal class CollectionListView : UserControl
         if (coincidencias == 0 && filtro.Length > 0) return;
 
         var elegida = carpeta;
-        _lista.Children.Add(Encabezado("▸ " + carpeta.Name, coincidencias, carpeta.IsExpandedInTree,
+        _lista.Children.Add(Encabezado(carpeta.Name, coincidencias, carpeta.IsExpandedInTree, nivel,
             () => { elegida.IsExpandedInTree = !elegida.IsExpandedInTree; Redibujar(); },
-            () => _alMenu(new Nodo(dueña, elegida, null)), nivel));
+            () => _alMenu(new Nodo(dueña, elegida, null)), Ui.Subtexto, Iconos.Carpeta));
 
         if (!Abierto(carpeta.IsExpandedInTree, filtro)) return;
         AgregarRequests(carpeta.Requests, dueña, carpeta, filtro, nivel + 1);
@@ -147,109 +213,125 @@ internal class CollectionListView : UserControl
         {
             if (!Coincide(request, filtro)) continue;
 
-            var contenido = new StackPanel
+            var textos = new StackPanel { Spacing = 3, VerticalAlignment = VerticalAlignment.Center };
+            textos.Children.Add(new TextBlock
             {
-                Spacing = 2,
-                Children =
-                {
-                    new TextBlock
-                    {
-                        Text = $"{request.Method}  {request.Name}",
-                        FontSize = 14,
-                        Foreground = Ui.Normal
-                    },
-                    new TextBlock
-                    {
-                        Text = request.Url,
-                        FontSize = 11,
-                        Foreground = Ui.Tenue,
-                        TextTrimming = TextTrimming.CharacterEllipsis
-                    }
-                }
-            };
+                Text = request.Name,
+                FontSize = 14,
+                Foreground = Ui.Normal,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            });
+            textos.Children.Add(new TextBlock
+            {
+                Text = request.Url,
+                FontSize = 11,
+                FontFamily = "Consolas,Menlo,monospace",
+                Foreground = Ui.Tenue,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            });
 
-            var boton = new Button
-            {
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                HorizontalContentAlignment = HorizontalAlignment.Left,
-                Background = Brushes.Transparent,
-                MinHeight = Ui.Toque,
-                Padding = new Thickness(12, 10),
-                Content = contenido
-            };
+            var contenido = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
+            var etiqueta = Ui.EtiquetaMetodo(request.Method);
+            etiqueta.Margin = new Thickness(0, 0, 12, 0);
+            Grid.SetColumn(etiqueta, 0);
+            Grid.SetColumn(textos, 1);
+            contenido.Children.Add(etiqueta);
+            contenido.Children.Add(textos);
 
             var elegida = request;
+            var boton = new Button
+            {
+                Content = contenido,
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(0),
+                CornerRadius = new CornerRadius(0),
+                MinHeight = 60,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Left
+            };
             boton.Click += (_, _) =>
             {
                 MarcarSeleccion(elegida);
                 _alElegir(elegida, dueña);
             };
 
-            var grilla = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+            var menú = Ui.BotonIcono(Iconos.Puntos, () => _alMenu(new Nodo(dueña, padre, elegida)),
+                relleno: true);
+
+            var fila = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
             Grid.SetColumn(boton, 0);
-            var menú = BotónMenú(() => _alMenu(new Nodo(dueña, padre, elegida)));
             Grid.SetColumn(menú, 1);
-            grilla.Children.Add(boton);
-            grilla.Children.Add(menú);
+            fila.Children.Add(boton);
+            fila.Children.Add(menú);
 
             var marco = new Border
             {
-                Background = Ui.Panel,
-                CornerRadius = new CornerRadius(6),
-                Margin = new Thickness(nivel * 12, 0, 0, 0),
-                Child = grilla
+                BorderBrush = Ui.Borde,
+                BorderThickness = new Thickness(0, 0, 0, 1),
+                Padding = new Thickness(16 + nivel * 12, 0, 8, 0),
+                Child = fila
             };
             _filas[request] = marco;
             _lista.Children.Add(marco);
         }
     }
 
-    Control Encabezado(string texto, int cuantas, bool expandido, Action alTocar, Action alMenu,
-        int nivel)
+    Control Encabezado(string texto, int cuantas, bool expandido, int nivel, Action alTocar,
+        Action alMenu, IBrush color, Geometry? icono)
     {
+        var contenido = new StackPanel
+        {
+            Orientation = Avalonia.Layout.Orientation.Horizontal,
+            Spacing = 8,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        var chevron = Ui.Icono(expandido ? Iconos.ChevronAbajo : Iconos.Chevron, 13, color);
+        contenido.Children.Add(chevron);
+        if (icono != null) contenido.Children.Add(Ui.Icono(icono, 15, color));
+        contenido.Children.Add(new TextBlock
+        {
+            Text = texto,
+            FontSize = 13,
+            FontWeight = FontWeight.SemiBold,
+            Foreground = color,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis
+        });
+        contenido.Children.Add(new TextBlock
+        {
+            Text = cuantas.ToString(),
+            FontSize = 11,
+            Foreground = Ui.Tenue,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+
         var boton = new Button
         {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Left,
+            Content = contenido,
             Background = Brushes.Transparent,
-            MinHeight = 40,
-            Padding = new Thickness(4, 8),
-            Content = new TextBlock
-            {
-                Text = $"{(expandido ? "▾" : "▸")} {texto}  ({cuantas})",
-                FontSize = 13,
-                FontWeight = FontWeight.SemiBold,
-                Foreground = Ui.Acento
-            }
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(0),
+            CornerRadius = new CornerRadius(0),
+            MinHeight = 44,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Left
         };
         boton.Click += (_, _) => alTocar();
 
-        var grilla = new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
-            Margin = new Thickness(nivel * 12, 4, 0, 0)
-        };
-        Grid.SetColumn(boton, 0);
-        var menú = BotónMenú(alMenu);
-        Grid.SetColumn(menú, 1);
-        grilla.Children.Add(boton);
-        grilla.Children.Add(menú);
-        return grilla;
-    }
+        var menú = Ui.BotonIcono(Iconos.Puntos, alMenu, relleno: true);
 
-    static Button BotónMenú(Action al)
-    {
-        var boton = new Button
+        var fila = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        Grid.SetColumn(boton, 0);
+        Grid.SetColumn(menú, 1);
+        fila.Children.Add(boton);
+        fila.Children.Add(menú);
+
+        return new Border
         {
-            Content = "⋯",
-            Background = Brushes.Transparent,
-            Foreground = Ui.Tenue,
-            FontSize = 18,
-            MinHeight = Ui.Toque,
-            MinWidth = Ui.Toque,
-            Padding = new Thickness(0)
+            Padding = new Thickness(16 + nivel * 12, 6, 8, 2),
+            Child = fila
         };
-        boton.Click += (_, _) => al();
-        return boton;
     }
 }

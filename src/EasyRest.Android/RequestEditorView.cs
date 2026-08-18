@@ -40,10 +40,7 @@ internal class RequestEditorView : UserControl
     readonly Button _método;
     readonly Button _guardar;
     readonly Button _enviar;
-
-    readonly TextBlock _estado = new() { FontSize = 14, FontWeight = FontWeight.SemiBold };
-    readonly StackPanel _respuesta = new() { Spacing = 8 };
-    readonly ContentControl _vistaRespuesta = new();
+    readonly ContentControl _respuesta = new();
 
     string _seccionActiva = "Params";
     string _vistaActiva = "Cuerpo";
@@ -58,66 +55,117 @@ internal class RequestEditorView : UserControl
         _ambiente = ambiente;
         _alGuardar = alGuardar;
 
-        _url = Ui.Campo(request.Url, "https://…");
+        _url = Ui.Campo(request.Url, "https://…", mono: true);
         _url.TextChanged += (_, _) => { _request.Url = _url.Text ?? ""; Ensuciar(); };
 
-        _método = Ui.Opcion(request.Method, true, RotarMétodo);
-        _método.MinWidth = 92;
-
-        _enviar = Ui.AccionAsync("Enviar", EnviarAsync);
-        _enviar.Background = Ui.Acento;
-        _enviar.Foreground = Ui.Fondo;
-
-        _guardar = Ui.Accion("Guardar", Guardar);
+        _método = MétodoBoton();
+        _enviar = Ui.PrimarioAsync("Enviar", Iconos.Enviar, EnviarAsync);
+        _guardar = Ui.BotonIcono(Iconos.Guardar, Guardar, Ui.Amarillo, Ui.Superficie);
+        // del alto y el radio del primario: los dos son el pie, y un cuadrado de 48 al lado de una
+        // barra de 52 se lee como si uno estuviera flotando
+        _guardar.MinHeight = 52;
+        _guardar.Width = 56;
+        _guardar.CornerRadius = new CornerRadius(12);
         _guardar.IsEnabled = false;
 
-        _vistaRespuesta.Content = Ui.Rotulo("Todavía no mandaste nada.");
-        _respuesta.Children.Add(_estado);
-        _respuesta.Children.Add(SelectorDeVista());
-        _respuesta.Children.Add(_vistaRespuesta);
-
+        _respuesta.Content = Reposo();
         ArmarSolapas();
         MostrarSección(_seccionActiva);
 
         var pila = new StackPanel
         {
-            Margin = new Thickness(12, 0, 12, 16),
-            Spacing = 10,
+            Margin = new Thickness(16, 12, 16, 16),
+            Spacing = 14,
             Children =
             {
-                Ui.Rotulo(_colección.Name),
                 Encabezado(),
-                Ui.Barra(_enviar, _guardar),
-                _solapas,
+                Solapas(),
                 _sección,
-                Ui.Tarjeta(_respuesta)
+                _respuesta
             }
         };
 
-        Content = new ScrollViewer { Content = pila };
+        var raíz = new DockPanel();
+        var pie = Pie();
+        DockPanel.SetDock(pie, Dock.Bottom);
+        raíz.Children.Add(pie);
+        raíz.Children.Add(new ScrollViewer { Content = pila });
+        Content = raíz;
     }
+
+    // ----- Encabezado -----
 
     Control Encabezado()
     {
-        // el método a la izquierda y la URL ocupando todo lo demás: es el renglón que más se mira
         var grilla = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
         Grid.SetColumn(_método, 0);
         Grid.SetColumn(_url, 1);
         _url.Margin = new Thickness(8, 0, 0, 0);
         grilla.Children.Add(_método);
         grilla.Children.Add(_url);
-        return grilla;
+
+        return new StackPanel
+        {
+            Spacing = 8,
+            Children = { Ui.Nota(_colección.Name), grilla }
+        };
     }
 
-    /// <summary>El método rota con un toque en vez de abrir un desplegable: son siete valores y
-    /// el que se usa siempre está a uno o dos toques.</summary>
-    void RotarMétodo()
+    /// <summary>El método rota con un toque en vez de abrir un desplegable: son siete valores, el
+    /// que se usa siempre está a uno o dos toques, y el color cambia con él.</summary>
+    Button MétodoBoton()
     {
-        var i = Array.IndexOf(Métodos, _request.Method);
-        _request.Method = Métodos[(i + 1) % Métodos.Length];
-        _método.Content = _request.Method;
-        Ensuciar();
+        var boton = new Button
+        {
+            Padding = new Thickness(12, 0),
+            MinHeight = 44,
+            MinWidth = 92,
+            CornerRadius = new CornerRadius(10),
+            HorizontalContentAlignment = HorizontalAlignment.Center
+        };
+        boton.Click += (_, _) =>
+        {
+            var i = Array.IndexOf(Métodos, _request.Method);
+            _request.Method = Métodos[(i + 1) % Métodos.Length];
+            PintarMétodo(boton);
+            Ensuciar();
+        };
+        PintarMétodo(boton);
+        return boton;
     }
+
+    void PintarMétodo(Button boton)
+    {
+        var color = Ui.ColorDeMetodo(_request.Method);
+        boton.Background = Ui.Tinte(color);
+        boton.Content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = _request.Method,
+                    FontSize = 13,
+                    FontWeight = FontWeight.Bold,
+                    Foreground = new SolidColorBrush(color),
+                    VerticalAlignment = VerticalAlignment.Center
+                },
+                Ui.Icono(Iconos.ChevronAbajo, 12, new SolidColorBrush(color))
+            }
+        };
+    }
+
+    // ----- Solapas -----
+
+    Control Solapas() => new ScrollViewer
+    {
+        Content = _solapas,
+        HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+        VerticalScrollBarVisibility = ScrollBarVisibility.Disabled
+    };
 
     void ArmarSolapas()
     {
@@ -125,7 +173,7 @@ internal class RequestEditorView : UserControl
         foreach (var nombre in Secciones)
         {
             var cual = nombre;
-            _solapas.Children.Add(Ui.Opcion(nombre, nombre == _seccionActiva, () => MostrarSección(cual)));
+            _solapas.Children.Add(Ui.Pastilla(nombre, nombre == _seccionActiva, () => MostrarSección(cual)));
         }
     }
 
@@ -147,13 +195,13 @@ internal class RequestEditorView : UserControl
 
     Control SecciónAuth()
     {
-        var pila = new StackPanel { Spacing = 10 };
-        var tipos = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var pila = new StackPanel { Spacing = 12 };
+        var tipos = Ui.Pastillas();
 
         foreach (var tipo in new[] { AuthType.Inherit, AuthType.None, AuthType.Bearer, AuthType.Basic, AuthType.ApiKey })
         {
             var cual = tipo;
-            tipos.Children.Add(Ui.Opcion(Nombre(tipo), _request.Auth.Type == tipo, () =>
+            tipos.Children.Add(Ui.Pastilla(Nombre(tipo), _request.Auth.Type == tipo, () =>
             {
                 _request.Auth.Type = cual;
                 Ensuciar();
@@ -171,63 +219,44 @@ internal class RequestEditorView : UserControl
         switch (_request.Auth.Type)
         {
             case AuthType.Bearer:
-                pila.Children.Add(Ui.Rotulo("Token"));
-                pila.Children.Add(Atado(_request.Auth.BearerToken, "{{token}}",
-                    v => _request.Auth.BearerToken = v));
+                pila.Children.Add(Ui.Tarjeta(10,
+                    Ui.Nota("Token"),
+                    Atado(_request.Auth.BearerToken, "{{token}}", v => _request.Auth.BearerToken = v)));
                 break;
 
             case AuthType.Basic:
-                pila.Children.Add(Ui.Rotulo("Usuario"));
-                pila.Children.Add(Atado(_request.Auth.Username, "usuario",
-                    v => _request.Auth.Username = v));
-                pila.Children.Add(Ui.Rotulo("Contraseña"));
-                pila.Children.Add(Atado(_request.Auth.Password, "contraseña",
-                    v => _request.Auth.Password = v));
+                pila.Children.Add(Ui.Tarjeta(10,
+                    Ui.Nota("Usuario"),
+                    Atado(_request.Auth.Username, "usuario", v => _request.Auth.Username = v),
+                    Ui.Nota("Contraseña"),
+                    Atado(_request.Auth.Password, "contraseña", v => _request.Auth.Password = v)));
                 break;
 
             case AuthType.ApiKey:
-                pila.Children.Add(Ui.Rotulo("Nombre"));
-                pila.Children.Add(Atado(_request.Auth.ApiKeyName, "X-Api-Key",
-                    v => _request.Auth.ApiKeyName = v));
-                pila.Children.Add(Ui.Rotulo("Valor"));
-                pila.Children.Add(Atado(_request.Auth.ApiKeyValue, "{{apiKey}}",
-                    v => _request.Auth.ApiKeyValue = v));
-                pila.Children.Add(Ui.Barra(
-                    Ui.Opcion("En header", _request.Auth.ApiKeyIn != "query", () =>
-                    {
-                        _request.Auth.ApiKeyIn = "header";
-                        Ensuciar();
-                        MostrarSección("Auth");
-                    }),
-                    Ui.Opcion("En query", _request.Auth.ApiKeyIn == "query", () =>
-                    {
-                        _request.Auth.ApiKeyIn = "query";
-                        Ensuciar();
-                        MostrarSección("Auth");
-                    })));
+                pila.Children.Add(Ui.Tarjeta(10,
+                    Ui.Nota("Nombre"),
+                    Atado(_request.Auth.ApiKeyName, "X-Api-Key", v => _request.Auth.ApiKeyName = v),
+                    Ui.Nota("Valor"),
+                    Atado(_request.Auth.ApiKeyValue, "{{apiKey}}", v => _request.Auth.ApiKeyValue = v),
+                    Ui.Barra(
+                        Ui.Pastilla("En header", _request.Auth.ApiKeyIn != "query", () => ApiKeyEn("header")),
+                        Ui.Pastilla("En query", _request.Auth.ApiKeyIn == "query", () => ApiKeyEn("query")))));
                 break;
 
             case AuthType.Inherit:
-                pila.Children.Add(Ui.Parrafo(
-                    $"Usa la autenticación de «{_colección.Name}».", Ui.Tenue, 12));
+                pila.Children.Add(Ui.Aviso($"Usa la autenticación de «{_colección.Name}».",
+                    Ui.CTenue, Iconos.Candado));
                 break;
         }
 
         return pila;
     }
 
-    /// <summary>Un campo de texto atado a una propiedad del modelo: lo que se escribe se escribe
-    /// en el modelo y marca la request como sucia. Es el pegamento que usan los campos de auth,
-    /// que son todos iguales salvo qué propiedad tocan.</summary>
-    TextBox Atado(string valor, string marca, Action<string> asignar)
+    void ApiKeyEn(string dónde)
     {
-        var campo = Ui.Campo(valor, marca);
-        campo.TextChanged += (_, _) =>
-        {
-            asignar(campo.Text ?? "");
-            Ensuciar();
-        };
-        return campo;
+        _request.Auth.ApiKeyIn = dónde;
+        Ensuciar();
+        MostrarSección("Auth");
     }
 
     static string Nombre(AuthType tipo) => tipo switch
@@ -242,13 +271,13 @@ internal class RequestEditorView : UserControl
 
     Control SecciónCuerpo()
     {
-        var pila = new StackPanel { Spacing = 10 };
-        var tipos = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var pila = new StackPanel { Spacing = 12 };
+        var tipos = Ui.Pastillas();
 
         foreach (var tipo in new[] { BodyType.None, BodyType.Json, BodyType.Text, BodyType.FormUrlEncoded })
         {
             var cual = tipo;
-            tipos.Children.Add(Ui.Opcion(Nombre(tipo), _request.Body.Type == tipo, () =>
+            tipos.Children.Add(Ui.Pastilla(Nombre(tipo), _request.Body.Type == tipo, () =>
             {
                 _request.Body.Type = cual;
                 Ensuciar();
@@ -269,14 +298,15 @@ internal class RequestEditorView : UserControl
 
             if (_request.Body.Type == BodyType.Json)
             {
-                pila.Children.Add(Ui.Accion("Formatear JSON", () =>
+                var formatear = Ui.Enlace("Formatear JSON", null, () =>
                 {
                     var lindo = Formatear(_request.Body.Raw);
                     if (lindo == null) return;
                     _request.Body.Raw = lindo;
                     texto.Text = lindo;
                     Ensuciar();
-                }));
+                });
+                pila.Children.Add(formatear);
             }
         }
 
@@ -304,23 +334,43 @@ internal class RequestEditorView : UserControl
         return new StackPanel
         {
             Spacing = 8,
-            Children =
-            {
-                Ui.Rotulo("Pre-request"),
-                pre,
-                Ui.Rotulo("Post-response"),
-                post
-            }
+            Children = { Ui.Nota("Pre-request"), pre, Ui.Nota("Post-response"), post }
         };
     }
 
-    // ----- Guardar -----
+    Control Atado(string valor, string marca, Action<string> asignar)
+    {
+        var campo = Ui.Campo(valor, marca, mono: true);
+        campo.TextChanged += (_, _) => { asignar(campo.Text ?? ""); Ensuciar(); };
+        return campo;
+    }
+
+    // ----- Guardar y enviar -----
+
+    Control Pie()
+    {
+        var grilla = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
+        Grid.SetColumn(_guardar, 0);
+        Grid.SetColumn(_enviar, 1);
+        _enviar.Margin = new Thickness(10, 0, 0, 0);
+        grilla.Children.Add(_guardar);
+        grilla.Children.Add(_enviar);
+
+        return new Border
+        {
+            Background = Ui.Panel,
+            BorderBrush = Ui.Superficie,
+            BorderThickness = new Thickness(0, 1, 0, 0),
+            Padding = new Thickness(16, 12),
+            Child = grilla
+        };
+    }
 
     void Ensuciar()
     {
         _sucio = true;
         _guardar.IsEnabled = true;
-        _guardar.Content = "Guardar •";
+        _guardar.Background = Ui.Tinte(Ui.CAmarillo, 0.22);
     }
 
     void Guardar()
@@ -330,50 +380,32 @@ internal class RequestEditorView : UserControl
             Storage.SaveCollection(_colección);
             _sucio = false;
             _guardar.IsEnabled = false;
-            _guardar.Content = "Guardar";
+            _guardar.Background = Ui.Superficie;
             _alGuardar();
         }
         catch (Exception ex)
         {
-            _estado.Text = $"No se pudo guardar: {ex.Message}";
-            _estado.Foreground = Ui.Rojo;
+            _respuesta.Content = Ui.Aviso($"No se pudo guardar: {ex.Message}", Ui.CRojo);
         }
     }
 
     public bool TieneCambiosSinGuardar => _sucio;
 
-    // ----- Enviar -----
-
     async Task EnviarAsync()
     {
         _enviar.IsEnabled = false;
-        _estado.Text = "Enviando…";
-        _estado.Foreground = Ui.Tenue;
+        _respuesta.Content = Ui.Tarjeta(Ui.Parrafo("Enviando…", Ui.Subtexto, 14));
 
         try
         {
             // la colección va como dueña, así que valen las cabeceras y la auth heredadas: sin
             // eso, la misma request anda en el escritorio y falla en el teléfono
             _última = await HttpExecutor.ExecuteAsync(_request, _colección, _ambiente());
-
-            if (_última.Error != null)
-            {
-                _estado.Text = $"Error: {_última.Error}";
-                _estado.Foreground = Ui.Rojo;
-            }
-            else
-            {
-                _estado.Text = $"{_última.StatusCode} {_última.StatusText} · " +
-                               $"{_última.ElapsedMs} ms · {_última.SizeBytes} bytes";
-                _estado.Foreground = _última.StatusCode < 400 ? Ui.Verde : Ui.Rojo;
-            }
-
             MostrarVista(_vistaActiva);
         }
         catch (Exception ex)
         {
-            _estado.Text = $"Falló: {ex.Message}";
-            _estado.Foreground = Ui.Rojo;
+            _respuesta.Content = Ui.Aviso($"Falló: {ex.Message}", Ui.CRojo);
         }
         finally
         {
@@ -381,60 +413,94 @@ internal class RequestEditorView : UserControl
         }
     }
 
-    Control SelectorDeVista()
-    {
-        var fila = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        foreach (var nombre in new[] { "Cuerpo", "Cabeceras", "Tests" })
-        {
-            var cual = nombre;
-            fila.Children.Add(Ui.Opcion(nombre, nombre == _vistaActiva, () => MostrarVista(cual)));
-        }
-        return fila;
-    }
+    // ----- Respuesta -----
+
+    static Control Reposo() => Ui.Tarjeta(Ui.Parrafo("Todavía no mandaste nada.", Ui.Tenue, 13));
 
     void MostrarVista(string cual)
     {
         _vistaActiva = cual;
-        _respuesta.Children[1] = SelectorDeVista();
+        if (_última == null) { _respuesta.Content = Reposo(); return; }
 
-        if (_última == null)
+        if (_última.Error != null)
         {
-            _vistaRespuesta.Content = Ui.Rotulo("Todavía no mandaste nada.");
+            _respuesta.Content = Ui.Aviso(_última.Error, Ui.CRojo);
             return;
         }
 
-        _vistaRespuesta.Content = cual switch
+        var color = Ui.ColorDeEstado(_última.StatusCode);
+        var cabecera = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
+        var estado = Ui.Estado($"{_última.StatusCode} {_última.StatusText}", color);
+        var números = new StackPanel
         {
-            "Cabeceras" => Ui.Parrafo(_última.HeadersText, Ui.Tenue, 12),
-            "Tests" => Ui.Parrafo(TextoDeTests(_última), Ui.Tenue, 12),
-            _ => Cuerpo(_última)
+            Spacing = 1,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(12, 0, 0, 0),
+            Children =
+            {
+                new TextBlock { Text = $"{_última.ElapsedMs} ms", FontSize = 13, Foreground = Ui.Normal },
+                new TextBlock
+                {
+                    Text = $"{_última.SizeBytes} bytes · {_última.ContentType ?? "sin tipo"}",
+                    FontSize = 11,
+                    Foreground = Ui.Tenue,
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                }
+            }
         };
-    }
-
-    Control Cuerpo(ResponseResult resultado)
-    {
-        var cuerpo = EsJson(resultado) ? Formatear(resultado.Body) ?? resultado.Body : resultado.Body;
-
-        // pintar un JSON de un mega en un teléfono no ayuda a nadie: se corta y se avisa
-        var recortado = cuerpo.Length > 8000;
-        var texto = Ui.Parrafo(recortado ? cuerpo[..8000] + "\n… (cortado)" : cuerpo, Ui.Normal, 12);
-        texto.FontFamily = "monospace";
-
-        var copiar = Ui.AccionAsync("Copiar", async () =>
+        var copiar = Ui.BotonIcono(Iconos.Copiar, async () =>
         {
             var portapapeles = TopLevel.GetTopLevel(this)?.Clipboard;
-            if (portapapeles != null) await portapapeles.SetTextAsync(cuerpo);
-        });
+            if (portapapeles != null) await portapapeles.SetTextAsync(CuerpoLindo(_última));
+        }, Ui.Subtexto, Ui.Superficie);
 
-        return new StackPanel
+        Grid.SetColumn(estado, 0);
+        Grid.SetColumn(números, 1);
+        Grid.SetColumn(copiar, 2);
+        cabecera.Children.Add(estado);
+        cabecera.Children.Add(números);
+        cabecera.Children.Add(copiar);
+
+        var vistas = Ui.Pastillas();
+        foreach (var nombre in new[] { "Cuerpo", "Cabeceras", "Tests" })
         {
-            Spacing = 8,
-            Children = { Ui.Barra(copiar), texto }
+            var cualVista = nombre;
+            vistas.Children.Add(Ui.Pastilla(Etiqueta(nombre), nombre == _vistaActiva,
+                () => MostrarVista(cualVista)));
+        }
+
+        var texto = cual switch
+        {
+            "Cabeceras" => _última.HeadersText,
+            "Tests" => TextoDeTests(_última),
+            _ => Recortar(CuerpoLindo(_última))
         };
+
+        var visor = new Border
+        {
+            Background = Ui.Corteza,
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(12),
+            Child = Ui.Mono(texto, cual == "Cuerpo" ? Ui.Normal : Ui.Subtexto)
+        };
+
+        _respuesta.Content = Ui.Tarjeta(10, cabecera, vistas, visor);
     }
 
-    static bool EsJson(ResponseResult resultado) =>
-        resultado.ContentType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true;
+    string Etiqueta(string vista)
+    {
+        if (vista != "Tests" || _última?.ScriptTests is not { Count: > 0 } tests) return vista;
+        return $"Tests {tests.Count(t => t.Passed)}/{tests.Count}";
+    }
+
+    static string CuerpoLindo(ResponseResult resultado) =>
+        resultado.ContentType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true
+            ? Formatear(resultado.Body) ?? resultado.Body
+            : resultado.Body;
+
+    /// <summary>Pintar un JSON de un mega en un teléfono no ayuda a nadie.</summary>
+    static string Recortar(string texto) =>
+        texto.Length > 8000 ? texto[..8000] + "\n… (cortado)" : texto;
 
     static string TextoDeTests(ResponseResult resultado)
     {

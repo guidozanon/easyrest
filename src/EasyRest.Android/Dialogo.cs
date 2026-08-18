@@ -28,7 +28,6 @@ internal static class Dialogo
     public static void Texto(string título, string valorInicial, string marca, Action<string> alAceptar)
     {
         var campo = Ui.Campo(valorInicial, marca);
-
         Mostrar(título, campo, ("Aceptar", () =>
         {
             var texto = (campo.Text ?? "").Trim();
@@ -37,21 +36,43 @@ internal static class Dialogo
         ));
     }
 
-    public static void Confirmar(string título, string detalle, string aceptar, Action alAceptar) =>
-        Mostrar(título, Ui.Parrafo(detalle, Ui.Tenue, 12), (aceptar, alAceptar));
+    /// <summary>Un formulario armado por quien llama, cuando un solo campo no alcanza —editar una
+    /// variable de ambiente son clave, valor y si es secreta—. El diálogo pone el marco y los dos
+    /// botones; el contenido lo trae la pantalla, que es la que sabe qué está editando.</summary>
+    public static void Formulario(string título, Control contenido, string aceptar, Action alAceptar) =>
+        Mostrar(título, contenido, (aceptar, alAceptar));
 
-    /// <summary>Hoja de acciones: una pila de botones, uno por opción. Es el menú contextual del
-    /// escritorio traducido a algo que se pueda tocar.</summary>
+    public static void Confirmar(string título, string detalle, string aceptar, Action alAceptar) =>
+        Mostrar(título, Ui.Parrafo(detalle, Ui.Subtexto, 13), (aceptar, alAceptar));
+
+    /// <summary>Hoja de acciones: una pila de filas, una por opción. Es el menú contextual del
+    /// escritorio traducido a algo que se pueda tocar — filas del alto de un dedo, no un menú de
+    /// ítems de 20 px.</summary>
     public static void Opciones(string título, params (string Texto, Action Al)[] opciones)
     {
-        var pila = new StackPanel { Spacing = 6 };
+        var pila = new StackPanel();
         foreach (var (texto, al) in opciones)
         {
             var elegida = al;
-            var boton = Ui.Accion(texto, () => { Cerrar(); elegida(); });
-            boton.HorizontalAlignment = HorizontalAlignment.Stretch;
-            boton.HorizontalContentAlignment = HorizontalAlignment.Left;
-            pila.Children.Add(boton);
+            var fila = new Button
+            {
+                Content = new TextBlock
+                {
+                    Text = texto,
+                    FontSize = 15,
+                    Foreground = Ui.Normal,
+                    VerticalAlignment = VerticalAlignment.Center
+                },
+                Background = Brushes.Transparent,
+                MinHeight = 52,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Padding = new Thickness(4, 0),
+                CornerRadius = new CornerRadius(8),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Left
+            };
+            fila.Click += (_, _) => { Cerrar(); elegida(); };
+            pila.Children.Add(fila);
         }
         Mostrar(título, pila);
     }
@@ -66,27 +87,24 @@ internal static class Dialogo
             HorizontalAlignment = HorizontalAlignment.Right,
             Spacing = 8
         };
-        botones.Children.Add(Ui.Accion("Cancelar", Cerrar));
+        botones.Children.Add(Ui.Fantasma("Cancelar", null, Cerrar));
         if (aceptar is { } ok)
-        {
-            var boton = Ui.Accion(ok.Texto, () => { Cerrar(); ok.Al(); });
-            boton.Background = Ui.Acento;
-            boton.Foreground = Ui.Fondo;
-            botones.Children.Add(boton);
-        }
+            botones.Children.Add(Ui.Acentuado(ok.Texto, () => { Cerrar(); ok.Al(); }));
 
         var tarjeta = new Border
         {
             Background = Ui.Panel,
-            CornerRadius = new CornerRadius(10),
-            Padding = new Thickness(16),
+            BorderBrush = Ui.Superficie,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(16),
+            Padding = new Thickness(18),
             MaxWidth = 480,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(16),
             Child = new StackPanel
             {
-                Spacing = 12,
+                Spacing = 14,
                 Children = { Ui.Titulo(título), contenido, botones }
             }
         };
@@ -94,7 +112,7 @@ internal static class Dialogo
         // el velo también es el "tocar afuera para cerrar": en un teléfono es el gesto esperado
         var velo = new Button
         {
-            Background = new SolidColorBrush(Color.Parse("#B0000000")),
+            Background = new SolidColorBrush(Color.Parse("#000000"), 0.62),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
             CornerRadius = new CornerRadius(0),
