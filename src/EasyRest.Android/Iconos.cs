@@ -24,7 +24,11 @@ internal static class Iconos
     public static readonly Geometry Chevron = Geometry.Parse("M9,6 L15,12 L9,18");
     public static readonly Geometry ChevronAbajo = Geometry.Parse("M6,9 L12,15 L18,9");
     public static readonly Geometry Mas = Geometry.Parse("M12,5 L12,19 M5,12 L19,12");
-    public static readonly Geometry Puntos = Geometry.Parse("M5,12 h0.01 M12,12 h0.01 M19,12 h0.01");
+    /// <summary>Los tres puntos son discos y no tres trazos de largo cero: un trazo sin largo deja
+    /// la geometría con alto cero, y con <c>Stretch.Uniform</c> eso escala de forma degenerada —en
+    /// el teléfono salía una sola mota corrida—. Se dibuja con relleno.</summary>
+    public static readonly Geometry Puntos = Geometry.Parse(
+        "M6,12 a1.7,1.7 0 1,0 0.01,0 M12,12 a1.7,1.7 0 1,0 0.01,0 M18,12 a1.7,1.7 0 1,0 0.01,0");
     public static readonly Geometry Lineas = Geometry.Parse("M4,6 L20,6 M4,12 L20,12 M4,18 L20,18");
     public static readonly Geometry Lista = Geometry.Parse("M4,6 L20,6 M4,12 L20,12 M4,18 L14,18");
     public static readonly Geometry Globo = Geometry.Parse("M12,3 a9,9 0 1,0 0.1,0 M3,12 L21,12 M12,3 c-3,4 -3,14 0,18 M12,3 c3,4 3,14 0,18");

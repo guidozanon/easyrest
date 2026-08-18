@@ -61,6 +61,11 @@ internal class RequestEditorView : UserControl
         _método = MétodoBoton();
         _enviar = Ui.PrimarioAsync("Enviar", Iconos.Enviar, EnviarAsync);
         _guardar = Ui.BotonIcono(Iconos.Guardar, Guardar, Ui.Amarillo, Ui.Superficie);
+        // del alto y el radio del primario: los dos son el pie, y un cuadrado de 48 al lado de una
+        // barra de 52 se lee como si uno estuviera flotando
+        _guardar.MinHeight = 52;
+        _guardar.Width = 56;
+        _guardar.CornerRadius = new CornerRadius(12);
         _guardar.IsEnabled = false;
 
         _respuesta.Content = Reposo();
@@ -191,7 +196,7 @@ internal class RequestEditorView : UserControl
     Control SecciónAuth()
     {
         var pila = new StackPanel { Spacing = 12 };
-        var tipos = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var tipos = Ui.Pastillas();
 
         foreach (var tipo in new[] { AuthType.Inherit, AuthType.None, AuthType.Bearer, AuthType.Basic, AuthType.ApiKey })
         {
@@ -267,7 +272,7 @@ internal class RequestEditorView : UserControl
     Control SecciónCuerpo()
     {
         var pila = new StackPanel { Spacing = 12 };
-        var tipos = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var tipos = Ui.Pastillas();
 
         foreach (var tipo in new[] { BodyType.None, BodyType.Json, BodyType.Text, BodyType.FormUrlEncoded })
         {
@@ -293,7 +298,7 @@ internal class RequestEditorView : UserControl
 
             if (_request.Body.Type == BodyType.Json)
             {
-                var formatear = Ui.Fantasma("Formatear JSON", null, () =>
+                var formatear = Ui.Enlace("Formatear JSON", null, () =>
                 {
                     var lindo = Formatear(_request.Body.Raw);
                     if (lindo == null) return;
@@ -301,8 +306,6 @@ internal class RequestEditorView : UserControl
                     texto.Text = lindo;
                     Ensuciar();
                 });
-                formatear.Foreground = Ui.Acento;
-                formatear.HorizontalAlignment = HorizontalAlignment.Left;
                 pila.Children.Add(formatear);
             }
         }
@@ -458,7 +461,7 @@ internal class RequestEditorView : UserControl
         cabecera.Children.Add(números);
         cabecera.Children.Add(copiar);
 
-        var vistas = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var vistas = Ui.Pastillas();
         foreach (var nombre in new[] { "Cuerpo", "Cabeceras", "Tests" })
         {
             var cualVista = nombre;

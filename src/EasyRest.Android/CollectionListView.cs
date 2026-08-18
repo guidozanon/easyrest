@@ -33,6 +33,8 @@ internal class CollectionListView : UserControl
     readonly Action<Nodo> _alMenu;
     readonly StackPanel _lista = new();
     readonly TextBox _busqueda;
+    readonly Border _fondo;
+    readonly Border _banda;
     readonly Dictionary<RequestItem, Border> _filas = new();
 
     List<RequestCollection> _colecciones = new();
@@ -65,7 +67,7 @@ internal class CollectionListView : UserControl
 
         // el buscador va sobre el color del panel y con el mismo borde de abajo que el encabezado
         // del shell: así los dos se leen como un solo bloque fijo arriba de la lista
-        var marco = new Border
+        _banda = new Border
         {
             Background = Ui.Panel,
             BorderBrush = Ui.Superficie,
@@ -75,10 +77,27 @@ internal class CollectionListView : UserControl
         };
 
         var raíz = new DockPanel();
-        DockPanel.SetDock(marco, Dock.Top);
-        raíz.Children.Add(marco);
+        DockPanel.SetDock(_banda, Dock.Top);
+        raíz.Children.Add(_banda);
         raíz.Children.Add(new ScrollViewer { Content = _lista });
-        Content = raíz;
+
+        _fondo = new Border { Child = raíz };
+        ModoPanel(false);
+        Content = _fondo;
+    }
+
+    /// <summary>Con dos paneles la lista es una columna propia y se pinta entera del color del
+    /// panel, con su línea a la derecha: así se lee como el panel lateral del escritorio. En una
+    /// columna la lista es la pantalla, va sobre el fondo, y lo único pintado es la banda del
+    /// buscador — que ahí sí tiene que separarse de las filas.</summary>
+    public void ModoPanel(bool dosPaneles)
+    {
+        _fondo.Background = dosPaneles ? Ui.Panel : Ui.Fondo;
+        _fondo.BorderBrush = Ui.Superficie;
+        _fondo.BorderThickness = new Thickness(0, 0, dosPaneles ? 1 : 0, 0);
+
+        _banda.Background = dosPaneles ? Brushes.Transparent : Ui.Panel;
+        _banda.BorderThickness = new Thickness(0, 0, 0, dosPaneles ? 0 : 1);
     }
 
     public void Cargar(List<RequestCollection> colecciones)
@@ -225,7 +244,8 @@ internal class CollectionListView : UserControl
                 _alElegir(elegida, dueña);
             };
 
-            var menú = Ui.BotonIcono(Iconos.Puntos, () => _alMenu(new Nodo(dueña, padre, elegida)));
+            var menú = Ui.BotonIcono(Iconos.Puntos, () => _alMenu(new Nodo(dueña, padre, elegida)),
+                relleno: true);
 
             var fila = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
             Grid.SetColumn(boton, 0);
@@ -288,7 +308,7 @@ internal class CollectionListView : UserControl
         };
         boton.Click += (_, _) => alTocar();
 
-        var menú = Ui.BotonIcono(Iconos.Puntos, alMenu);
+        var menú = Ui.BotonIcono(Iconos.Puntos, alMenu, relleno: true);
 
         var fila = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         Grid.SetColumn(boton, 0);

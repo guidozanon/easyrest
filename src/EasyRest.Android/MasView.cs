@@ -46,8 +46,7 @@ internal class MasView : UserControl
         pila.Children.Add(Fila(Iconos.Aviso, "Diagnóstico",
             "Qué ve la app del sistema y de la red", alDiagnóstico));
 
-        var versión = Assembly.GetExecutingAssembly().GetName().Version;
-        var pie = Ui.Nota($"EasyRest {versión?.ToString(3) ?? "—"} · Android");
+        var pie = Ui.Nota($"EasyRest {Version()} · Android");
         pie.Margin = new Thickness(16, 20, 16, 0);
         pie.TextAlignment = TextAlignment.Center;
         pila.Children.Add(pie);
@@ -136,6 +135,27 @@ internal class MasView : UserControl
 
     /// <summary>Lo que el shell quiera contar de la última sincronización.</summary>
     public void Contar(string texto) => _estado.Text = texto;
+
+    /// <summary>La versión sale del paquete instalado y no del assembly: el head no sella
+    /// AssemblyVersion —mostraba «0.0.0»— y lo que el build le pone es ApplicationDisplayVersion,
+    /// que es justo el versionName del APK. Es además el número que se ve en Ajustes de Android,
+    /// así que coincide con lo que la persona reporta cuando algo falla.</summary>
+    static string Version()
+    {
+        try
+        {
+            var contexto = global::Android.App.Application.Context;
+            var paquete = contexto.PackageManager?.GetPackageInfo(
+                contexto.PackageName!, (global::Android.Content.PM.PackageInfoFlags)0);
+            if (!string.IsNullOrWhiteSpace(paquete?.VersionName)) return paquete!.VersionName!;
+        }
+        catch (Exception)
+        {
+            // sin PackageManager no hay nada mejor que decir; se cae al assembly
+        }
+
+        return Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "—";
+    }
 
     static Control Fila(Geometry icono, string título, string detalle, Action al)
     {

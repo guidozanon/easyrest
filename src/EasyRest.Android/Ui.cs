@@ -79,12 +79,16 @@ internal static class Ui
 
     // ----- Texto -----
 
+    /// <summary>Centrado en vertical a propósito: casi siempre va al lado de un botón de 48 px, y
+    /// un TextBlock sin alineación se estira y pinta el texto arriba de todo — que es lo que hacía
+    /// que el título quedara más alto que la flecha de volver.</summary>
     public static TextBlock Titulo(string texto) => new()
     {
         Text = texto,
         FontSize = 17,
         FontWeight = FontWeight.SemiBold,
-        Foreground = Normal
+        Foreground = Normal,
+        VerticalAlignment = VerticalAlignment.Center
     };
 
     public static TextBlock Parrafo(string texto, IBrush? color = null, double tamaño = 13) => new()
@@ -180,9 +184,9 @@ internal static class Ui
     /// <summary>Sin fondo, para lo que acompaña. Separado de la sincrónica y no una sobrecarga:
     /// un lambda como `() => AlgoAsync()` encaja en Action y en Func&lt;Task&gt;, y el compilador
     /// no sabe cuál querés.</summary>
-    public static Button Fantasma(string texto, Geometry? icono, Action al)
+    public static Button Fantasma(string texto, Geometry? icono, Action al, IBrush? color = null)
     {
-        var boton = Base(texto, icono, Subtexto, 13, FontWeight.Normal);
+        var boton = Base(texto, icono, color ?? Subtexto, 13, FontWeight.Normal);
         boton.Background = Brushes.Transparent;
         boton.Click += (_, _) => al();
         return boton;
@@ -216,7 +220,7 @@ internal static class Ui
         return new Button
         {
             Content = contenido,
-            Padding = new Thickness(14, 0),
+            Padding = new Thickness(Sangria, 0),
             MinHeight = Toque,
             CornerRadius = new CornerRadius(10),
             HorizontalContentAlignment = HorizontalAlignment.Center
@@ -224,11 +228,12 @@ internal static class Ui
     }
 
     /// <summary>Botón sólo de ícono, cuadrado y del tamaño del dedo.</summary>
-    public static Button BotonIcono(Geometry icono, Action al, IBrush? color = null, IBrush? fondo = null)
+    public static Button BotonIcono(Geometry icono, Action al, IBrush? color = null,
+        IBrush? fondo = null, bool relleno = false)
     {
         var boton = new Button
         {
-            Content = Icono(icono, 19, color ?? Subtexto),
+            Content = Icono(icono, 19, color ?? Subtexto, relleno),
             Width = Toque,
             MinHeight = Toque,
             Padding = new Thickness(0),
@@ -255,11 +260,35 @@ internal static class Ui
                 Foreground = activa ? Normal : Tenue
             },
             Background = activa ? Superficie : Brushes.Transparent,
-            Padding = new Thickness(14, 0),
+            Padding = new Thickness(Sangria, 0),
             MinHeight = 38,
             CornerRadius = new CornerRadius(999)
         };
         boton.Click += (_, _) => al();
+        return boton;
+    }
+
+    /// <summary>Padding horizontal de los botones y las pastillas. Vale como constante porque es
+    /// lo que hay que descontar cuando un botón sin fondo tiene que quedar al ras del margen.</summary>
+    const double Sangria = 14;
+
+    /// <summary>Una fila de pastillas. El fondo de la primera arranca en el borde del contenido,
+    /// igual que las tarjetas y los campos: la pastilla es una caja más, y lo que tiene que
+    /// alinearse es la caja, no el texto de adentro.</summary>
+    public static StackPanel Pastillas(params Control[] pastillas)
+    {
+        var fila = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        foreach (var pastilla in pastillas) fila.Children.Add(pastilla);
+        return fila;
+    }
+
+    /// <summary>Un fantasma que hace de enlace dentro del contenido —«Agregar variable»,
+    /// «Formatear JSON»—: al ras del margen y con el color de acento.</summary>
+    public static Button Enlace(string texto, Geometry? icono, Action al)
+    {
+        var boton = Fantasma(texto, icono, al, Acento);
+        boton.HorizontalAlignment = HorizontalAlignment.Left;
+        boton.Margin = new Thickness(-Sangria, 0, 0, 0);
         return boton;
     }
 
@@ -404,7 +433,9 @@ internal static class Ui
                 CornerRadius = new CornerRadius(0),
                 MinHeight = alto,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
-                HorizontalContentAlignment = HorizontalAlignment.Left
+                // estirado y no a la izquierda: si no, el contenido se encoge a lo que mide y una
+                // grilla «*,Auto» deja el chevron pegado al texto en vez de contra el borde
+                HorizontalContentAlignment = HorizontalAlignment.Stretch
             };
             boton.Click += (_, _) => al();
             interior = boton;

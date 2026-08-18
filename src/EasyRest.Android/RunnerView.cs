@@ -47,7 +47,7 @@ internal class RunnerView : UserControl
     };
 
     readonly StackPanel _configuración = new() { Spacing = 10 };
-    readonly StackPanel _modo = new() { Orientation = Orientation.Horizontal, Spacing = 6 };
+    readonly StackPanel _modo = Ui.Pastillas();
     readonly Border _tarjetaConfiguración;
     readonly StackPanel _avance = new() { Spacing = 10, Margin = new Thickness(0, 0, 0, 4) };
     readonly ContentControl _métricas = new();

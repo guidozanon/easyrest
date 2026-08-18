@@ -33,14 +33,12 @@ internal class KeyValueEditor : UserControl
         _marcaClave = marcaClave;
         _marcaValor = marcaValor;
 
-        var agregar = Ui.Fantasma("Agregar", Iconos.Mas, () =>
+        var agregar = Ui.Enlace("Agregar", Iconos.Mas, () =>
         {
             _items.Add(new KeyValueItem());
             Redibujar();
             _alCambiar();
         });
-        agregar.HorizontalAlignment = HorizontalAlignment.Left;
-        agregar.Foreground = Ui.Acento;
 
         Content = new StackPanel { Spacing = 10, Children = { _filas, agregar } };
         Redibujar();

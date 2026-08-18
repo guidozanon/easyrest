@@ -44,7 +44,7 @@ internal class EnvironmentsView : UserControl
 
         var nuevo = Ui.Secundario("Nuevo", Iconos.Mas, NuevoAmbiente);
         nuevo.MinHeight = 38;
-        var menú = Ui.BotonIcono(Iconos.Puntos, MenúDelAmbiente);
+        var menú = Ui.BotonIcono(Iconos.Puntos, MenúDelAmbiente, relleno: true);
 
         var raíz = new DockPanel();
         var encabezado = Ui.Encabezado(Ui.Titulo("Ambientes"), nuevo, menú);
@@ -81,16 +81,16 @@ internal class EnvironmentsView : UserControl
 
         foreach (var variable in variables.ToList()) _pila.Children.Add(Fila(variable));
 
-        var agregar = Ui.Fantasma("Agregar variable", Iconos.Mas, () =>
+        var agregar = Ui.Enlace("Agregar variable", Iconos.Mas, () =>
         {
             if (_actual == null) return;
             _actual.Variables.Add(new KeyValueItem { Key = "nueva", Value = "" });
             Guardar();
             Redibujar();
         });
-        agregar.Foreground = Ui.Acento;
-        agregar.HorizontalAlignment = HorizontalAlignment.Left;
-        agregar.Margin = new Thickness(8, 4, 0, 0);
+        // 16 de margen de pantalla, menos lo que el propio botón mete de padding: así el «+»
+        // arranca en la misma vertical que los nombres de las variables
+        agregar.Margin = new Thickness(16 - 14, 4, 0, 0);
         _pila.Children.Add(agregar);
 
         var aviso = Ui.Aviso(

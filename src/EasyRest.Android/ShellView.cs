@@ -232,20 +232,22 @@ public class ShellView : UserControl
     Control Navegacion()
     {
         var barra = new Grid();
-        var destinos = new (string Etiqueta, Geometry Icono)[]
+        // el relleno va por destino: los tres puntos son discos y se pintan con Fill, el resto
+        // son trazos y se pintan con Stroke
+        var destinos = new (string Etiqueta, Geometry Icono, bool Relleno)[]
         {
-            ("Colecciones", Iconos.Lista),
-            ("Ambientes", Iconos.Globo),
-            ("Runner", Iconos.Enviar),
-            ("Más", Iconos.Puntos)
+            ("Colecciones", Iconos.Lista, false),
+            ("Ambientes", Iconos.Globo, false),
+            ("Runner", Iconos.Enviar, false),
+            ("Más", Iconos.Puntos, true)
         };
 
         for (var i = 0; i < destinos.Length; i++)
         {
             barra.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
 
-            var (etiqueta, geometría) = destinos[i];
-            var icono = Ui.Icono(geometría, 22, Ui.Tenue);
+            var (etiqueta, geometría, relleno) = destinos[i];
+            var icono = Ui.Icono(geometría, 22, Ui.Tenue, relleno);
             icono.HorizontalAlignment = HorizontalAlignment.Center;
             var texto = new TextBlock
             {
@@ -290,8 +292,10 @@ public class ShellView : UserControl
         for (var i = 0; i < _navegación.Count; i++)
         {
             var activo = i == destino;
-            _navegación[i].Icono.Stroke = activo ? Ui.Acento : Ui.Tenue;
-            _navegación[i].Etiqueta.Foreground = activo ? Ui.Acento : Ui.Tenue;
+            var pincel = activo ? Ui.Acento : Ui.Tenue;
+            var forma = _navegación[i].Icono;
+            if (forma.Fill != null) forma.Fill = pincel; else forma.Stroke = pincel;
+            _navegación[i].Etiqueta.Foreground = pincel;
         }
 
         // cada destino se arma al entrar la primera vez, y los que dependen de datos que pudieron
@@ -350,6 +354,8 @@ public class ShellView : UserControl
 
     void AplicarLayout(double ancho)
     {
+        _lista.ModoPanel(_dosPaneles);
+
         if (_dosPaneles)
         {
             // plegada, la lista deja todo el ancho para la request abierta. El botón queda igual
