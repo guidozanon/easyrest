@@ -56,9 +56,16 @@ internal static class Dialogo
             var elegida = al;
             var fila = new Button
             {
-                Content = new TextBlock { Text = texto, FontSize = 15, Foreground = Ui.Normal },
+                Content = new TextBlock
+                {
+                    Text = texto,
+                    FontSize = 15,
+                    Foreground = Ui.Normal,
+                    VerticalAlignment = VerticalAlignment.Center
+                },
                 Background = Brushes.Transparent,
                 MinHeight = 52,
+                VerticalContentAlignment = VerticalAlignment.Center,
                 Padding = new Thickness(4, 0),
                 CornerRadius = new CornerRadius(8),
                 HorizontalAlignment = HorizontalAlignment.Stretch,

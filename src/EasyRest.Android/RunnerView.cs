@@ -42,8 +42,15 @@ internal class RunnerView : UserControl
     readonly TextBox _demora = Ui.Campo("0", "milisegundos");
     readonly CheckBox _frenar = new()
     {
-        Content = new TextBlock { Text = "Frenar al primer error", FontSize = 13, Foreground = Ui.Normal },
-        MinHeight = Ui.Toque
+        Content = new TextBlock
+        {
+            Text = "Frenar al primer error",
+            FontSize = 13,
+            Foreground = Ui.Normal,
+            VerticalAlignment = VerticalAlignment.Center
+        },
+        MinHeight = Ui.Toque,
+        VerticalContentAlignment = VerticalAlignment.Center
     };
 
     readonly StackPanel _configuración = new() { Spacing = 10 };

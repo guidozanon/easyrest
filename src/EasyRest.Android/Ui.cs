@@ -247,7 +247,14 @@ internal static class Ui
     }
 
     /// <summary>Una de varias opciones excluyentes: solapa, método, tipo de cuerpo. La activa va
-    /// llena; en un teléfono no hay hover que ayude a saber dónde estás parado.</summary>
+    /// llena; en un teléfono no hay hover que ayude a saber dónde estás parado.
+    ///
+    /// El radio es el mismo de los campos y los botones, no una cápsula: con 38 de alto, redondear
+    /// del todo la convierte en un óvalo que no se parece a nada más de la pantalla. La cápsula
+    /// queda para lo que sí es una insignia —el estado de la respuesta, el ambiente activo—.
+    ///
+    /// El texto va centrado a mano: sin alineación, el TextBlock se estira al alto del botón y
+    /// escribe arriba de todo, que es lo que hacía que la solapa activa se viera corrida.</summary>
     public static Button Pastilla(string texto, bool activa, Action al)
     {
         var boton = new Button
@@ -257,12 +264,16 @@ internal static class Ui
                 Text = texto,
                 FontSize = 13,
                 FontWeight = activa ? FontWeight.SemiBold : FontWeight.Normal,
-                Foreground = activa ? Normal : Tenue
+                Foreground = activa ? Normal : Tenue,
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center
             },
             Background = activa ? Superficie : Brushes.Transparent,
             Padding = new Thickness(Sangria, 0),
             MinHeight = 38,
-            CornerRadius = new CornerRadius(999)
+            CornerRadius = new CornerRadius(9),
+            VerticalContentAlignment = VerticalAlignment.Center,
+            HorizontalContentAlignment = HorizontalAlignment.Center
         };
         boton.Click += (_, _) => al();
         return boton;
@@ -346,7 +357,8 @@ internal static class Ui
                         Text = texto,
                         FontSize = 13,
                         FontWeight = FontWeight.Bold,
-                        Foreground = pincel
+                        Foreground = pincel,
+                        VerticalAlignment = VerticalAlignment.Center
                     }
                 }
             }
