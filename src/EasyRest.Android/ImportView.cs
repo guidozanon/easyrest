@@ -1,7 +1,11 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Layout;
+using Avalonia.Media;
 using EasyRest.Models;
 using EasyRest.Services;
+
+using Orientation = Avalonia.Layout.Orientation;
 
 namespace EasyRest.Android;
 
@@ -15,45 +19,93 @@ namespace EasyRest.Android;
 /// en un teléfono, se pega el link. Si lo pegado es una URL se baja primero, que es lo que
 /// alguien esperaría que pase.
 ///
+/// Cuando termina bien no dice «listo» y ya: muestra qué entró —cuántas requests, cuántas
+/// carpetas, qué ambiente quedó armado— y ofrece ir a verlo. Importar doscientas requests y volver
+/// a una pantalla que no cambió es lo que hace dudar de si funcionó.
+///
 /// Las dos importaciones son las del Core, sin una segunda implementación: OpenApiImporter pide
 /// una ruta, así que el texto se escribe en un archivo temporal y se borra enseguida.</summary>
 internal class ImportView : UserControl
 {
     readonly Action<RequestCollection> _alImportar;
     readonly Func<List<RequestCollection>> _colecciones;
-    readonly TextBox _texto;
-    readonly TextBlock _estado = Ui.Parrafo("", Ui.Tenue, 12);
+    readonly Action _alVolver;
 
-    public ImportView(Func<List<RequestCollection>> colecciones, Action<RequestCollection> alImportar)
+    readonly TextBox _texto;
+    readonly TextBlock _estado = Ui.Nota("");
+    readonly ContentControl _resultado = new();
+
+    public ImportView(Func<List<RequestCollection>> colecciones, Action<RequestCollection> alImportar,
+        Action alVolver)
     {
         _colecciones = colecciones;
         _alImportar = alImportar;
+        _alVolver = alVolver;
 
-        _texto = Ui.Campo("", "Pegá la URL del OpenAPI, el documento, o un curl…",
+        _texto = Ui.Campo("", "https://…/openapi.json — o el documento, o un curl",
             multilinea: true, mono: true);
-        _texto.MinHeight = 200;
+        _texto.MinHeight = 130;
+        _texto.Background = Brushes.Transparent;
+        _texto.BorderThickness = new Thickness(0);
+        _texto.Padding = new Thickness(0);
+
+        var pegar = Ui.Secundario("Pegar", Iconos.Copiar, () => _ = PegarAsync());
+        pegar.MinHeight = 40;
+        var limpiar = Ui.Fantasma("Limpiar", null, () =>
+        {
+            _texto.Text = "";
+            _estado.Text = "";
+            _resultado.Content = null;
+        });
+        limpiar.MinHeight = 40;
+
+        var entrada = Ui.Tarjeta(12,
+            _texto,
+            new Border { Height = 1, Background = Ui.Borde },
+            new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 8,
+                Children = { pegar, limpiar }
+            });
+
+        var openApi = Ui.PrimarioAsync("OpenAPI", null, ImportarOpenApiAsync);
+        var curl = Ui.Secundario("cURL", null, ImportarCurl);
+        curl.MinHeight = 52;
+        curl.CornerRadius = new CornerRadius(12);
+        curl.HorizontalAlignment = HorizontalAlignment.Stretch;
 
         var pila = new StackPanel
         {
-            Margin = new Thickness(12, 0, 12, 16),
-            Spacing = 12,
+            Margin = new Thickness(16, 18, 16, 24),
+            Spacing = 14,
             Children =
             {
-                Ui.Parrafo("Pegá la URL de un OpenAPI —o el documento entero, JSON o YAML— para " +
-                           "crear una colección, o un comando cURL para crear una request.",
-                           Ui.Tenue, 12),
-                Ui.Barra(
-                    Ui.AccionAsync("Pegar del portapapeles", PegarAsync),
-                    Ui.Accion("Limpiar", () => { _texto.Text = ""; _estado.Text = ""; })),
-                _texto,
-                Ui.Barra(
-                    Ui.AccionAsync("Importar OpenAPI", ImportarOpenApiAsync),
-                    Ui.Accion("Importar cURL", ImportarCurl)),
-                _estado
+                Ui.Parrafo("Pegá el link de un OpenAPI y lo bajo, o el documento entero —JSON o YAML—. " +
+                           "Un comando cURL crea una request suelta.", Ui.Subtexto),
+                entrada,
+                Ui.Rejilla(2, 10, openApi, curl),
+                _estado,
+                _resultado
             }
         };
 
-        Content = new ScrollViewer { Content = pila };
+        var atrás = Ui.BotonIcono(Iconos.Atras, alVolver, Ui.Normal);
+        var titulo = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children = { atrás, Ui.Titulo("Importar") }
+        };
+
+        var raíz = new DockPanel();
+        var encabezado = Ui.Encabezado(titulo);
+        DockPanel.SetDock(encabezado, Dock.Top);
+        raíz.Children.Add(encabezado);
+        raíz.Children.Add(new ScrollViewer { Content = pila });
+
+        Content = raíz;
     }
 
     async Task PegarAsync()
@@ -68,13 +120,14 @@ internal class ImportView : UserControl
         var texto = (_texto.Text ?? "").Trim();
         if (string.IsNullOrWhiteSpace(texto))
         {
-            _estado.Text = "No hay nada pegado.";
+            Aviso("No hay nada pegado.");
             return;
         }
 
         if (EsUrl(texto))
         {
             _estado.Text = "Bajando el documento…";
+            _estado.Foreground = Ui.Tenue;
             try
             {
                 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
@@ -82,7 +135,7 @@ internal class ImportView : UserControl
             }
             catch (Exception ex)
             {
-                _estado.Text = $"No se pudo bajar el documento: {ex.Message}";
+                Aviso($"No se pudo bajar el documento: {ex.Message}");
                 return;
             }
         }
@@ -110,8 +163,8 @@ internal class ImportView : UserControl
             Storage.SaveCollection(colección);
             if (baseUrl != null) GuardarAmbiente(colección.Name, baseUrl, variables);
 
-            _estado.Text = $"Importada «{colección.Name}» con {colección.AllRequests.Count()} requests" +
-                           (baseUrl != null ? $" y el ambiente «{colección.Name}» con baseUrl." : ".");
+            _estado.Text = "";
+            _resultado.Content = Resultado(colección, baseUrl != null, variables);
             _alImportar(colección);
         }
         catch (Exception ex)
@@ -119,14 +172,88 @@ internal class ImportView : UserControl
             // Cuando lo pegado no es un documento, el parser contesta «OpenAPI specification
             // version '<todo lo que le pasaste>' is not supported», que no le dice nada a nadie
             // y encima escupe el contenido entero en la pantalla.
-            _estado.Text = texto.Length < 500 && !texto.TrimStart().StartsWith('{')
+            Aviso(texto.Length < 500 && !texto.TrimStart().StartsWith('{')
                 ? "Eso no parece un documento OpenAPI. Si es un link, pegalo solo y lo bajo yo."
-                : $"No se pudo importar: {ex.Message}";
+                : $"No se pudo importar: {ex.Message}");
         }
         finally
         {
             try { File.Delete(temporal); } catch (IOException) { /* temporal huérfano, no es grave */ }
         }
+    }
+
+    void Aviso(string texto)
+    {
+        _resultado.Content = null;
+        _estado.Text = texto;
+        _estado.Foreground = Ui.Durazno;
+    }
+
+    /// <summary>Lo que entró, en números. Después de bajar un spec de doscientas requests, ver
+    /// «142 requests · 29 carpetas» es la diferencia entre creerle a la app y volver a apretar.</summary>
+    Control Resultado(RequestCollection colección, bool hayAmbiente, List<KeyValueItem> variables)
+    {
+        var requests = colección.AllRequests.Count();
+        var carpetas = colección.AllFolders.Count();
+
+        var titulo = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 10,
+            Children =
+            {
+                Ui.Icono(Iconos.Tilde, 18, Ui.Verde),
+                new TextBlock
+                {
+                    Text = colección.Name,
+                    FontSize = 15,
+                    FontWeight = FontWeight.SemiBold,
+                    Foreground = Ui.Verde,
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                }
+            }
+        };
+
+        var cifras = Ui.Rejilla(3, 10,
+            Ui.Metrica("requests", requests.ToString()),
+            Ui.Metrica("carpetas", carpetas.ToString()),
+            Ui.Metrica("ambiente", hayAmbiente ? "1" : "0"));
+
+        var pila = new StackPanel { Spacing = 12, Children = { titulo, cifras } };
+
+        if (hayAmbiente)
+        {
+            var nombres = new List<string> { "baseUrl" };
+            nombres.AddRange(variables.Select(v => v.Key));
+            var detalle = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 8,
+                Children =
+                {
+                    Ui.Icono(Iconos.Globo, 15, Ui.Subtexto),
+                    Ui.Parrafo($"Ambiente «{colección.Name}» con {string.Join(", ", nombres)}.",
+                        Ui.Subtexto, 12)
+                }
+            };
+            pila.Children.Add(detalle);
+        }
+
+        var ver = Ui.Secundario("Ver la colección", null, _alVolver);
+        ver.MinHeight = 52;
+        ver.CornerRadius = new CornerRadius(12);
+        ver.HorizontalAlignment = HorizontalAlignment.Stretch;
+        pila.Children.Add(ver);
+
+        return new Border
+        {
+            Background = Ui.Tinte(Ui.CVerde, 0.08),
+            BorderBrush = Ui.Tinte(Ui.CVerde, 0.28),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(12),
+            Padding = new Thickness(16),
+            Child = pila
+        };
     }
 
     /// <summary>Mismo gesto que el escritorio: si el spec declara servers, el baseUrl y las
@@ -161,7 +288,7 @@ internal class ImportView : UserControl
         var texto = _texto.Text ?? "";
         if (!CurlHelper.TryParse(texto, out var curl))
         {
-            _estado.Text = "Eso no parece un comando cURL.";
+            Aviso("Eso no parece un comando cURL.");
             return;
         }
 
@@ -210,7 +337,8 @@ internal class ImportView : UserControl
     {
         colección.Requests.Add(request);
         Storage.SaveCollection(colección);
-        _estado.Text = $"«{request.Name}» agregada a «{colección.Name}».";
+        _estado.Text = "";
+        _resultado.Content = Resultado(colección, false, new List<KeyValueItem>());
         _alImportar(colección);
     }
 

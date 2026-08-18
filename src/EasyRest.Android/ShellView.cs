@@ -8,22 +8,29 @@ using EasyRest.Services.Sync;
 
 // Android.Widget viene en los implicit usings y también tiene Button y Orientation
 using Button = Avalonia.Controls.Button;
+using Forma = Avalonia.Controls.Shapes.Path;
 using Orientation = Avalonia.Layout.Orientation;
 
 namespace EasyRest.Android;
 
-/// <summary>La app en el dispositivo: lista de colecciones, editor de request y la conexión con
-/// el servidor de sync.
+/// <summary>La app en el dispositivo: colecciones, ambientes, runner y el resto.
 ///
-/// El layout es adaptativo y se decide por el ancho disponible, no por si el aparato "es" un
-/// teléfono o una tablet: un fold desplegado, un teléfono en horizontal y una ventana en modo
-/// multiventana son todos el mismo problema, y el ancho es lo único que lo describe bien.
+/// **La navegación es una barra abajo**, con cuatro destinos. Antes todo colgaba del encabezado
+/// —cinco botones apretados arriba de la lista— y el resultado era que ni se veían ni se llegaba
+/// bien: en un teléfono el pulgar llega abajo, no arriba. Además cada destino se guarda armado, así
+/// que ir a Ambientes y volver no rearma la lista ni pierde la request abierta.
+///
+/// Dentro de Colecciones, el layout es adaptativo y se decide por el ancho disponible, no por si
+/// el aparato "es" un teléfono o una tablet: un fold desplegado, un teléfono en horizontal y una
+/// ventana en modo multiventana son todos el mismo problema, y el ancho es lo único que lo
+/// describe bien.
 ///
 /// - Menos de <see cref="AnchoDosPaneles"/>: una columna. La lista ocupa todo y el detalle la
 ///   reemplaza, con botón de volver.
 /// - Más: lista y detalle a la vez, la lista fija a la izquierda. Tocar una request ya no navega
 ///   a ningún lado, la abre al lado — que es lo que hace que en una tablet se sienta la app de
-///   escritorio y no un teléfono estirado.
+///   escritorio y no un teléfono estirado. La lista además se puede plegar con ☰ para darle todo
+///   el ancho a la request.
 ///
 /// El cambio entre los dos modos no reconstruye nada: las dos vistas viven siempre, y lo único
 /// que se toca es el ancho de las columnas y la visibilidad. Por eso plegar y desplegar un fold
@@ -40,16 +47,37 @@ public class ShellView : UserControl
     /// <summary>Arriba de esto la lista se puede dar el lujo de ser más ancha.</summary>
     const double AnchoHolgado = 900;
 
+    // ----- Colecciones -----
+
     readonly CollectionListView _lista;
     readonly ContentControl _detalle = new();
     readonly ColumnDefinition _columnaLista = new(new GridLength(1, GridUnitType.Star));
     readonly ColumnDefinition _columnaDetalle = new(new GridLength(0, GridUnitType.Pixel));
 
-    readonly TextBlock _titulo = new() { FontSize = 18, FontWeight = FontWeight.SemiBold, Foreground = Ui.Acento };
-    readonly TextBlock _estado = new() { FontSize = 11, Foreground = Ui.Tenue, TextWrapping = TextWrapping.Wrap };
-    readonly Button _atrás = new() { Content = "‹", FontSize = 20, IsVisible = false, MinHeight = Ui.Toque, Padding = new Thickness(12, 0) };
-    readonly Button _colapsar = new() { Content = "☰", FontSize = 17, IsVisible = false, MinHeight = Ui.Toque, Padding = new Thickness(12, 0) };
-    readonly ComboBox _selectorAmbiente = new() { MinHeight = Ui.Toque, MinWidth = 140 };
+    readonly TextBlock _titulo = new()
+    {
+        Text = "Colecciones",
+        FontSize = 17,
+        FontWeight = FontWeight.SemiBold,
+        Foreground = Ui.Normal,
+        VerticalAlignment = VerticalAlignment.Center,
+        TextTrimming = TextTrimming.CharacterEllipsis
+    };
+    readonly Forma _rayo = Ui.Icono(Iconos.Rayo, 20, Ui.Acento, relleno: true);
+    readonly Button _atrás;
+    readonly Button _colapsar;
+    readonly Button _chipAmbiente = new();
+
+    // ----- Pestañas -----
+
+    readonly Control _pestañaColecciones;
+    readonly ContentControl _pestañaAmbientes = new();
+    readonly ContentControl _pestañaRunner = new();
+    readonly ContentControl _pestañaMas = new();
+    readonly List<(Button Boton, Forma Icono, TextBlock Etiqueta)> _navegación = new();
+    readonly List<Control> _pestañas = new();
+
+    MasView? _mas;
 
     List<RequestCollection> _colecciones = new();
     List<EnvironmentModel> _ambientes = new();
@@ -67,20 +95,17 @@ public class ShellView : UserControl
     {
         _lista = new CollectionListView(AbrirRequest, MenúDeNodo, NuevaColección);
 
-        _atrás.Click += (_, _) => VolverALista();
+        _atrás = Ui.BotonIcono(Iconos.Atras, VolverALista, Ui.Normal);
+        _atrás.IsVisible = false;
 
-        _colapsar.Click += (_, _) =>
+        _colapsar = Ui.BotonIcono(Iconos.Lineas, () =>
         {
             _listaPlegada = !_listaPlegada;
             AplicarLayout(Bounds.Width);
-        };
+        }, Ui.Normal);
+        _colapsar.IsVisible = false;
 
-        _selectorAmbiente.SelectionChanged += (_, _) =>
-        {
-            if (_selectorAmbiente.SelectedItem is not EnvironmentModel elegido) return;
-            _ambiente = elegido;
-            Storage.SetActiveEnvironmentId(elegido.Id);
-        };
+        _chipAmbiente.Click += (_, _) => ElegirAmbiente();
 
         var cuerpo = new Grid();
         cuerpo.ColumnDefinitions.Add(_columnaLista);
@@ -90,11 +115,26 @@ public class ShellView : UserControl
         cuerpo.Children.Add(_lista);
         cuerpo.Children.Add(_detalle);
 
-        var raíz = new DockPanel { Background = Ui.Fondo };
+        var colecciones = new DockPanel();
         var encabezado = Encabezado();
         DockPanel.SetDock(encabezado, Dock.Top);
-        raíz.Children.Add(encabezado);
-        raíz.Children.Add(cuerpo);
+        colecciones.Children.Add(encabezado);
+        colecciones.Children.Add(cuerpo);
+        _pestañaColecciones = colecciones;
+
+        var pestañas = new Grid();
+        foreach (var pestaña in new Control[]
+                 { _pestañaColecciones, _pestañaAmbientes, _pestañaRunner, _pestañaMas })
+        {
+            _pestañas.Add(pestaña);
+            pestañas.Children.Add(pestaña);
+        }
+
+        var raíz = new DockPanel { Background = Ui.Fondo };
+        var navegación = Navegacion();
+        DockPanel.SetDock(navegación, Dock.Bottom);
+        raíz.Children.Add(navegación);
+        raíz.Children.Add(pestañas);
 
         // los diálogos van encima de todo: en móvil no hay ventanas, así que preguntar algo es
         // pintar una capa sobre la app
@@ -105,42 +145,186 @@ public class ShellView : UserControl
 
         Recargar();
         VolverALista();
+        Ir(0);
     }
+
+    // ----- Encabezado de Colecciones -----
 
     Control Encabezado()
     {
-        var primera = new StackPanel
+        var izquierda = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Spacing = 8,
             VerticalAlignment = VerticalAlignment.Center,
-            Children = { _atrás, _colapsar, _titulo }
+            Children = { _atrás, _colapsar, _rayo, _titulo }
         };
 
-        var acciones = Ui.Barra(
-            Ui.AccionAsync("Sincronizar", SincronizarAsync),
-            Ui.Accion("Ambientes", AbrirAmbientes),
-            Ui.Accion("Importar", AbrirImportar),
-            Ui.Accion("Servidor…", MostrarConexión),
-            Ui.Accion("Diagnóstico", () => Abrir("Diagnóstico", new SpikeView())));
+        PintarChip();
+        return Ui.Encabezado(izquierda, _chipAmbiente);
+    }
 
-        return new StackPanel
+    /// <summary>El ambiente activo, siempre a la vista y a un toque. Es la pastilla del diseño:
+    /// punto verde, nombre y chevron. Mandar contra el ambiente equivocado es el error caro, así
+    /// que contra cuál estás mandando no puede estar escondido en un menú.</summary>
+    void PintarChip()
+    {
+        var hay = _ambiente != null;
+        var contenido = new StackPanel
         {
-            Margin = new Thickness(12, 10, 12, 6),
+            Orientation = Orientation.Horizontal,
             Spacing = 6,
-            Children =
-            {
-                primera,
-                new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    Spacing = 8,
-                    Children = { Ui.Rotulo("Ambiente"), _selectorAmbiente }
-                },
-                acciones,
-                _estado
-            }
+            VerticalAlignment = VerticalAlignment.Center
         };
+
+        if (hay)
+            contenido.Children.Add(new Border
+            {
+                Width = 6,
+                Height = 6,
+                CornerRadius = new CornerRadius(999),
+                Background = Ui.Verde,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+
+        contenido.Children.Add(new TextBlock
+        {
+            Text = _ambiente?.Name ?? "Sin ambiente",
+            FontSize = 12,
+            Foreground = hay ? Ui.Normal : Ui.Tenue,
+            MaxWidth = 130,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        contenido.Children.Add(Ui.Icono(Iconos.ChevronAbajo, 12, Ui.Tenue));
+
+        _chipAmbiente.Content = contenido;
+        _chipAmbiente.Background = Ui.Superficie;
+        _chipAmbiente.CornerRadius = new CornerRadius(999);
+        _chipAmbiente.Padding = new Thickness(12, 0);
+        _chipAmbiente.MinHeight = 36;
+    }
+
+    void ElegirAmbiente()
+    {
+        if (_ambientes.Count == 0)
+        {
+            Ir(1);
+            return;
+        }
+
+        var opciones = _ambientes
+            .Select(a => ((a.Id == _ambiente?.Id ? "● " : "○ ") + a.Name, (Action)(() => Activar(a))))
+            .Append(("Administrar ambientes…", () => Ir(1)))
+            .ToArray();
+        Dialogo.Opciones("Ambiente activo", opciones);
+    }
+
+    void Activar(EnvironmentModel ambiente)
+    {
+        _ambiente = ambiente;
+        Storage.SetActiveEnvironmentId(ambiente.Id);
+        PintarChip();
+    }
+
+    // ----- Barra de navegación -----
+
+    Control Navegacion()
+    {
+        var barra = new Grid();
+        var destinos = new (string Etiqueta, Geometry Icono)[]
+        {
+            ("Colecciones", Iconos.Lista),
+            ("Ambientes", Iconos.Globo),
+            ("Runner", Iconos.Enviar),
+            ("Más", Iconos.Puntos)
+        };
+
+        for (var i = 0; i < destinos.Length; i++)
+        {
+            barra.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+
+            var (etiqueta, geometría) = destinos[i];
+            var icono = Ui.Icono(geometría, 22, Ui.Tenue);
+            icono.HorizontalAlignment = HorizontalAlignment.Center;
+            var texto = new TextBlock
+            {
+                Text = etiqueta,
+                FontSize = 11,
+                Foreground = Ui.Tenue,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+
+            var destino = i;
+            var boton = new Button
+            {
+                Content = new StackPanel { Spacing = 4, Children = { icono, texto } },
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                CornerRadius = new CornerRadius(0),
+                Padding = new Thickness(0, 6),
+                MinHeight = 56,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Center
+            };
+            boton.Click += (_, _) => Ir(destino);
+
+            Grid.SetColumn(boton, i);
+            barra.Children.Add(boton);
+            _navegación.Add((boton, icono, texto));
+        }
+
+        return new Border
+        {
+            Background = Ui.Corteza,
+            BorderBrush = Ui.Superficie,
+            BorderThickness = new Thickness(0, 1, 0, 0),
+            Padding = new Thickness(0, 4, 0, 8),
+            Child = barra
+        };
+    }
+
+    void Ir(int destino)
+    {
+        for (var i = 0; i < _pestañas.Count; i++) _pestañas[i].IsVisible = i == destino;
+        for (var i = 0; i < _navegación.Count; i++)
+        {
+            var activo = i == destino;
+            _navegación[i].Icono.Stroke = activo ? Ui.Acento : Ui.Tenue;
+            _navegación[i].Etiqueta.Foreground = activo ? Ui.Acento : Ui.Tenue;
+        }
+
+        // cada destino se arma al entrar la primera vez, y los que dependen de datos que pudieron
+        // cambiar en otra pestaña —ambientes, sync— se refrescan cada vez
+        switch (destino)
+        {
+            case 1:
+                _ambientes = Storage.LoadEnvironments();
+                ResolverAmbiente();
+                _pestañaAmbientes.Content = new EnvironmentsView(_ambientes, _ambiente, () =>
+                {
+                    ResolverAmbiente();
+                    PintarChip();
+                });
+                break;
+
+            case 2:
+                if (_pestañaRunner.Content == null) MostrarElectorDeRunner();
+                break;
+
+            // volver a la pestaña no descarta la pantalla que tenga apilada adentro; sólo la
+            // portada se refresca, porque el estado del sync pudo cambiar en otro lado
+            case 3:
+                if (_pestañaMas.Content == null) VolverAMas();
+                else if (ReferenceEquals(_pestañaMas.Content, _mas)) _mas!.Refrescar();
+                break;
+        }
+    }
+
+    void ResolverAmbiente()
+    {
+        var activo = Storage.GetActiveEnvironmentId();
+        _ambiente = _ambientes.FirstOrDefault(a => a.Id == activo) ?? _ambientes.FirstOrDefault();
     }
 
     // ----- Layout adaptativo -----
@@ -177,9 +361,10 @@ public class ShellView : UserControl
             _columnaDetalle.Width = new GridLength(1, GridUnitType.Star);
             _lista.IsVisible = !_listaPlegada;
             _detalle.IsVisible = true;
+            _rayo.IsVisible = true;
             _atrás.IsVisible = false;
             _colapsar.IsVisible = true;
-            _colapsar.Foreground = _listaPlegada ? Ui.Acento : Ui.Normal;
+            _colapsar.Background = _listaPlegada ? Ui.Tinte(Ui.CAcento) : Brushes.Transparent;
             return;
         }
 
@@ -194,9 +379,10 @@ public class ShellView : UserControl
         _lista.IsVisible = !_mostrandoDetalle;
         _detalle.IsVisible = _mostrandoDetalle;
         _atrás.IsVisible = _mostrandoDetalle;
+        _rayo.IsVisible = !_mostrandoDetalle;
     }
 
-    // ----- Navegación -----
+    // ----- Navegación dentro de Colecciones -----
 
     void AbrirRequest(RequestItem request, RequestCollection colección)
     {
@@ -205,7 +391,7 @@ public class ShellView : UserControl
             // guardar puede cambiar el nombre o el método: la lista los muestra, así que se
             // redibuja. No se recarga del disco a propósito: eso crearía objetos nuevos y el
             // editor abierto quedaría editando los viejos.
-            () => { _lista.Cargar(_colecciones); MostrarEstadoDeSync(); }));
+            () => _lista.Cargar(_colecciones)));
     }
 
     void Abrir(string título, Control vista)
@@ -213,15 +399,15 @@ public class ShellView : UserControl
         _titulo.Text = título;
         _detalle.Content = vista;
         _mostrandoDetalle = true;
+        Ir(0);
         AplicarLayout(Bounds.Width);
     }
 
     void VolverALista()
     {
-        _titulo.Text = "EasyRest";
+        _titulo.Text = "Colecciones";
         _mostrandoDetalle = false;
         if (!_dosPaneles) _lista.MarcarSeleccion(null);
-        MostrarEstadoDeSync();
         AplicarLayout(Bounds.Width);
     }
 
@@ -391,32 +577,107 @@ public class ShellView : UserControl
         }
         catch (Exception ex)
         {
-            _estado.Text = $"No se pudo guardar: {ex.Message}";
+            Dialogo.Confirmar("No se pudo guardar", ex.Message, "Listo", () => { });
         }
     }
 
-    // ----- Otras pantallas -----
+    // ----- Runner -----
 
-    void AbrirAmbientes() => Abrir("Ambientes", new EnvironmentsView(_ambientes, _ambiente, () =>
+    void AbrirRunner(RequestCollection colección, List<RequestItem> requests, string etiqueta)
     {
-        // el selector de la barra y el ambiente con el que se manda tienen que seguir al editor
-        var activo = Storage.GetActiveEnvironmentId();
-        _ambiente = _ambientes.FirstOrDefault(a => a.Id == activo) ?? _ambientes.FirstOrDefault();
-        _selectorAmbiente.ItemsSource = null;
-        _selectorAmbiente.ItemsSource = _ambientes;
-        _selectorAmbiente.SelectedItem = _ambiente;
-        _selectorAmbiente.IsVisible = _ambientes.Count > 0;
-    }));
+        _pestañaRunner.Content = new RunnerView(colección, requests, etiqueta, () => _ambiente,
+            MostrarElectorDeRunner);
+        Ir(2);
+    }
 
-    void AbrirImportar() => Abrir("Importar", new ImportView(() => _colecciones, colección =>
+    /// <summary>La pestaña abierta sin haber elegido nada: en vez de una pantalla vacía, la lista
+    /// de colecciones para correr entera. Correr una colección completa es el caso normal; una
+    /// request suelta se elige desde su menú en el árbol.</summary>
+    void MostrarElectorDeRunner()
     {
-        // puede ser una colección nueva o una que ya estaba (un cURL agregado adentro)
-        if (!_colecciones.Contains(colección)) _colecciones.Add(colección);
-        _lista.Cargar(_colecciones);
-    }));
+        var pila = new StackPanel { Margin = new Thickness(16, 16, 16, 24), Spacing = 12 };
+        pila.Children.Add(Ui.Parrafo(
+            "Elegí qué correr. Para una request sola, abrí su menú en la lista y tocá «Correr carga…».",
+            Ui.Subtexto));
 
-    void AbrirRunner(RequestCollection colección, List<RequestItem> requests, string etiqueta) =>
-        Abrir("Runner", new RunnerView(colección, requests, etiqueta, () => _ambiente));
+        if (_colecciones.Count == 0)
+        {
+            pila.Children.Add(Ui.Nota("Todavía no hay colecciones."));
+        }
+        else
+        {
+            foreach (var colección in _colecciones)
+            {
+                var elegida = colección;
+                var cuántas = colección.AllRequests.Count();
+                var boton = Ui.Secundario($"{colección.Name} · {cuántas} requests", Iconos.Enviar,
+                    () => AbrirRunner(elegida, elegida.AllRequests.ToList(), "(todas las requests)"));
+                boton.HorizontalAlignment = HorizontalAlignment.Stretch;
+                boton.HorizontalContentAlignment = HorizontalAlignment.Left;
+                pila.Children.Add(boton);
+            }
+        }
+
+        pila.Children.Add(Ui.Aviso(
+            "Correr carga desde un teléfono mide también al teléfono y a su red. Sirve para ver si " +
+            "algo responde bien desde afuera, no para sacar números de capacidad.", Ui.CAmarillo));
+
+        var raíz = new DockPanel();
+        var encabezado = Ui.Encabezado(Ui.Titulo("Runner"));
+        DockPanel.SetDock(encabezado, Dock.Top);
+        raíz.Children.Add(encabezado);
+        raíz.Children.Add(new ScrollViewer { Content = pila });
+        _pestañaRunner.Content = raíz;
+    }
+
+    // ----- Más -----
+
+    void VolverAMas()
+    {
+        _mas ??= new MasView(SincronizarAsync, MostrarConexión, AbrirImportar,
+            () => MostrarEnMas("Diagnóstico", new SpikeView()));
+        _mas.Refrescar();
+        _pestañaMas.Content = _mas;
+    }
+
+    /// <summary>Las pantallas de la cuarta pestaña se apilan adentro de ella: el destino sigue
+    /// marcado abajo y volver es un solo toque, sin sacarte de donde estabas. La vista trae su
+    /// propio scroll —anidar dos es lo que hace que una lista larga se trabe—; acá sólo se le
+    /// pone el encabezado.</summary>
+    void MostrarEnMas(string título, Control vista)
+    {
+        var atrás = Ui.BotonIcono(Iconos.Atras, VolverAMas, Ui.Normal);
+        var izquierda = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children = { atrás, Ui.Titulo(título) }
+        };
+
+        var raíz = new DockPanel();
+        var encabezado = Ui.Encabezado(izquierda);
+        DockPanel.SetDock(encabezado, Dock.Top);
+        raíz.Children.Add(encabezado);
+        raíz.Children.Add(vista);
+
+        _pestañaMas.Content = raíz;
+        Ir(3);
+    }
+
+    void AbrirImportar()
+    {
+        // ImportView trae su propio encabezado con el botón de volver
+        _pestañaMas.Content = new ImportView(() => _colecciones, colección =>
+        {
+            // puede ser una colección nueva o una que ya estaba (un cURL agregado adentro)
+            if (!_colecciones.Contains(colección)) _colecciones.Add(colección);
+            _lista.Cargar(_colecciones);
+        }, () => { VolverAMas(); Ir(0); });
+        Ir(3);
+    }
+
+    void MostrarConexión() => MostrarEnMas("Servidor de sync", new SyncSetupView(this));
 
     // ----- Datos -----
 
@@ -424,32 +685,12 @@ public class ShellView : UserControl
     {
         _colecciones = Storage.LoadCollections();
         _ambientes = Storage.LoadEnvironments();
-
-        var activo = Storage.GetActiveEnvironmentId();
-        _ambiente = _ambientes.FirstOrDefault(a => a.Id == activo) ?? _ambientes.FirstOrDefault();
-
-        _selectorAmbiente.ItemsSource = _ambientes;
-        _selectorAmbiente.SelectedItem = _ambiente;
-        _selectorAmbiente.IsVisible = _ambientes.Count > 0;
-
+        ResolverAmbiente();
+        PintarChip();
         _lista.Cargar(_colecciones);
     }
 
     // ----- Sync -----
-
-    void MostrarEstadoDeSync()
-    {
-        var binding = SyncBinding.Load(Storage.SyncBindingFile);
-        if (!binding.IsSet)
-        {
-            _estado.Text = "Sin servidor de sync.";
-            return;
-        }
-
-        _estado.Text = SyncAccountStore.Default.Find(binding.ServerUrl) == null
-            ? $"☁ {binding.WorkspaceName} · la sesión venció, reconectate"
-            : $"☁ {binding.WorkspaceName} · {binding.ServerUrl}";
-    }
 
     async Task SincronizarAsync()
     {
@@ -458,19 +699,18 @@ public class ShellView : UserControl
 
         if (sync == null)
         {
-            _estado.Text = WorkspaceSyncResolver.NeedsLogin(Storage.SyncBindingFile)
-                ? "La sesión venció. Entrá a «Servidor…» y volvé a conectarte."
-                : "Configurá un servidor de sync primero.";
+            _mas?.Contar(WorkspaceSyncResolver.NeedsLogin(Storage.SyncBindingFile)
+                ? "La sesión venció. Entrá a «Servidor de sync» y volvé a conectarte."
+                : "Configurá un servidor de sync primero.");
             return;
         }
 
-        _estado.Text = "Sincronizando…";
         try
         {
             // en el teléfono no hay a quién preguntarle cómo resolver conflictos sin interrumpir:
             // el motor guarda la versión del server al lado y gana lo local, que es su default
             var resultado = await sync.SyncAsync();
-            _estado.Text = resultado.Message;
+            _mas?.Contar(resultado.Message);
 
             // recargar reemplaza los modelos en memoria, así que el detalle abierto quedaría
             // apuntando a objetos que ya no son los del árbol: se vuelve a la lista
@@ -482,34 +722,18 @@ public class ShellView : UserControl
         }
         catch (Exception ex)
         {
-            _estado.Text = $"No se pudo sincronizar: {ex.Message}";
+            _mas?.Contar($"No se pudo sincronizar: {ex.Message}");
         }
     }
 
-    void MostrarConexión() => Abrir("Servidor de sync", new SyncSetupView(this));
-
-    /// <summary>La llama SyncSetupView cuando termina de atar un workspace: hay que volver a la
-    /// lista y bajar lo que haya.</summary>
+    /// <summary>La llama SyncSetupView cuando termina de atar un workspace: hay que bajar lo que
+    /// haya y mostrarlo.</summary>
     internal async Task VolverYSincronizarAsync()
     {
-        VolverALista();
+        VolverAMas();
         await SincronizarAsync();
         Recargar();
+        VolverALista();
+        Ir(0);
     }
-
-    // ----- Piezas compartidas -----
-    //
-    // Siguen acá porque las usan SpikeView y SyncSetupView; el contenido vive en Ui.
-
-    internal static Button Accion(string texto, Action al) => Ui.Accion(texto, al);
-    internal static Button AccionAsync(string texto, Func<Task> al) => Ui.AccionAsync(texto, al);
-    internal static TextBlock Parrafo(string texto, IBrush? color = null, double tamaño = 13) =>
-        Ui.Parrafo(texto, color, tamaño);
-    internal static TextBlock Rotulo(string texto) => Ui.Rotulo(texto);
-    internal static Border Tarjeta(params Control[] hijos) => Ui.Tarjeta(hijos);
-
-    internal static IBrush ColorOk => Ui.Verde;
-    internal static IBrush ColorError => Ui.Rojo;
-    internal static IBrush ColorTenue => Ui.Tenue;
-    internal static IBrush ColorNormal => Ui.Normal;
 }

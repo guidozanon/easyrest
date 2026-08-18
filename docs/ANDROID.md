@@ -18,6 +18,42 @@ el repo de todos.
 > de diagnóstico: con el servidor de sync andando hay respaldo e historial, que es lo que faltaba
 > para que editar desde el teléfono no fuera un riesgo.
 
+## Navegación: cuatro destinos abajo
+
+La app tiene **una barra de navegación al pie** con cuatro destinos: Colecciones, Ambientes, Runner
+y Más. Antes todo colgaba del encabezado —cinco botones apretados arriba de la lista— y el resultado
+era que ni se veían ni se llegaba bien: en un teléfono el pulgar llega abajo, no arriba.
+
+Cada destino se guarda armado, así que ir a Ambientes y volver no rearma la lista ni pierde la
+request abierta. **Más** es donde vive lo que se toca de vez en cuando —el servidor de sync,
+importar, el diagnóstico— y arriba de todo el estado del sync con el botón para forzarlo; sus
+pantallas se apilan adentro de la pestaña, así volver es un toque y el destino sigue marcado.
+
+El **ambiente activo es una pastilla en el encabezado**, con punto verde y nombre: mandar contra el
+ambiente equivocado es el error caro, así que contra cuál estás mandando no puede estar escondido en
+un menú. Un toque la abre para cambiarlo.
+
+## Sistema visual
+
+Los colores, la tipografía y las piezas viven en `Ui.cs`, y los íconos —geometrías, no emoji— en
+`Iconos.cs`. Es la misma paleta Catppuccin Mocha del escritorio (`Theme.axaml`) con la densidad
+cambiada: en el escritorio una fila mide 24 px, acá 48, porque lo que apunta es un dedo. Las
+pantallas no eligen colores ni tamaños sueltos, piden piezas de ahí; es lo que evita que cada vista
+invente su propio gris.
+
+Tres decisiones se notan en todas las pantallas:
+
+- **El método pinta la request.** GET azul, POST verde, PUT durazno, PATCH amarillo, DELETE rojo,
+  con la etiqueta de ancho fijo para que los nombres queden alineados. Es lo que hace que una lista
+  de doscientas se lea de un vistazo; antes eran doscientas tarjetas grises iguales.
+- **Filas, no tarjetas.** Una tarjeta por request era lo que hacía que la lista pareciera un tablero
+  de botones. Las filas miden 60 px, con separador, y la URL abajo en monoespaciada.
+- **Íconos vectoriales.** Un glifo depende de que la fuente del sistema lo tenga —y en Android
+  muchas veces no, así que aparece el cuadradito— y encima no se puede alinear ni recolorear.
+
+Las pantallas se diseñaron primero como artboards (móvil, fold desplegado y fold plegado) y después
+se bajaron al head; el layout adaptativo de acá abajo es el mismo que sale de esos tres tamaños.
+
 ## Layout adaptativo: teléfono, tablet y fold
 
 El layout lo decide **el ancho disponible**, no el tipo de aparato. Un fold desplegado, un teléfono
@@ -58,9 +94,9 @@ plegadas no esconden resultados.
 | **Colecciones** | crear, renombrar y eliminar colecciones, carpetas y subcarpetas; duplicar y eliminar requests. El menú «⋯» de cada nodo es el click derecho del escritorio traducido a algo que se pueda tocar |
 | **Editor** | método, URL, query params, cabeceras, auth (heredada, Bearer, Basic, API key), cuerpo (JSON con formateo, texto o form) y los dos scripts |
 | **Respuesta** | estado, tiempo y tamaño; cuerpo (JSON indentado), cabeceras y tests en solapas; botón de copiar |
-| **Ambientes** | crear, renombrar, eliminar y editar variables, con el activo elegido desde la barra |
-| **Importar** | pegando: la **URL** de un OpenAPI (se baja sola), el documento entero (JSON o YAML), o un cURL para crear una request |
-| **Runner** | usuarios virtuales, iteraciones o duración, ramp-up y delay, con métricas en vivo |
+| **Ambientes** | crear, renombrar, duplicar y eliminar; editar variables (clave, valor y si es secreta) y elegir el activo, que queda a la vista en el encabezado |
+| **Importar** | pegando: la **URL** de un OpenAPI (se baja sola), el documento entero (JSON o YAML), o un cURL para crear una request. Al terminar muestra qué entró: requests, carpetas y el ambiente que quedó armado |
+| **Runner** | usuarios virtuales, iteraciones o duración, ramp-up y delay, con métricas en vivo. Mientras corre, la configuración se pliega y la pantalla es el avance |
 | **Sync** | conectarse a un servidor, elegir workspace y sincronizar |
 
 Todo se apoya en el Core: el importador, el parser de cURL y el motor del runner son los mismos

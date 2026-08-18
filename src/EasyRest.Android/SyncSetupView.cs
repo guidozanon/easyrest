@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Media;
 using EasyRest.Services;
 using EasyRest.Services.Sync;
 
@@ -17,9 +18,9 @@ namespace EasyRest.Android;
 public class SyncSetupView : UserControl
 {
     readonly ShellView _shell;
-    readonly TextBox _url = new() { Watermark = "https://sync.tu-empresa.com", FontSize = 14 };
-    readonly StackPanel _pila = new() { Margin = new Thickness(14, 0, 14, 14), Spacing = 10 };
-    readonly TextBlock _estado = ShellView.Parrafo("", ShellView.ColorTenue, 12);
+    readonly TextBox _url = Ui.Campo("", "https://sync.tu-empresa.com", mono: true);
+    readonly StackPanel _pila = new() { Margin = new Thickness(16, 16, 16, 24), Spacing = 12 };
+    readonly TextBlock _estado = Ui.Nota("");
 
     SyncConnection? _conexión;
 
@@ -39,14 +40,9 @@ public class SyncSetupView : UserControl
     void Dibujar(params Control[] extra)
     {
         _pila.Children.Clear();
-        _pila.Children.Add(ShellView.Rotulo("Dirección del servidor de tu organización"));
+        _pila.Children.Add(Ui.Rotulo("Dirección del servidor de tu organización"));
         _pila.Children.Add(_url);
-        _pila.Children.Add(new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            Children = { ShellView.AccionAsync("Conectar", ConectarAsync) }
-        });
+        _pila.Children.Add(Ui.PrimarioAsync("Conectar", Iconos.Nube, ConectarAsync));
         foreach (var control in extra) _pila.Children.Add(control);
         _pila.Children.Add(_estado);
     }
@@ -82,16 +78,18 @@ public class SyncSetupView : UserControl
             using var api = new SyncApiClient(url);
             var meta = await api.GetMetaAsync();
 
-            var botones = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            var botones = new StackPanel { Spacing = 8 };
             foreach (var proveedor in meta.Auth.Providers)
             {
                 var id = proveedor.Id;
-                botones.Children.Add(ShellView.AccionAsync(proveedor.DisplayName,
-                    () => LoguearAsync(url, id)));
+                var boton = Ui.SecundarioAsync(proveedor.DisplayName, Iconos.Llave,
+                    () => LoguearAsync(url, id));
+                boton.HorizontalAlignment = HorizontalAlignment.Stretch;
+                botones.Children.Add(boton);
             }
 
-            Dibujar(ShellView.Rotulo("Iniciá sesión con:"), botones);
-            _estado.Text = $"{meta.Server}";
+            Dibujar(Ui.Rotulo("Iniciá sesión con"), botones);
+            _estado.Text = meta.Server;
         }
         catch (Exception ex)
         {
@@ -130,28 +128,26 @@ public class SyncSetupView : UserControl
             var workspaces = await _conexión!.Api.GetWorkspacesAsync();
             var actual = SyncBinding.Load(Storage.SyncBindingFile);
 
-            var lista = new StackPanel { Spacing = 6 };
+            var lista = new StackPanel { Spacing = 8 };
             foreach (var ws in workspaces)
             {
                 var elegido = ws;
-                var esActual = ws.Id == actual.WorkspaceId;
-                lista.Children.Add(ShellView.Accion(
-                    (esActual ? "● " : "○ ") + $"{ws.Name}  ({ws.Role})",
+                lista.Children.Add(Workspace(ws.Name, ws.Role, ws.Id == actual.WorkspaceId,
                     () => Atar(elegido)));
             }
 
             if (workspaces.Length == 0)
-                lista.Children.Add(ShellView.Parrafo(
+                lista.Children.Add(Ui.Parrafo(
                     "No sos parte de ningún workspace todavía. Pedí una invitación y aceptala desde " +
-                    "la app de escritorio.", ShellView.ColorTenue, 12));
+                    "la app de escritorio.", Ui.Tenue, 12));
 
             Dibujar(
-                ShellView.Tarjeta(ShellView.Parrafo(
-                    $"{_conexión.Account.DisplayName} · {_conexión.Account.Email}",
-                    ShellView.ColorNormal, 12)),
-                ShellView.Rotulo("Elegí de qué workspace bajar las colecciones"),
+                Ui.Tarjeta(6,
+                    Ui.Parrafo(_conexión.Account.DisplayName, Ui.Normal),
+                    Ui.Nota(_conexión.Account.Email)),
+                Ui.Rotulo("Elegí de qué workspace bajar las colecciones"),
                 lista,
-                ShellView.Accion("Cerrar sesión", CerrarSesión));
+                Ui.Fantasma("Cerrar sesión", null, CerrarSesión));
 
             _estado.Text = "";
         }
@@ -159,6 +155,63 @@ public class SyncSetupView : UserControl
         {
             _estado.Text = $"No se pudieron cargar: {ex.Message}";
         }
+    }
+
+    /// <summary>Un workspace como fila elegible: el atado ahora va marcado con el punto y el
+    /// borde de acento, que es lo que dice de dónde están bajando las colecciones.</summary>
+    static Control Workspace(string nombre, string rol, bool actual, Action al)
+    {
+        var textos = new StackPanel
+        {
+            Spacing = 2,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = nombre,
+                    FontSize = 14,
+                    FontWeight = actual ? FontWeight.SemiBold : FontWeight.Normal,
+                    Foreground = actual ? Ui.Acento : Ui.Normal,
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                },
+                Ui.Nota(rol)
+            }
+        };
+
+        var contenido = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 12,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children =
+            {
+                new Border
+                {
+                    Width = 8,
+                    Height = 8,
+                    CornerRadius = new CornerRadius(999),
+                    Background = actual ? Ui.Verde : Ui.Superficie,
+                    VerticalAlignment = VerticalAlignment.Center
+                },
+                textos
+            }
+        };
+
+        var boton = new Button
+        {
+            Content = contenido,
+            Background = actual ? Ui.Tinte(Ui.CAcento, 0.10) : Ui.Panel,
+            BorderBrush = actual ? Ui.Acento : Ui.Superficie,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(12),
+            Padding = new Thickness(14, 10),
+            MinHeight = 60,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Left
+        };
+        boton.Click += (_, _) => al();
+        return boton;
     }
 
     void Atar(SyncWorkspace ws)
