@@ -48,6 +48,7 @@ public class ShellView : UserControl
     readonly TextBlock _titulo = new() { FontSize = 18, FontWeight = FontWeight.SemiBold, Foreground = Ui.Acento };
     readonly TextBlock _estado = new() { FontSize = 11, Foreground = Ui.Tenue, TextWrapping = TextWrapping.Wrap };
     readonly Button _atrás = new() { Content = "‹", FontSize = 20, IsVisible = false, MinHeight = Ui.Toque, Padding = new Thickness(12, 0) };
+    readonly Button _colapsar = new() { Content = "☰", FontSize = 17, IsVisible = false, MinHeight = Ui.Toque, Padding = new Thickness(12, 0) };
     readonly ComboBox _selectorAmbiente = new() { MinHeight = Ui.Toque, MinWidth = 140 };
 
     List<RequestCollection> _colecciones = new();
@@ -58,11 +59,21 @@ public class ShellView : UserControl
     bool _mostrandoDetalle;
     bool _layoutAplicado;
 
+    /// <summary>Con dos paneles, la lista se puede plegar para que el detalle ocupe todo. Es
+    /// estado de la sesión y no se guarda: al abrir, la lista se ve.</summary>
+    bool _listaPlegada;
+
     public ShellView()
     {
         _lista = new CollectionListView(AbrirRequest, MenúDeNodo, NuevaColección);
 
         _atrás.Click += (_, _) => VolverALista();
+
+        _colapsar.Click += (_, _) =>
+        {
+            _listaPlegada = !_listaPlegada;
+            AplicarLayout(Bounds.Width);
+        };
 
         _selectorAmbiente.SelectionChanged += (_, _) =>
         {
@@ -103,7 +114,7 @@ public class ShellView : UserControl
             Orientation = Orientation.Horizontal,
             Spacing = 8,
             VerticalAlignment = VerticalAlignment.Center,
-            Children = { _atrás, _titulo }
+            Children = { _atrás, _colapsar, _titulo }
         };
 
         var acciones = Ui.Barra(
@@ -157,13 +168,23 @@ public class ShellView : UserControl
     {
         if (_dosPaneles)
         {
-            _columnaLista.Width = new GridLength(ancho >= AnchoHolgado ? 360 : 300, GridUnitType.Pixel);
+            // plegada, la lista deja todo el ancho para la request abierta. El botón queda igual
+            // en su lugar y se pinta con el acento cuando está plegada: es lo único que dice que
+            // la lista sigue ahí, y sin eso el panel parece haber desaparecido.
+            _columnaLista.Width = _listaPlegada
+                ? new GridLength(0, GridUnitType.Pixel)
+                : new GridLength(ancho >= AnchoHolgado ? 360 : 300, GridUnitType.Pixel);
             _columnaDetalle.Width = new GridLength(1, GridUnitType.Star);
-            _lista.IsVisible = true;
+            _lista.IsVisible = !_listaPlegada;
             _detalle.IsVisible = true;
             _atrás.IsVisible = false;
+            _colapsar.IsVisible = true;
+            _colapsar.Foreground = _listaPlegada ? Ui.Acento : Ui.Normal;
             return;
         }
+
+        // en una columna no hay nada que plegar: la lista y el detalle ya se turnan
+        _colapsar.IsVisible = false;
 
         // una sola columna: la que no se muestra queda en cero y oculta, para que no mida ni pinte
         _columnaLista.Width = new GridLength(_mostrandoDetalle ? 0 : 1,

@@ -33,6 +33,11 @@ describe bien:
 600 es el corte con el que Android define "pantalla grande"; coincide con cualquier tablet y con un
 fold desplegado.
 
+Con dos paneles, **la lista se puede plegar** con el botón ☰ de la barra: el detalle pasa a ocupar
+todo el ancho, que es lo que se quiere cuando estás leyendo una respuesta larga. El botón se queda
+en su lugar, pintado con el color de acento mientras la lista está plegada — sin esa señal el panel
+parece haberse ido y no haber forma de traerlo. Es estado de la sesión: al abrir, la lista se ve.
+
 Dos decisiones que hacen que el fold no moleste:
 
 - **Las dos vistas viven siempre.** Cambiar de modo sólo toca el ancho de las columnas y la
