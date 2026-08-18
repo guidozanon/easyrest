@@ -127,33 +127,43 @@ internal static class Ui
 
     // ----- Íconos -----
 
-    public static Forma Icono(Geometry geometria, double tamaño, IBrush color, bool relleno = false) => new()
-    {
-        Data = geometria,
-        Width = tamaño,
-        Height = tamaño,
-        Stretch = Stretch.Uniform,
-        Fill = relleno ? color : null,
-        Stroke = relleno ? null : color,
-        StrokeThickness = 1.8,
-        StrokeLineCap = PenLineCap.Round,
-        StrokeJoin = PenLineJoin.Round,
-        VerticalAlignment = VerticalAlignment.Center
-    };
+    const double Trazo = 1.8;
 
-    /// <summary>Un ícono que acompaña a un texto y se sube apenas.
+    /// <summary>Un ícono, con la caja del tamaño del dibujo.
     ///
-    /// Centrar las dos cajas deja el ícono un pelo bajo respecto de las letras, porque la caja del
-    /// texto reserva lugar para el descendente. El margen de abajo lo sube la mitad de eso.
+    /// Esto último es el detalle que importa. Un Path con Stretch escala la geometría y la apoya
+    /// contra la esquina de su caja, no la centra: si la caja es cuadrada y el dibujo no —el
+    /// chevron mide 12×6, los tres puntos 15×3, el ☰ 16×12—, todo lo que sobra queda abajo y el
+    /// ícono se dibuja pegado al techo. Por eso el chevron del método se veía alto por más que la
+    /// fila estuviera centrada, y por eso los íconos de la barra de abajo no coincidían entre sí:
+    /// cada uno se corría lo que le sobraba a su propia caja.
     ///
-    /// No va en todos lados: en los dos chevrones de desplegable —el del método y el del ambiente—
-    /// esta corrección los dejaba altos, así que ahí se usa <see cref="Icono"/> pelado. La
-    /// diferencia es de un píxel y se decide mirando, no calculando.</summary>
-    public static Forma IconoDeTexto(Geometry geometria, double tamaño, IBrush color)
+    /// Se le da entonces a la caja la forma del dibujo —el lado largo mide <paramref name="tamaño"/>—
+    /// y ahí sí, centrar la caja centra el ícono.</summary>
+    public static Forma Icono(Geometry geometria, double tamaño, IBrush color, bool relleno = false)
     {
-        var icono = Icono(geometria, tamaño, color);
-        icono.Margin = new Thickness(0, 0, 0, 3);
-        return icono;
+        var dibujo = geometria.Bounds;
+        var lado = Math.Max(dibujo.Width, dibujo.Height);
+        var escala = lado > 0 ? tamaño / lado : 1;
+
+        // el trazo se dibuja centrado sobre la línea, así que asoma media pluma de cada lado: si
+        // no se lo suma a la caja, Avalonia achica el dibujo para que entre y vuelve a sobrar lugar
+        var pluma = relleno ? 0 : Trazo;
+
+        return new Forma
+        {
+            Data = geometria,
+            Width = Math.Max(1, dibujo.Width * escala + pluma),
+            Height = Math.Max(1, dibujo.Height * escala + pluma),
+            Stretch = Stretch.Uniform,
+            Fill = relleno ? color : null,
+            Stroke = relleno ? null : color,
+            StrokeThickness = Trazo,
+            StrokeLineCap = PenLineCap.Round,
+            StrokeJoin = PenLineJoin.Round,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
     }
 
     /// <summary>Una línea donde lo último ocupa lo que sobra.
@@ -241,7 +251,7 @@ internal static class Ui
             Spacing = 8,
             VerticalAlignment = VerticalAlignment.Center
         };
-        if (icono != null) contenido.Children.Add(IconoDeTexto(icono, tamaño + 2, color));
+        if (icono != null) contenido.Children.Add(Icono(icono, tamaño + 2, color));
         contenido.Children.Add(new TextBlock
         {
             Text = texto,

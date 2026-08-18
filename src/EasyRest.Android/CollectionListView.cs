@@ -287,9 +287,9 @@ internal class CollectionListView : UserControl
             VerticalAlignment = VerticalAlignment.Center
         };
 
-        var chevron = Ui.IconoDeTexto(expandido ? Iconos.ChevronAbajo : Iconos.Chevron, 13, color);
+        var chevron = Ui.Icono(expandido ? Iconos.ChevronAbajo : Iconos.Chevron, 13, color);
         contenido.Children.Add(chevron);
-        if (icono != null) contenido.Children.Add(Ui.IconoDeTexto(icono, 15, color));
+        if (icono != null) contenido.Children.Add(Ui.Icono(icono, 15, color));
         contenido.Children.Add(new TextBlock
         {
             Text = texto,

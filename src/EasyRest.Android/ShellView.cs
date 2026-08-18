@@ -244,7 +244,12 @@ public class ShellView : UserControl
 
             var (etiqueta, geometría, relleno) = destinos[i];
             var icono = Ui.Icono(geometría, 22, Ui.Tenue, relleno);
-            icono.HorizontalAlignment = HorizontalAlignment.Center;
+
+            // cada dibujo tiene su propio alto —el ☰ es chato, el globo cuadrado, los puntos una
+            // línea—, así que el ícono va dentro de una caja fija: sin eso, cada destino empujaba
+            // su rótulo a una altura distinta y la barra quedaba escalonada
+            var casilla = new Border { Height = 24, Child = icono };
+
             var texto = new TextBlock
             {
                 Text = etiqueta,
@@ -256,7 +261,7 @@ public class ShellView : UserControl
             var destino = i;
             var boton = new Button
             {
-                Content = new StackPanel { Spacing = 4, Children = { icono, texto } },
+                Content = new StackPanel { Spacing = 4, Children = { casilla, texto } },
                 Background = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
                 CornerRadius = new CornerRadius(0),
