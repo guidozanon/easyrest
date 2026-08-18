@@ -196,7 +196,7 @@ public class ShellView : UserControl
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center
         });
-        contenido.Children.Add(Ui.Icono(Iconos.ChevronAbajo, 12, Ui.Tenue));
+        contenido.Children.Add(Ui.IconoDeTexto(Iconos.ChevronAbajo, 12, Ui.Tenue));
 
         _chipAmbiente.Content = contenido;
         _chipAmbiente.Background = Ui.Superficie;

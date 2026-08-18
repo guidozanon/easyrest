@@ -140,6 +140,19 @@ internal static class Ui
         VerticalAlignment = VerticalAlignment.Center
     };
 
+    /// <summary>Un ícono que va pegado a un texto, en la misma línea.
+    ///
+    /// Centrar las dos cajas no alcanza: la del texto incluye el espacio del descendente, así que
+    /// las letras se apoyan arriba de su propio centro y el ícono, centrado de verdad, queda bajo.
+    /// El margen de abajo lo sube la mitad — es la corrección óptica de siempre, y es lo que hace
+    /// que el chevron del método y el del ambiente dejen de verse caídos.</summary>
+    public static Forma IconoDeTexto(Geometry geometria, double tamaño, IBrush color)
+    {
+        var icono = Icono(geometria, tamaño, color);
+        icono.Margin = new Thickness(0, 0, 0, 3);
+        return icono;
+    }
+
     // ----- Botones -----
 
     /// <summary>La acción de la pantalla: una sola, llena y con el color de acento.</summary>
@@ -207,7 +220,7 @@ internal static class Ui
             Spacing = 8,
             VerticalAlignment = VerticalAlignment.Center
         };
-        if (icono != null) contenido.Children.Add(Icono(icono, tamaño + 2, color));
+        if (icono != null) contenido.Children.Add(IconoDeTexto(icono, tamaño + 2, color));
         contenido.Children.Add(new TextBlock
         {
             Text = texto,
@@ -229,13 +242,13 @@ internal static class Ui
 
     /// <summary>Botón sólo de ícono, cuadrado y del tamaño del dedo.</summary>
     public static Button BotonIcono(Geometry icono, Action al, IBrush? color = null,
-        IBrush? fondo = null, bool relleno = false)
+        IBrush? fondo = null, bool relleno = false, double lado = Toque)
     {
         var boton = new Button
         {
             Content = Icono(icono, 19, color ?? Subtexto, relleno),
-            Width = Toque,
-            MinHeight = Toque,
+            Width = lado,
+            MinHeight = lado,
             Padding = new Thickness(0),
             CornerRadius = new CornerRadius(10),
             Background = fondo ?? Brushes.Transparent,
@@ -365,6 +378,9 @@ internal static class Ui
         };
     }
 
+    /// <summary>Un campo de texto. De una línea va con el contenido centrado: el TextBox arranca
+    /// el texto arriba, así que con una altura mínima mayor a la del renglón —que es lo que hace
+    /// falta para que se pueda tocar— quedaba escrito contra el techo de la caja.</summary>
     public static TextBox Campo(string texto, string? marca = null, bool multilinea = false,
         bool mono = false)
     {
@@ -382,7 +398,8 @@ internal static class Ui
             BorderBrush = Superficie,
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(10),
-            Padding = new Thickness(12, 10)
+            Padding = new Thickness(12, multilinea ? 10 : 6),
+            VerticalContentAlignment = multilinea ? VerticalAlignment.Top : VerticalAlignment.Center
         };
     }
 

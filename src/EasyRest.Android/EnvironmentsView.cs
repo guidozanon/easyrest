@@ -197,7 +197,7 @@ internal class EnvironmentsView : UserControl
             VerticalAlignment = VerticalAlignment.Center
         };
         clave.Children.Add(Ui.Mono(variable.Key, Ui.Acento, 13));
-        if (secreta) clave.Children.Add(Ui.Icono(Iconos.Candado, 12, Ui.Amarillo));
+        if (secreta) clave.Children.Add(Ui.IconoDeTexto(Iconos.Candado, 12, Ui.Amarillo));
 
         // enmascarar acá y no con PasswordChar: la fila es texto, no un campo, y un largo fijo
         // tampoco delata cuántos caracteres tiene el token

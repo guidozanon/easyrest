@@ -35,6 +35,7 @@ internal class CollectionListView : UserControl
     readonly TextBox _busqueda;
     readonly Border _fondo;
     readonly Border _banda;
+    readonly Button _nueva;
     readonly Dictionary<RequestItem, Border> _filas = new();
 
     List<RequestCollection> _colecciones = new();
@@ -54,16 +55,16 @@ internal class CollectionListView : UserControl
         var buscador = new Grid();
         buscador.Children.Add(_busqueda);
         buscador.Children.Add(lupa);
-        _busqueda.Padding = new Thickness(38, 10, 12, 10);
+        _busqueda.Padding = new Thickness(38, 4, 12, 4);
         lupa.HorizontalAlignment = HorizontalAlignment.Left;
 
         var barra = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        var nueva = Ui.BotonIcono(Iconos.Mas, alNuevaColección, Ui.Normal, Ui.Superficie);
-        nueva.Margin = new Thickness(8, 0, 0, 0);
+        _nueva = Ui.BotonIcono(Iconos.Mas, alNuevaColección, Ui.Normal, Ui.Superficie);
+        _nueva.Margin = new Thickness(8, 0, 0, 0);
         Grid.SetColumn(buscador, 0);
-        Grid.SetColumn(nueva, 1);
+        Grid.SetColumn(_nueva, 1);
         barra.Children.Add(buscador);
-        barra.Children.Add(nueva);
+        barra.Children.Add(_nueva);
 
         // el buscador va sobre el color del panel y con el mismo borde de abajo que el encabezado
         // del shell: así los dos se leen como un solo bloque fijo arriba de la lista
@@ -72,7 +73,6 @@ internal class CollectionListView : UserControl
             Background = Ui.Panel,
             BorderBrush = Ui.Superficie,
             BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(16, 0, 8, 12),
             Child = barra
         };
 
@@ -98,6 +98,18 @@ internal class CollectionListView : UserControl
 
         _banda.Background = dosPaneles ? Brushes.Transparent : Ui.Panel;
         _banda.BorderThickness = new Thickness(0, 0, 0, dosPaneles ? 0 : 1);
+        // el buscador respira arriba: pegado al borde del encabezado se leía como si se hubiera
+        // desbordado desde ahí
+        _banda.Padding = new Thickness(16, 12, 8, 12);
+
+        // de panel el buscador es un accesorio y no la pantalla: más chico, como en el diseño del
+        // fold. En una columna es lo primero que se toca y va del tamaño del dedo.
+        var alto = dosPaneles ? 40 : Ui.Toque - 4;
+        _busqueda.MinHeight = alto;
+        _busqueda.Height = alto;
+        _nueva.Width = alto;
+        _nueva.MinHeight = alto;
+        _nueva.Height = alto;
     }
 
     public void Cargar(List<RequestCollection> colecciones)
@@ -275,9 +287,9 @@ internal class CollectionListView : UserControl
             VerticalAlignment = VerticalAlignment.Center
         };
 
-        var chevron = Ui.Icono(expandido ? Iconos.ChevronAbajo : Iconos.Chevron, 13, color);
+        var chevron = Ui.IconoDeTexto(expandido ? Iconos.ChevronAbajo : Iconos.Chevron, 13, color);
         contenido.Children.Add(chevron);
-        if (icono != null) contenido.Children.Add(Ui.Icono(icono, 15, color));
+        if (icono != null) contenido.Children.Add(Ui.IconoDeTexto(icono, 15, color));
         contenido.Children.Add(new TextBlock
         {
             Text = texto,
